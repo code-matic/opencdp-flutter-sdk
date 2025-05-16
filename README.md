@@ -32,6 +32,8 @@ A Flutter SDK for integrating with the OpenCDP platform. This SDK provides a sim
 
 ## Installation
 
+### From pub.dev
+
 Add the following to your `pubspec.yaml`:
 
 ```yaml
@@ -44,6 +46,26 @@ Then run:
 ```sh
 flutter pub get
 ```
+
+### From Git Repository
+
+To use the SDK directly from the Git repository, add the following to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  open_cdp_flutter_sdk:
+    git:
+      url: https://github.com/code-matic/opencdp-flutter-sdk.git
+      ref: main  # or any other branch/tag/commit
+```
+
+Then run:
+
+```sh
+flutter pub get
+```
+
+Note: Replace `your-username` with the actual GitHub username or organization name where the repository is hosted.
 
 ---
 
