@@ -1,11 +1,11 @@
 name: open_cdp_flutter_sdk
-description: A Flutter SDK for Open CDP
-version: 0.0.1
+description: A Flutter SDK for integrating with the OpenCDP platform.
+version: 1.0.0
 homepage: https://github.com/yourusername/open_cdp_flutter_sdk
 
 environment:
-  sdk: '>=2.12.0 <4.0.0'
-  flutter: ">=2.0.0"
+  sdk: ">=2.19.0 <4.0.0"
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
@@ -13,16 +13,17 @@ dependencies:
   http: ^1.1.0
   shared_preferences: ^2.2.0
   package_info_plus: ^4.1.0
-  device_info_plus: ^11.3.0
-  customer_io: ^2.1.6  
+  device_info_plus: ^9.0.3
+  customer_io: ^2.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  mockito: ^5.4.2
+  build_runner: ^2.4.6
 
 flutter:
-  # This section is intentionally left empty as this is a plugin package
+  uses-material-design: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

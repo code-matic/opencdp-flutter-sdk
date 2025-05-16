@@ -123,7 +123,7 @@ class OpenCDPConfig {
     if (cdpEndpoint != null) {
       return cdpEndpoint!;
     }
-    return CDPEndpoints.defaultBaseUrl;
+    return CDPEndpoints.baseUrl;
   }
 
   const OpenCDPConfig({

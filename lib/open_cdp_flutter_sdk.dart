@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:customer_io/customer_io.dart' as cio;
 import 'package:customer_io/customer_io_config.dart' as cio_config;
 import 'package:customer_io/customer_io_enums.dart' as cio_enums;
-import 'src/models/config.dart';
+
+export 'src/models/config.dart';
 import 'src/constants/endpoints.dart';
 import 'src/utils/http_client.dart';
 import 'src/utils/screen_tracker.dart';
@@ -34,6 +36,16 @@ class OpenCDPSDK {
 
   /// Get the screen tracker if auto tracking is enabled
   CDPScreenTracker? get screenTracker => _screenTracker;
+
+  /// Reset the SDK instance (for testing purposes)
+  @visibleForTesting
+  static void resetForTest() {
+    _instance = null;
+    _config = null;
+    _userId = null;
+    _packageInfo = null;
+    _screenTracker = null;
+  }
 
   /// Initialize the SDK with configuration
   static Future<void> initialize({required OpenCDPConfig config}) async {
@@ -129,7 +141,7 @@ class OpenCDPSDK {
     }
 
     if (_userId != null) {
-      await update(_userId!, deviceAttributes);
+      await update(identifier: _userId!, properties: deviceAttributes);
     }
   }
 
@@ -148,8 +160,10 @@ class OpenCDPSDK {
   }
 
   /// Identify a user with optional traits
-  Future<void> identify(String identifier,
-      {Map<String, dynamic>? properties}) async {
+  Future<void> identify({
+    required String identifier,
+    Map<String, dynamic> properties = const {},
+  }) async {
     _validateIdentifier(identifier);
     final normalizedProps = properties ?? {};
 
@@ -176,8 +190,11 @@ class OpenCDPSDK {
   }
 
   /// Track an event with optional properties
-  Future<void> track(String identifier, String eventName,
-      {Map<String, dynamic>? properties}) async {
+  Future<void> track({
+    required String identifier,
+    required String eventName,
+    Map<String, dynamic> properties = const {},
+  }) async {
     _validateIdentifier(identifier);
     _validateEventName(eventName);
     final normalizedProps = properties ?? {};
@@ -198,8 +215,10 @@ class OpenCDPSDK {
   }
 
   /// Update properties for a user
-  Future<void> update(
-      String identifier, Map<String, dynamic> properties) async {
+  Future<void> update({
+    required String identifier,
+    Map<String, dynamic> properties = const {},
+  }) async {
     _validateIdentifier(identifier);
 
     try {
@@ -217,11 +236,14 @@ class OpenCDPSDK {
   }
 
   /// Track a screen view with optional properties
-  Future<void> screen(String identifier, String title,
-      {Map<String, dynamic> properties = const {}}) async {
+  Future<void> screen({
+    required String identifier,
+    required String title,
+    Map<String, dynamic> properties = const {},
+  }) async {
     await track(
-      identifier,
-      'screen_view',
+      identifier: identifier,
+      eventName: 'screen_view',
       properties: {
         'screen': title,
         ...properties,
@@ -230,16 +252,62 @@ class OpenCDPSDK {
   }
 
   /// Register a device token for push notifications
-  Future<void> registerDeviceToken(String identifier, String token) async {
+  Future<void> registerDeviceToken({
+    required String identifier,
+    String? fcmToken,
+    String? apnToken,
+  }) async {
     _validateIdentifier(identifier);
 
     try {
+      // Get device attributes
+      final deviceAttributes = <String, dynamic>{};
+
+      if (_packageInfo != null) {
+        deviceAttributes.addAll({
+          'app_version': _packageInfo!.version,
+          'app_build': _packageInfo!.buildNumber,
+          'app_package': _packageInfo!.packageName,
+        });
+      }
+
+      if (Platform.isAndroid) {
+        final androidInfo = await _deviceInfo.androidInfo;
+        deviceAttributes.addAll({
+          'device_manufacturer': androidInfo.manufacturer,
+          'device_model': androidInfo.model,
+          'os_version': androidInfo.version.release,
+          'os_sdk': androidInfo.version.sdkInt.toString(),
+          // get device id
+          'deviceId': androidInfo.id,
+        });
+      } else if (Platform.isIOS) {
+        final iosInfo = await _deviceInfo.iosInfo;
+        deviceAttributes.addAll({
+          'device_manufacturer': 'Apple',
+          'device_model': iosInfo.model,
+          'os_version': iosInfo.systemVersion,
+          'os_name': iosInfo.systemName,
+          // get device id
+          'deviceId': iosInfo.identifierForVendor,
+        });
+      }
+
+// { identifier, deviceId, name, platform, osVersion, model, fcmToken, apnToken, appVersion, timestamp, attributes = {} }
       await _httpClient.post(
-        CDPEndpoints.deviceToken,
+        CDPEndpoints.registerDevice,
         {
           'identifier': identifier,
-          'token': token,
+          'deviceId': deviceAttributes['deviceId'],
+          'name': deviceAttributes['device_manufacturer'],
           'platform': defaultTargetPlatform.toString().split('.').last,
+          'osVersion': deviceAttributes['os_version'],
+          'model': deviceAttributes['device_model'],
+          'fcmToken': fcmToken,
+          'apnToken': apnToken,
+          'appVersion': deviceAttributes['app_version'],
+          'timestamp': DateTime.now().toUtc().toIso8601String(),
+          'attributes': deviceAttributes,
         },
         identifier: identifier,
       );

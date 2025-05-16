@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
 /// A navigation observer that automatically tracks screen views in the CDP system.
@@ -73,8 +72,8 @@ class CDPScreenTracker extends NavigatorObserver {
     if (sdk.userId != null) {
       // Track for identified user
       sdk.screen(
-        sdk.userId!,
-        name,
+        identifier: sdk.userId!,
+        title: name,
         properties: screenData,
       );
 
@@ -104,8 +103,8 @@ class CDPScreenTracker extends NavigatorObserver {
 
     for (final screenData in _anonymousScreenViews) {
       sdk.screen(
-        sdk.userId!,
-        screenData['screen'],
+        identifier: sdk.userId!,
+        title: screenData['screen'],
         properties: screenData,
       );
 
