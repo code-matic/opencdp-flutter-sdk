@@ -65,8 +65,6 @@ Then run:
 flutter pub get
 ```
 
-Note: Replace `your-username` with the actual GitHub username or organization name where the repository is hosted.
-
 ---
 
 ## Usage
