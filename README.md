@@ -173,6 +173,32 @@ MaterialApp(
 
 ---
 
+## Lifecycle Events
+
+When `trackApplicationLifecycleEvents` is enabled, the SDK automatically tracks the following app lifecycle events:
+
+- `app_opened`: When the app is resumed and becomes active
+- `app_closed`: When the app is paused and goes to the background
+- `app_inactive`: When the app is inactive (e.g., during a phone call)
+- `app_detached`: When the app is detached from the Flutter engine
+
+Each event includes the following properties:
+- `state`: The lifecycle state (resumed, paused, inactive, detached)
+- `timestamp`: The time when the event occurred
+
+Example of a lifecycle event:
+```json
+{
+  "eventName": "app_opened",
+  "properties": {
+    "state": "resumed",
+    "timestamp": "2024-03-21T10:30:00.000Z"
+  }
+}
+```
+
+---
+
 ## Error Handling
 
 All SDK methods throw a `CDPException` on failure. You can catch and handle these as needed:

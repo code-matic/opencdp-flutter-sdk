@@ -1,16 +1,14 @@
 import 'package:customer_io/customer_io_config.dart' as cio_config;
+import 'package:customer_io/customer_io_enums.dart';
 import '../constants/endpoints.dart';
 
-/// Region enum for CDP API endpoints
-enum Region {
+// Region enum for CDP API endpoints
+enum OpenCDPRegion {
   /// US region
   us,
 
   /// EU region
   eu,
-
-  /// AP region
-  ap,
 }
 
 /// Log level for SDK debugging
@@ -52,7 +50,7 @@ class CustomerIoConfig {
   final String apiKey;
 
   /// Customer.io region
-  final String region;
+  final Region region;
 
   /// Whether to automatically track device attributes
   final bool autoTrackDeviceAttributes;
@@ -69,7 +67,7 @@ class CustomerIoConfig {
   const CustomerIoConfig({
     required this.siteId,
     required this.apiKey,
-    this.region = 'us',
+    this.region = Region.us,
     this.autoTrackDeviceAttributes = true,
     this.pushConfig,
     this.inAppConfig,

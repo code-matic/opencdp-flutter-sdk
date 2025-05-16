@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -13,6 +14,7 @@ export 'src/models/config.dart';
 import 'src/constants/endpoints.dart';
 import 'src/utils/http_client.dart';
 import 'src/utils/screen_tracker.dart';
+import 'src/utils/lifecycle_tracker.dart';
 
 /// Main SDK class for Open CDP
 class OpenCDPSDK {
@@ -22,6 +24,7 @@ class OpenCDPSDK {
   static final _deviceInfo = DeviceInfoPlugin();
   static PackageInfo? _packageInfo;
   static CDPScreenTracker? _screenTracker;
+  static CDPLifecycleTracker? _lifecycleTracker;
 
   /// Get the singleton instance of the SDK
   static OpenCDPSDK get instance {
@@ -45,6 +48,7 @@ class OpenCDPSDK {
     _userId = null;
     _packageInfo = null;
     _screenTracker = null;
+    _lifecycleTracker = null;
   }
 
   /// Initialize the SDK with configuration
@@ -63,7 +67,7 @@ class OpenCDPSDK {
         cdpApiKey: config.customerIo!.apiKey,
         inAppConfig: config.customerIo!.inAppConfig,
         migrationSiteId: config.customerIo!.migrationSiteId,
-        region: config.customerIo!.region == 'us'
+        region: config.customerIo!.region == OpenCDPRegion.us
             ? cio_enums.Region.us
             : cio_enums.Region.eu,
         autoTrackDeviceAttributes: config.customerIo!.autoTrackDeviceAttributes,
@@ -79,6 +83,15 @@ class OpenCDPSDK {
         sdk: _instance!,
         debug: config.debug,
       );
+    }
+
+    // Initialize lifecycle tracker if enabled
+    if (config.trackApplicationLifecycleEvents) {
+      _lifecycleTracker = CDPLifecycleTracker(
+        sdk: _instance!,
+        debug: config.debug,
+      );
+      WidgetsBinding.instance.addObserver(_lifecycleTracker!);
     }
 
     // Track device attributes if enabled
@@ -319,5 +332,8 @@ class OpenCDPSDK {
   /// Dispose the SDK instance
   void dispose() {
     _httpClient.dispose();
+    if (_lifecycleTracker != null) {
+      WidgetsBinding.instance.removeObserver(_lifecycleTracker!);
+    }
   }
 }
