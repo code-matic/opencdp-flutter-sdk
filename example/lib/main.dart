@@ -100,7 +100,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       await OpenCDPSDK.instance.track(
-        identifier: _userId!,
         eventName: 'button_clicked',
         properties: {
           'button_name': 'increment',
@@ -120,8 +119,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     try {
-      await OpenCDPSDK.instance.screen(
-        identifier: _userId!,
+      await OpenCDPSDK.instance.trackScreenView(
         title: 'Home Page',
         properties: {
           'counter': _counter,
@@ -141,7 +139,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       await OpenCDPSDK.instance.update(
-        identifier: _userId!,
         properties: {
           'last_clicked': DateTime.now().toIso8601String(),
           'total_clicks': _counter,

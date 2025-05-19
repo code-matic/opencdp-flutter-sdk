@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
-import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
-import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 
 class TestHttpClient {
   final List<Map<String, dynamic>> requests = [];
@@ -103,7 +101,6 @@ void main() {
       };
 
       await sdk.track(
-        identifier: identifier,
         eventName: eventName,
         properties: properties,
       );
@@ -125,7 +122,6 @@ void main() {
       };
 
       await sdk.update(
-        identifier: identifier,
         properties: properties,
       );
 
@@ -143,7 +139,6 @@ void main() {
       const apnToken = 'apn_token';
 
       await sdk.registerDeviceToken(
-        identifier: identifier,
         fcmToken: fcmToken,
         apnToken: apnToken,
       );
@@ -166,7 +161,7 @@ void main() {
 
     test('should throw exception when tracking with empty event name', () {
       expect(
-        () => sdk.track(identifier: 'user_123', eventName: ''),
+        () => sdk.track(eventName: ''),
         throwsException,
       );
     });

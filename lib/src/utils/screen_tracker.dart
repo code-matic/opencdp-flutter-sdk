@@ -71,8 +71,7 @@ class CDPScreenTracker extends NavigatorObserver {
 
     if (sdk.userId != null) {
       // Track for identified user
-      sdk.screen(
-        identifier: sdk.userId!,
+      sdk.trackScreenView(
         title: name,
         properties: screenData,
       );
@@ -102,8 +101,7 @@ class CDPScreenTracker extends NavigatorObserver {
     if (sdk.userId == null) return;
 
     for (final screenData in _anonymousScreenViews) {
-      sdk.screen(
-        identifier: sdk.userId!,
+      sdk.trackScreenView(
         title: screenData['screen'],
         properties: screenData,
       );

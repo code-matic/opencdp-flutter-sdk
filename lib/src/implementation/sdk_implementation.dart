@@ -112,12 +112,13 @@ class OpenCDPSDKImplementation {
 
   /// Implementation of event tracking
   Future<void> trackEvent({
-    required String identifier,
     required String eventName,
     Map<String, dynamic> properties = const {},
     EventType type = EventType.custom,
   }) async {
-    _validateIdentifier(identifier);
+    if (_userId == null) {
+      throw Exception('User not identified. Call identify() first.');
+    }
     _validateEventName(eventName);
     final normalizedProps = properties ?? {};
 
@@ -125,11 +126,11 @@ class OpenCDPSDKImplementation {
       await _httpClient.post(
         CDPEndpoints.track,
         {
-          'identifier': identifier,
+          'identifier': _userId,
           'eventName': eventName,
           'properties': normalizedProps,
         },
-        identifier: identifier,
+        identifier: _userId!,
       );
 
       // Track in Customer.io if enabled
@@ -142,8 +143,8 @@ class OpenCDPSDKImplementation {
             );
             break;
           case EventType.custom:
-            // case EventType.lifecycle:
-            // case EventType.device:
+          case EventType.lifecycle:
+          case EventType.device:
             cio.CustomerIO.instance.track(
               name: eventName,
               properties: normalizedProps,
@@ -158,25 +159,26 @@ class OpenCDPSDKImplementation {
 
   /// Implementation of user properties update
   Future<void> updateUserProperties({
-    required String identifier,
-    Map<String, dynamic> properties = const {},
+    required Map<String, dynamic> properties,
   }) async {
-    _validateIdentifier(identifier);
+    if (_userId == null) {
+      throw Exception('User not identified. Call identify() first.');
+    }
 
     try {
       await _httpClient.post(
         CDPEndpoints.update,
         {
-          'identifier': identifier,
+          'identifier': _userId,
           'properties': properties,
         },
-        identifier: identifier,
+        identifier: _userId!,
       );
 
       // Update in Customer.io if enabled
       if (config.sendToCustomerIo) {
         cio.CustomerIO.instance.identify(
-          userId: identifier,
+          userId: _userId!,
           traits: properties,
         );
       }
@@ -187,12 +189,10 @@ class OpenCDPSDKImplementation {
 
   /// Implementation of screen view tracking
   Future<void> trackScreenView({
-    required String identifier,
     required String title,
     Map<String, dynamic> properties = const {},
   }) async {
     await trackEvent(
-      identifier: identifier,
       eventName: 'screen_view',
       properties: {
         'screen': title,
@@ -204,39 +204,24 @@ class OpenCDPSDKImplementation {
 
   /// Implementation of lifecycle event tracking
   Future<void> trackLifecycleEvent({
-    required String identifier,
     required String eventName,
     Map<String, dynamic> properties = const {},
   }) async {
     await trackEvent(
-      identifier: identifier,
       eventName: eventName,
       properties: properties,
       type: EventType.lifecycle,
     );
   }
 
-  // /// Implementation of device event tracking
-  // Future<void> trackDeviceEvent({
-  //   required String identifier,
-  //   required String eventName,
-  //   Map<String, dynamic> properties = const {},
-  // }) async {
-  //   await trackEvent(
-  //     identifier: identifier,
-  //     eventName: eventName,
-  //     properties: properties,
-  //     type: EventType.device,
-  //   );
-  // }
-
   /// Implementation of device registration
   Future<void> registerDevice({
-    required String identifier,
     String? fcmToken,
     String? apnToken,
   }) async {
-    _validateIdentifier(identifier);
+    if (_userId == null) {
+      throw Exception('User not identified. Call identify() first.');
+    }
 
     try {
       // Get device attributes
@@ -273,6 +258,7 @@ class OpenCDPSDKImplementation {
       await _httpClient.post(
         CDPEndpoints.registerDevice,
         {
+          'identifier': _userId,
           'deviceId': deviceAttributes['deviceId'],
           'name': deviceAttributes['device_manufacturer'],
           'platform': defaultTargetPlatform.toString().split('.').last,
@@ -284,7 +270,7 @@ class OpenCDPSDKImplementation {
           'last_active_at': DateTime.now().toUtc().toIso8601String(),
           'attributes': deviceAttributes,
         },
-        identifier: identifier,
+        identifier: _userId!,
       );
 
       // Register device in Customer.io if enabled
@@ -331,7 +317,6 @@ class OpenCDPSDKImplementation {
 
     if (_userId != null) {
       await updateUserProperties(
-        identifier: _userId!,
         properties: deviceAttributes,
       );
     }

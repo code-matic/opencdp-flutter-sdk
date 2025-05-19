@@ -25,38 +25,53 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
         _wasBackgrounded = true;
-        _trackEvent('app_backgrounded');
+        sdk.trackLifecycleEvent(
+          eventName: 'app_backgrounded',
+          properties: {
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
         break;
 
       case AppLifecycleState.resumed:
         if (_wasBackgrounded) {
-          _trackEvent('app_foregrounded');
+          sdk.trackLifecycleEvent(
+            eventName: 'app_foregrounded',
+            properties: {
+              'timestamp': DateTime.now().toIso8601String(),
+            },
+          );
           _wasBackgrounded = false;
         }
-        _trackEvent('app_resumed');
+        sdk.trackLifecycleEvent(
+          eventName: 'app_resumed',
+          properties: {
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
         break;
 
       case AppLifecycleState.inactive:
-        _trackEvent('app_inactive');
+        sdk.trackLifecycleEvent(
+          eventName: 'app_inactive',
+          properties: {
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
         break;
 
       case AppLifecycleState.detached:
-        _trackEvent('app_detached');
+        sdk.trackLifecycleEvent(
+          eventName: 'app_detached',
+          properties: {
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
         break;
     }
-  }
-
-  void _trackEvent(String eventName) {
-    sdk.track(
-      identifier: sdk.userId!,
-      eventName: eventName,
-      properties: {
-        'timestamp': DateTime.now().toIso8601String(),
-      },
-    );
 
     if (debug) {
-      debugPrint('[CDP] Tracked lifecycle event: $eventName');
+      debugPrint('[CDP] Tracked lifecycle event: ${state.name}');
     }
   }
 }

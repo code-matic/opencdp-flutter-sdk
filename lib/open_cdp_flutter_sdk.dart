@@ -77,12 +77,10 @@ class OpenCDPSDK {
 
   /// Track an event with optional properties
   Future<void> track({
-    required String identifier,
     required String eventName,
     Map<String, dynamic> properties = const {},
   }) async {
     await _implementation?.trackEvent(
-      identifier: identifier,
       eventName: eventName,
       properties: properties,
     );
@@ -90,38 +88,43 @@ class OpenCDPSDK {
 
   /// Update properties for a user
   Future<void> update({
-    required String identifier,
-    Map<String, dynamic> properties = const {},
+    required Map<String, dynamic> properties,
   }) async {
     await _implementation?.updateUserProperties(
-      identifier: identifier,
-      properties: properties,
-    );
-  }
-
-  /// Track a screen view with optional properties
-  Future<void> screen({
-    required String identifier,
-    required String title,
-    Map<String, dynamic> properties = const {},
-  }) async {
-    await _implementation?.trackScreenView(
-      identifier: identifier,
-      title: title,
       properties: properties,
     );
   }
 
   /// Register a device token for push notifications
   Future<void> registerDeviceToken({
-    required String identifier,
     String? fcmToken,
     String? apnToken,
   }) async {
     await _implementation?.registerDevice(
-      identifier: identifier,
       fcmToken: fcmToken,
       apnToken: apnToken,
+    );
+  }
+
+  /// Track a lifecycle event
+  Future<void> trackLifecycleEvent({
+    required String eventName,
+    Map<String, dynamic> properties = const {},
+  }) async {
+    await _implementation?.trackLifecycleEvent(
+      eventName: eventName,
+      properties: properties,
+    );
+  }
+
+  /// Track a screen view
+  Future<void> trackScreenView({
+    required String title,
+    Map<String, dynamic> properties = const {},
+  }) async {
+    await _implementation?.trackScreenView(
+      title: title,
+      properties: properties,
     );
   }
 
