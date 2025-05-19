@@ -4,15 +4,17 @@ class CDPEndpoints {
   static const String baseUrl =
       'https://cdp-data-gateway-749119130796.europe-west1.run.app/data-gateway';
 
+  static const String version = '/v1';
+
   /// Identify a person
-  static const String identify = '/persons/identify';
+  static const String identify = '$version/persons/identify';
 
   /// Track an event
-  static const String track = '/persons/track';
+  static const String track = '$version/persons/track';
 
   /// Update person properties
-  static const String update = '/persons/update';
+  static const String update = '$version/persons/update';
 
   /// Register device token
-  static const String registerDevice = '/persons/registerDevice';
+  static const String registerDevice = '$version/persons/registerDevice';
 }
