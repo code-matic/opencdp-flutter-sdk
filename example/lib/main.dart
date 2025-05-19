@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,15 +11,17 @@ void main() async {
   // Initialize the SDK
   await OpenCDPSDK.initialize(
     config: OpenCDPConfig(
-      cdpApiKey: 'YOUR_CDP_API_KEY',
+      cdpApiKey: 'your-api-key',
       debug: true,
       autoTrackScreens: true,
+      trackApplicationLifecycleEvents: true,
       autoTrackDeviceAttributes: true,
       sendToCustomerIo: true,
       customerIo: CustomerIoConfig(
-        siteId: 'YOUR_CUSTOMER_IO_SITE_ID',
-        apiKey: 'YOUR_CUSTOMER_IO_API_KEY',
+        siteId: 'your-site-id',
+        apiKey: 'your-customer-io-api-key',
         customerIoRegion: Region.us,
+        autoTrackDeviceAttributes: true,
       ),
     ),
   );
@@ -32,15 +35,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OpenCDP SDK Example',
+      title: 'Open CDP SDK Example',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       navigatorObservers: [
         OpenCDPSDK.instance.screenTracker!,
       ],
-      home: const MyHomePage(title: 'OpenCDP SDK Example'),
+      home: const MyHomePage(title: 'Open CDP SDK Example'),
     );
   }
 }
@@ -56,45 +59,103 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  String? _userId;
 
-  void _incrementCounter() async {
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _counter++;
+      _userId = prefs.getString('user_id');
     });
+  }
 
-    // Identify user
-    await OpenCDPSDK.instance.identify(
-      identifier: 'user_123',
-      properties: {
-        'name': 'John Doe',
-        'email': 'john@example.com',
-      },
-    );
+  Future<void> _identifyUser() async {
+    try {
+      await OpenCDPSDK.instance.identify(
+        identifier: 'user123',
+        properties: {
+          'name': 'John Doe',
+          'email': 'john@example.com',
+        },
+      );
+      setState(() {
+        _userId = 'user123';
+      });
+      _showSnackBar('User identified successfully');
+    } catch (e) {
+      _showSnackBar('Error identifying user: $e');
+    }
+  }
 
-    // Track event
-    await OpenCDPSDK.instance.track(
-      identifier: 'user_123',
-      eventName: 'button_clicked',
-      properties: {
-        'button_name': 'increment',
-        'count': _counter,
-      },
-    );
+  Future<void> _trackEvent() async {
+    if (_userId == null) {
+      _showSnackBar('Please identify a user first');
+      return;
+    }
 
-    // Update user properties
-    await OpenCDPSDK.instance.update(
-      identifier: 'user_123',
-      properties: {
-        'last_clicked': DateTime.now().toIso8601String(),
-        'total_clicks': _counter,
-      },
-    );
+    try {
+      await OpenCDPSDK.instance.track(
+        identifier: _userId!,
+        eventName: 'button_clicked',
+        properties: {
+          'button_name': 'increment',
+          'count': _counter,
+        },
+      );
+      _showSnackBar('Event tracked successfully');
+    } catch (e) {
+      _showSnackBar('Error tracking event: $e');
+    }
+  }
 
-    // Register device (example with dummy tokens)
-    await OpenCDPSDK.instance.registerDeviceToken(
-      identifier: 'user_123',
-      fcmToken: 'dummy_fcm_token',
-      apnToken: 'dummy_apn_token',
+  Future<void> _trackScreenView() async {
+    if (_userId == null) {
+      _showSnackBar('Please identify a user first');
+      return;
+    }
+
+    try {
+      await OpenCDPSDK.instance.screen(
+        identifier: _userId!,
+        title: 'Home Page',
+        properties: {
+          'counter': _counter,
+        },
+      );
+      _showSnackBar('Screen view tracked successfully');
+    } catch (e) {
+      _showSnackBar('Error tracking screen view: $e');
+    }
+  }
+
+  Future<void> _updateUserProperties() async {
+    if (_userId == null) {
+      _showSnackBar('Please identify a user first');
+      return;
+    }
+
+    try {
+      await OpenCDPSDK.instance.update(
+        identifier: _userId!,
+        properties: {
+          'last_clicked': DateTime.now().toIso8601String(),
+          'total_clicks': _counter,
+        },
+      );
+      _showSnackBar('User properties updated successfully');
+    } catch (e) {
+      _showSnackBar('Error updating user properties: $e');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -102,24 +163,56 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
+            Text(
+              'User ID: ${_userId ?? 'Not identified'}',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 20),
+            Text(
               'You have pushed the button this many times:',
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
             Text(
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _identifyUser,
+              child: const Text('Identify User'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _trackEvent,
+              child: const Text('Track Event'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _trackScreenView,
+              child: const Text('Track Screen View'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _updateUserProperties,
+              child: const Text('Update User Properties'),
+            ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {
+          setState(() {
+            _counter++;
+          });
+          _trackEvent();
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ),

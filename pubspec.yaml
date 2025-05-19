@@ -14,7 +14,7 @@ dependencies:
   shared_preferences: ^2.5.3 
   package_info_plus: ^8.3.0 
   device_info_plus: ^11.3.0 
-  customer_io: ^2.1.6 
+  customer_io: ^2.1.1 
 
 dev_dependencies:
   flutter_test:

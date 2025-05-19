@@ -11,28 +11,21 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/to/develop-packages).
 -->
 
-# OpenCDP Flutter SDK
+# Open CDP Flutter SDK
 
-A Flutter SDK for integrating with the OpenCDP platform. This SDK provides a simple, flexible way to track user events, identify users, and manage device tokens in your Flutter applications.
-
----
+A Flutter SDK for Open CDP that provides easy integration with Customer.io and other CDP features.
 
 ## Features
 
-- **User Identification**: Easily identify users and associate traits.
-- **Event Tracking**: Track custom events and screen views.
-- **Anonymous & Identified Tracking**: Supports both anonymous and identified user journeys.
-- **Device Token Registration**: Register device tokens for push notifications.
-- **Automatic Device Attribute Tracking**: Collect device and app info automatically.
-- **Automatic Screen Tracking**: Track screen views with a single configuration.
-- **Customer.io Integration**: Optional integration with Customer.io for advanced messaging.
-- **Configurable Debug Logging**: Enable verbose logging for development and debugging.
-
----
+- User identification and tracking
+- Event tracking with different types (custom, screen view, lifecycle)
+- Device registration and push notification support
+- Automatic screen tracking
+- Application lifecycle tracking
+- Customer.io integration
+- Device attributes tracking
 
 ## Installation
-
-### From pub.dev
 
 Add the following to your `pubspec.yaml`:
 
@@ -41,35 +34,9 @@ dependencies:
   open_cdp_flutter_sdk: ^1.0.0
 ```
 
-Then run:
-
-```sh
-flutter pub get
-```
-
-### From Git Repository
-
-To use the SDK directly from the Git repository, add the following to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  open_cdp_flutter_sdk:
-    git:
-      url: https://github.com/code-matic/opencdp-flutter-sdk.git
-      ref: main  # or any other branch/tag/commit
-```
-
-Then run:
-
-```sh
-flutter pub get
-```
-
----
-
 ## Usage
 
-### 1. Initialize the SDK
+### Initialize the SDK
 
 ```dart
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
@@ -77,16 +44,28 @@ import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize the SDK
   await OpenCDPSDK.initialize(
     config: OpenCDPConfig(
-      cdpApiKey: 'YOUR_CDP_API_KEY',
+      cdpApiKey: 'your-api-key',
       debug: true,
       autoTrackScreens: true,
+      trackApplicationLifecycleEvents: true,
       autoTrackDeviceAttributes: true,
-      sendToCustomerIo: true, // Optional
-      customerIo: CustomerIoConfig(
-        siteId: 'YOUR_CUSTOMER_IO_SITE_ID',
-        apiKey: 'YOUR_CUSTOMER_IO_API_KEY',
+      sendToCustomerIo: true,
+      customerIo: CustomerIOConfig(
+        apiKey: 'your-customer-io-api-key',
+        inAppConfig: CustomerIOInAppConfig(
+          siteId: 'your-site-id',
+        ),
+        migrationSiteId: 'your-migration-site-id',
+        customerIoRegion: Region.us,
+        autoTrackDeviceAttributes: true,
+        pushConfig: CustomerIOPushConfig(
+          pushConfigAndroid: CustomerIOPushConfigAndroid(
+            pushClickBehavior: PushClickBehaviorAndroid.activityPreventRestart,
+          ),
+        ),
       ),
     ),
   );
@@ -95,11 +74,12 @@ void main() async {
 }
 ```
 
-### 2. Identify Users
+### Identify Users
 
 ```dart
+// Identify a user
 await OpenCDPSDK.instance.identify(
-  identifier: 'user_123',
+  identifier: 'user123',
   properties: {
     'name': 'John Doe',
     'email': 'john@example.com',
@@ -107,122 +87,93 @@ await OpenCDPSDK.instance.identify(
 );
 ```
 
-### 3. Track Events
+### Track Events
 
 ```dart
+// Track a custom event
 await OpenCDPSDK.instance.track(
-  identifier: 'user_123',
-  eventName: 'button_clicked',
+  identifier: 'user123',
+  eventName: 'purchase',
   properties: {
-    'button_name': 'increment',
-    'count': 5,
+    'product_id': '123',
+    'price': 99.99,
+  },
+);
+
+// Track a screen view
+await OpenCDPSDK.instance.screen(
+  identifier: 'user123',
+  title: 'Product Details',
+  properties: {
+    'product_id': '123',
   },
 );
 ```
 
-### 4. Update User Properties
+### Update User Properties
 
 ```dart
 await OpenCDPSDK.instance.update(
-  identifier: 'user_123',
+  identifier: 'user123',
   properties: {
-    'last_clicked': DateTime.now().toIso8601String(),
-    'total_clicks': 10,
+    'last_purchase': DateTime.now().toIso8601String(),
+    'total_spent': 299.99,
   },
 );
 ```
 
-### 5. Register Device Token
+### Register Device for Push Notifications
 
 ```dart
 await OpenCDPSDK.instance.registerDeviceToken(
-  identifier: 'user_123',
-  fcmToken: 'your_fcm_token', // For Android
-  apnToken: 'your_apn_token', // For iOS
+  identifier: 'user123',
+  fcmToken: 'firebase-token', // For Android
+  apnToken: 'apns-token',     // For iOS
 );
 ```
 
-### 6. Automatic Screen Tracking
-
-To enable automatic screen tracking, add the screen tracker to your app's navigator observers:
-
-```dart
-MaterialApp(
-  navigatorObservers: [
-    OpenCDPSDK.instance.screenTracker!,
-  ],
-  // ... other app configuration
-)
-```
-
----
-
 ## Configuration Options
 
-| Option                          | Type      | Description                                      | Default      |
-|----------------------------------|-----------|--------------------------------------------------|--------------|
-| `cdpApiKey`                     | String    | Your CDP API key (required)                      | –            |
-| `cdpEndpoint`                   | String?   | Custom CDP endpoint (optional)                   | –            |
-| `sendToCustomerIo`              | bool      | Enable Customer.io integration                   | false        |
-| `customerIo`                    | CustomerIoConfig? | Customer.io configuration                  | –            |
-| `debug`                         | bool      | Enable debug logging                             | false        |
-| `autoTrackDeviceAttributes`      | bool      | Track device attributes automatically            | true         |
-| `autoTrackScreens`              | bool      | Enable automatic screen tracking                 | false        |
-| `trackApplicationLifecycleEvents`| bool      | Track app lifecycle events                       | true         |
-| `screenViewUse`                 | ScreenView| Screen view tracking configuration               | ScreenView.all|
+### OpenCDPConfig
 
----
+| Option | Type | Description |
+|--------|------|-------------|
+| `cdpApiKey` | String | API key for Open CDP |
+| `debug` | bool | Enable debug logging |
+| `autoTrackScreens` | bool | Automatically track screen views |
+| `trackApplicationLifecycleEvents` | bool | Track app lifecycle events |
+| `autoTrackDeviceAttributes` | bool | Automatically track device attributes |
+| `sendToCustomerIo` | bool | Enable Customer.io integration |
+| `customerIo` | CustomerIOConfig | Customer.io configuration |
 
-## Lifecycle Events
+### CustomerIOConfig
 
-When `trackApplicationLifecycleEvents` is enabled, the SDK automatically tracks the following app lifecycle events:
+| Option | Type | Description |
+|--------|------|-------------|
+| `apiKey` | String | Customer.io API key |
+| `inAppConfig` | CustomerIOInAppConfig | In-app messaging configuration |
+| `migrationSiteId` | String | Migration site ID |
+| `customerIoRegion` | Region | Customer.io region (us/eu) |
+| `autoTrackDeviceAttributes` | bool | Track device attributes in Customer.io |
+| `pushConfig` | CustomerIOPushConfig | Push notification configuration |
 
-- `app_opened`: When the app is resumed and becomes active
-- `app_closed`: When the app is paused and goes to the background
-- `app_inactive`: When the app is inactive (e.g., during a phone call)
-- `app_detached`: When the app is detached from the Flutter engine
+## Event Types
 
-Each event includes the following properties:
-- `state`: The lifecycle state (resumed, paused, inactive, detached)
-- `timestamp`: The time when the event occurred
+The SDK supports different types of events:
 
-Example of a lifecycle event:
-```json
-{
-  "eventName": "app_opened",
-  "properties": {
-    "state": "resumed",
-    "timestamp": "2024-03-21T10:30:00.000Z"
-  }
-}
-```
-
----
-
-## Error Handling
-
-All SDK methods throw a `CDPException` on failure. You can catch and handle these as needed:
-
-```dart
-try {
-  await OpenCDPSDK.instance.identify(identifier: 'user_123');
-} catch (e) {
-  if (e is CDPException) {
-    print('CDP Error: ${e.message}');
-  } else {
-    print('Unexpected error: $e');
-  }
-}
-```
-
----
+- `custom`: Regular custom events
+- `screenView`: Screen view events
+- `lifecycle`: Application lifecycle events
+- `device`: Device-related events
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
-
----
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
