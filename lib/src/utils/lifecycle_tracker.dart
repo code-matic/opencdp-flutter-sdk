@@ -9,6 +9,9 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
   /// Whether to print debug information to the console
   final bool debug;
 
+  /// Whether the app was in background
+  bool _wasBackgrounded = false;
+
   /// Creates a new lifecycle tracker
   CDPLifecycleTracker({
     required this.sdk,
@@ -19,35 +22,41 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (sdk.userId == null) return;
 
-    final eventName = _getEventNameForState(state);
-    if (eventName == null) return;
+    switch (state) {
+      case AppLifecycleState.paused:
+        _wasBackgrounded = true;
+        _trackEvent('app_backgrounded');
+        break;
 
+      case AppLifecycleState.resumed:
+        if (_wasBackgrounded) {
+          _trackEvent('app_foregrounded');
+          _wasBackgrounded = false;
+        }
+        _trackEvent('app_resumed');
+        break;
+
+      case AppLifecycleState.inactive:
+        _trackEvent('app_inactive');
+        break;
+
+      case AppLifecycleState.detached:
+        _trackEvent('app_detached');
+        break;
+    }
+  }
+
+  void _trackEvent(String eventName) {
     sdk.track(
       identifier: sdk.userId!,
       eventName: eventName,
       properties: {
-        'state': state.toString().split('.').last,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
 
     if (debug) {
       debugPrint('[CDP] Tracked lifecycle event: $eventName');
-    }
-  }
-
-  String? _getEventNameForState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.resumed:
-        return 'app_opened';
-      case AppLifecycleState.paused:
-        return 'app_closed';
-      case AppLifecycleState.inactive:
-        return 'app_inactive';
-      case AppLifecycleState.detached:
-        return 'app_detached';
-      default:
-        return null;
     }
   }
 }

@@ -203,6 +203,16 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: _updateUserProperties,
               child: const Text('Update User Properties'),
             ),
+            const SizedBox(height: 20),
+            Text(
+              'Auto-tracking enabled:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '• Screen views are automatically tracked\n• App lifecycle events are automatically tracked',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
         ),
       ),
