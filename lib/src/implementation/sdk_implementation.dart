@@ -245,39 +245,46 @@ class OpenCDPSDKImplementation {
         });
       }
 
+      String platform;
+      String deviceId;
+
       if (Platform.isAndroid) {
         final androidInfo = await _deviceInfo.androidInfo;
+        platform = 'android';
+        deviceId = androidInfo.id;
         deviceAttributes.addAll({
           'device_manufacturer': androidInfo.manufacturer,
           'device_model': androidInfo.model,
           'os_version': androidInfo.version.release,
           'os_sdk': androidInfo.version.sdkInt.toString(),
-          'deviceId': androidInfo.id,
         });
       } else if (Platform.isIOS) {
         final iosInfo = await _deviceInfo.iosInfo;
+        platform = 'ios';
+        deviceId = iosInfo.identifierForVendor ?? '';
         deviceAttributes.addAll({
           'device_manufacturer': 'Apple',
           'device_model': iosInfo.model,
           'os_version': iosInfo.systemVersion,
           'os_name': iosInfo.systemName,
-          'deviceId': iosInfo.identifierForVendor,
         });
+      } else {
+        platform = 'web';
+        deviceId = 'web-${DateTime.now().millisecondsSinceEpoch}';
       }
 
       await _httpClient.post(
         CDPEndpoints.registerDevice,
         {
           'identifier': _currentIdentifier,
-          'deviceId': deviceAttributes['deviceId'],
+          'deviceId': deviceId,
           'name': deviceAttributes['device_manufacturer'],
-          'platform': defaultTargetPlatform.toString().split('.').last,
+          'platform': platform,
           'osVersion': deviceAttributes['os_version'],
           'model': deviceAttributes['device_model'],
           'fcmToken': fcmToken,
           'apnToken': apnToken,
           'appVersion': deviceAttributes['app_version'],
-          'last_active_at': DateTime.now().toUtc().toIso8601String(),
           'attributes': deviceAttributes,
         },
         identifier: _currentIdentifier,
