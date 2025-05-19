@@ -63,15 +63,23 @@ class OpenCDPSDK {
 
     // Initialize Customer.io if configured
     if (config.sendToCustomerIo && config.customerIo != null) {
+      final inAppConfig = cio_config.InAppConfig(
+        siteId: config.customerIo!.inAppConfig!.siteId,
+      );
+      final pushConfig = cio_config.PushConfig(
+        android: _getPushConfigAndroid(
+            config.customerIo?.pushConfig?.pushConfigAndroid.pushClickBehavior),
+      );
+
       final cioConfig = cio_config.CustomerIOConfig(
         cdpApiKey: config.customerIo!.apiKey,
-        inAppConfig: config.customerIo!.inAppConfig,
+        inAppConfig: inAppConfig,
         migrationSiteId: config.customerIo!.migrationSiteId,
-        region: config.customerIo!.region == OpenCDPRegion.us
+        region: config.customerIo!.customerIoRegion == cio_enums.Region.us
             ? cio_enums.Region.us
             : cio_enums.Region.eu,
         autoTrackDeviceAttributes: config.customerIo!.autoTrackDeviceAttributes,
-        pushConfig: config.customerIo!.pushConfig,
+        pushConfig: pushConfig,
       );
 
       await cio.CustomerIO.initialize(config: cioConfig);
@@ -326,6 +334,30 @@ class OpenCDPSDK {
       );
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Get the Android push configuration based on the click behavior
+  static cio_config.PushConfigAndroid? _getPushConfigAndroid(
+      PushClickBehaviorAndroid? behavior) {
+    if (behavior == null) return null;
+
+    switch (behavior) {
+      case PushClickBehaviorAndroid.activityPreventRestart:
+        return cio_config.PushConfigAndroid(
+          pushClickBehavior:
+              cio_enums.PushClickBehaviorAndroid.activityPreventRestart,
+        );
+      case PushClickBehaviorAndroid.activityNoFlags:
+        return cio_config.PushConfigAndroid(
+          pushClickBehavior: cio_enums.PushClickBehaviorAndroid.activityNoFlags,
+        );
+      case PushClickBehaviorAndroid.resetTaskStack:
+        return cio_config.PushConfigAndroid(
+          pushClickBehavior: cio_enums.PushClickBehaviorAndroid.resetTaskStack,
+        );
+      default:
+        return null;
     }
   }
 

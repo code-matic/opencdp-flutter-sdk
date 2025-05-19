@@ -1,9 +1,8 @@
-import 'package:customer_io/customer_io_config.dart' as cio_config;
 import 'package:customer_io/customer_io_enums.dart';
 import '../constants/endpoints.dart';
 
 // Region enum for CDP API endpoints
-enum OpenCDPRegion {
+enum Region {
   /// US region
   us,
 
@@ -41,7 +40,53 @@ enum ScreenView {
   manual,
 }
 
+/// Enum to define the log levels.
+/// Logs can be viewed in Xcode or Android studio.
+enum CioLogLevel { none, error, info, debug }
+
+/// Enum to specify the type of metric for tracking
+enum MetricEvent { delivered, opened, converted }
+
+/// Enum to specify the click behavior of push notification for Android
+enum PushClickBehaviorAndroid {
+  resetTaskStack(rawValue: 'RESET_TASK_STACK'),
+  activityPreventRestart(rawValue: 'ACTIVITY_PREVENT_RESTART'),
+  activityNoFlags(rawValue: 'ACTIVITY_NO_FLAGS');
+
+  factory PushClickBehaviorAndroid.fromValue(String value) {
+    switch (value) {
+      case 'RESET_TASK_STACK':
+        return PushClickBehaviorAndroid.resetTaskStack;
+      case 'ACTIVITY_PREVENT_RESTART':
+        return PushClickBehaviorAndroid.activityPreventRestart;
+      case 'ACTIVITY_NO_FLAGS':
+        return PushClickBehaviorAndroid.activityNoFlags;
+      default:
+        throw ArgumentError('Invalid value provided');
+    }
+  }
+
+  const PushClickBehaviorAndroid({
+    required this.rawValue,
+  });
+
+  final String rawValue;
+}
+
 /// Customer.io configuration
+// String? migrationSiteId,
+// Region? region,
+// CioLogLevel? logLevel,
+// bool? autoTrackDeviceAttributes,
+// bool? trackApplicationLifecycleEvents,
+// String? apiHost,
+// String? cdnHost,
+// int? flushAt,
+// int? flushInterval,
+// ScreenView? screenViewUse,
+// InAppConfig? inAppConfig,
+// PushConfig? pushConfig,
+
 class CustomerIoConfig {
   /// Customer.io site ID
   final String siteId;
@@ -50,39 +95,59 @@ class CustomerIoConfig {
   final String apiKey;
 
   /// Customer.io region
-  final Region region;
+  final Region customerIoRegion;
 
   /// Whether to automatically track device attributes
   final bool autoTrackDeviceAttributes;
 
   /// Push notification configuration for Android
-  final cio_config.PushConfig? pushConfig;
+  final PushConfig? pushConfig;
 
   /// In-app message configuration
-  final cio_config.InAppConfig? inAppConfig;
+  final InAppConfig? inAppConfig;
 
   /// Migration site ID
   final String? migrationSiteId;
 
+  /// Log level
+  final OpenCDPLogLevel? logLevel;
+
+  /// Whether to automatically track screens
+  final bool? autoTrackScreens;
+
+  /// Whether to track application lifecycle events
+  final bool? trackApplicationLifecycleEvents;
+
+  /// Screen view tracking configuration
+  final ScreenView? screenViewUse;
+
   const CustomerIoConfig({
     required this.siteId,
     required this.apiKey,
-    this.region = Region.us,
+    required this.customerIoRegion,
     this.autoTrackDeviceAttributes = true,
     this.pushConfig,
     this.inAppConfig,
     this.migrationSiteId,
+    this.logLevel,
+    this.autoTrackScreens,
+    this.trackApplicationLifecycleEvents,
+    this.screenViewUse,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'siteId': siteId,
       'apiKey': apiKey,
-      'region': region,
+      'region': customerIoRegion,
       'autoTrackDeviceAttributes': autoTrackDeviceAttributes,
       'pushConfig': pushConfig?.toMap(),
       'inAppConfig': inAppConfig?.toMap(),
       'migrationSiteId': migrationSiteId,
+      'logLevel': logLevel?.toString().split('.').last,
+      'autoTrackScreens': autoTrackScreens,
+      'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
+      'screenViewUse': screenViewUse?.toString().split('.').last,
     };
   }
 }
@@ -148,6 +213,45 @@ class OpenCDPConfig {
       'autoTrackScreens': autoTrackScreens,
       'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
       'screenViewUse': screenViewUse.toString().split('.').last,
+    };
+  }
+}
+
+class PushConfig {
+  PushConfigAndroid pushConfigAndroid;
+
+  PushConfig({PushConfigAndroid? android})
+      : pushConfigAndroid = android ?? PushConfigAndroid();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'android': pushConfigAndroid.toMap(),
+    };
+  }
+}
+
+class PushConfigAndroid {
+  PushClickBehaviorAndroid pushClickBehavior;
+
+  PushConfigAndroid(
+      {this.pushClickBehavior =
+          PushClickBehaviorAndroid.activityPreventRestart});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'pushClickBehavior': pushClickBehavior.rawValue,
+    };
+  }
+}
+
+class InAppConfig {
+  final String siteId;
+
+  InAppConfig({required this.siteId});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'siteId': siteId,
     };
   }
 }

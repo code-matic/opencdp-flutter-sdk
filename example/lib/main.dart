@@ -18,6 +18,7 @@ void main() async {
       customerIo: CustomerIoConfig(
         siteId: 'YOUR_CUSTOMER_IO_SITE_ID',
         apiKey: 'YOUR_CUSTOMER_IO_API_KEY',
+        customerIoRegion: Region.us,
       ),
     ),
   );
