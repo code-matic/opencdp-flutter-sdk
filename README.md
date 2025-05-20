@@ -105,6 +105,18 @@ await OpenCDPSDK.instance.registerDeviceToken(
 
 ---
 
+## Customer.io Push Notification Setup
+
+If you're using Customer.io for push notifications, you need to set up your app to handle push notifications properly. Please refer to the [Customer.io Push Notification Setup Guide](https://docs.customer.io/sdk/flutter/push-notifications/push-setup/) for detailed instructions on:
+
+- Setting up push notifications for Android
+- Setting up push notifications for iOS
+- Configuring notification icons and sounds
+- Handling notification permissions
+- Testing your implementation
+
+---
+
 ## Configuration Options
 
 ### OpenCDPConfig
@@ -162,5 +174,5 @@ MIT License
 ## Where to Go Next
 
 - [API Reference](https://pub.dev/documentation/open_cdp_flutter_sdk/latest/)
-- [Issue Tracker](https://github.com/code-matic/opencdp-flutter-sdk.git/issues)
+- [Issue Tracker](https://github.com/yourusername/open_cdp_flutter_sdk/issues)
 - [Example App](example/README.md) 
