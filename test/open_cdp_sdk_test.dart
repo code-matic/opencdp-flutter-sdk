@@ -3,33 +3,57 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
-class TestHttpClient {
+/// A test HTTP client that records requests and can simulate failures.
+class TestHttpClient extends CDPHttpClient {
   final List<Map<String, dynamic>> requests = [];
   bool shouldFail = false;
 
-  Future<void> post(String endpoint, Map<String, dynamic> body,
+  /// Creates a new test HTTP client.
+  TestHttpClient()
+      : super(
+          baseUrl: 'https://test.api.opencdp.com',
+          apiKey: 'test_key',
+        );
+
+  /// Records the request and returns a success response unless [shouldFail] is true.
+  @override
+  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> body,
       {String? identifier}) async {
     if (shouldFail) {
-      throw Exception('API call failed');
+      throw CDPException('API call failed');
     }
     requests.add({
       'endpoint': endpoint,
       'body': body,
       'identifier': identifier,
     });
+    return {'success': true};
   }
 
+  /// Cleans up resources.
+  @override
   void dispose() {}
 }
 
+/// Helper class for initializing the SDK in tests.
 class TestSDKHelper {
+  /// Initializes the SDK with the given configuration and HTTP client.
+  ///
+  /// [autoTrackScreens] enables automatic screen tracking if true.
+  /// [trackApplicationLifecycleEvents] enables lifecycle event tracking if true.
+  /// [autoTrackDeviceAttributes] enables automatic device attribute tracking if true.
+  /// [sendToCustomerIo] enables sending data to Customer.io if true.
+  /// [httpClient] is an optional HTTP client to use. If not provided, a new one is created.
   static Future<OpenCDPSDK> initializeSDK({
     bool autoTrackScreens = false,
     bool trackApplicationLifecycleEvents = false,
     bool autoTrackDeviceAttributes = false,
     bool sendToCustomerIo = false,
+    CDPHttpClient? httpClient,
   }) async {
+    OpenCDPSDK.resetForTest();
     await OpenCDPSDK.initialize(
       config: OpenCDPConfig(
         cdpApiKey: 'test_key',
@@ -39,6 +63,7 @@ class TestSDKHelper {
         autoTrackDeviceAttributes: autoTrackDeviceAttributes,
         sendToCustomerIo: sendToCustomerIo,
       ),
+      httpClient: httpClient,
     );
     return OpenCDPSDK.instance;
   }
@@ -56,7 +81,10 @@ void main() {
       const MethodChannel('plugins.flutter.io/shared_preferences'),
       (MethodCall methodCall) async {
         if (methodCall.method == 'getAll') {
-          return <String, dynamic>{};
+          return <String, dynamic>{'flutter.device_id': 'test_device_id'};
+        } else if (methodCall.method == 'setString' ||
+            methodCall.method == 'setValue') {
+          return true;
         }
         return null;
       },
@@ -98,7 +126,7 @@ void main() {
   setUp(() async {
     httpClient = TestHttpClient();
     OpenCDPSDK.resetForTest();
-    sdk = await TestSDKHelper.initializeSDK();
+    sdk = await TestSDKHelper.initializeSDK(httpClient: httpClient);
   });
 
   tearDown(() {
@@ -106,6 +134,15 @@ void main() {
   });
 
   group('OpenCDPSDK', () {
+    test('track should use device ID before user identification', () async {
+      const eventName = 'app_opened';
+      await sdk.track(eventName: eventName);
+
+      expect(httpClient.requests.length, 1);
+      final request = httpClient.requests.first;
+      expect(request['body']['identifier'], 'test_device_id');
+    });
+
     test('identify should make correct API call', () async {
       const identifier = 'user_123';
       final properties = {
@@ -124,15 +161,6 @@ void main() {
       expect(request['body']['identifier'], identifier);
       expect(request['body']['properties'], properties);
       expect(request['identifier'], identifier);
-    });
-
-    test('track should use device ID before user identification', () async {
-      const eventName = 'app_opened';
-      await sdk.track(eventName: eventName);
-
-      expect(httpClient.requests.length, 1);
-      final request = httpClient.requests.first;
-      expect(request['body']['identifier'], 'test_device_id');
     });
 
     test('track should make correct API call', () async {
@@ -222,13 +250,15 @@ void main() {
     });
 
     test('should track screen views when auto tracking is enabled', () async {
-      sdk = await TestSDKHelper.initializeSDK(autoTrackScreens: true);
+      final sdk = await TestSDKHelper.initializeSDK(
+          autoTrackScreens: true, httpClient: httpClient);
       expect(sdk.screenTracker, isNotNull);
     });
 
     test('should track lifecycle events when enabled', () async {
-      sdk = await TestSDKHelper.initializeSDK(
+      final sdk = await TestSDKHelper.initializeSDK(
         trackApplicationLifecycleEvents: true,
+        httpClient: httpClient,
       );
       await sdk.trackLifecycleEvent(
         eventName: 'app_opened',
@@ -240,11 +270,13 @@ void main() {
     });
 
     test('should track device attributes when enabled', () async {
-      sdk = await TestSDKHelper.initializeSDK(
+      final sdk = await TestSDKHelper.initializeSDK(
         autoTrackDeviceAttributes: true,
+        httpClient: httpClient,
       );
       await sdk.identify(identifier: 'user_123');
-      expect(httpClient.requests.length, 2); // identify + device attributes
+      expect(httpClient.requests.length,
+          3); // identify + device attributes + update
       final request = httpClient.requests.last;
       expect(request['body']['properties']['device_manufacturer'],
           'Test Manufacturer');

@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 export 'src/models/config.dart';
 
@@ -41,13 +43,19 @@ class OpenCDPSDK {
   }
 
   /// Initialize the SDK with configuration
-  static Future<void> initialize({required OpenCDPConfig config}) async {
+  ///
+  /// [httpClient] is for testing only and should not be used in production.
+  static Future<void> initialize({
+    required OpenCDPConfig config,
+    @visibleForTesting CDPHttpClient? httpClient,
+  }) async {
     if (_instance != null) {
       throw StateError('SDK already initialized');
     }
 
     _instance = OpenCDPSDK._();
-    _implementation = await OpenCDPSDKImplementation.create(config: config);
+    _implementation = await OpenCDPSDKImplementation.create(
+        config: config, httpClient: httpClient);
 
     // Initialize SDK components
     _screenTracker = await SDKInitializer.initialize(
@@ -135,5 +143,11 @@ class OpenCDPSDK {
     if (_lifecycleTracker != null) {
       WidgetsBinding.instance.removeObserver(_lifecycleTracker!);
     }
+  }
+
+  /// For testing: inject a mock/test HTTP client into the implementation
+  @visibleForTesting
+  static void setHttpClientForTest(dynamic client) {
+    _implementation?.httpClient = client;
   }
 }

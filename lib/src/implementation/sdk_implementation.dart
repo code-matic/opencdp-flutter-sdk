@@ -5,6 +5,7 @@ import 'package:customer_io/customer_io.dart' as cio;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:meta/meta.dart';
 
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
@@ -14,7 +15,8 @@ import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 /// Private implementation of the OpenCDP SDK
 class OpenCDPSDKImplementation {
   final OpenCDPConfig config;
-  final CDPHttpClient _httpClient;
+  @visibleForTesting
+  CDPHttpClient httpClient;
   late SharedPreferences prefs;
   static String? _userId;
   static String? _deviceId;
@@ -25,25 +27,27 @@ class OpenCDPSDKImplementation {
   OpenCDPSDKImplementation._({
     required this.config,
     required CDPHttpClient httpClient,
-  }) : _httpClient = httpClient {
+  }) : httpClient = httpClient {
     _init();
   }
 
   /// Factory constructor
   static Future<OpenCDPSDKImplementation> create({
     required OpenCDPConfig config,
+    CDPHttpClient? httpClient,
   }) async {
-    final httpClient = CDPHttpClient(
-      baseUrl: config.baseUrl,
-      apiKey: config.cdpApiKey,
-      debug: config.debug,
-    );
+    final client = httpClient ??
+        CDPHttpClient(
+          baseUrl: config.baseUrl,
+          apiKey: config.cdpApiKey,
+          debug: config.debug,
+        );
 
     _packageInfo = await PackageInfo.fromPlatform();
 
     return OpenCDPSDKImplementation._(
       config: config,
-      httpClient: httpClient,
+      httpClient: client,
     );
   }
 
@@ -103,7 +107,7 @@ class OpenCDPSDKImplementation {
     final normalizedProps = properties;
 
     try {
-      await _httpClient.post(
+      await httpClient.post(
         CDPEndpoints.identify,
         {
           'identifier': identifier,
@@ -142,7 +146,7 @@ class OpenCDPSDKImplementation {
     final normalizedProps = properties;
 
     try {
-      await _httpClient.post(
+      await httpClient.post(
         CDPEndpoints.track,
         {
           'identifier': _currentIdentifier,
@@ -181,7 +185,7 @@ class OpenCDPSDKImplementation {
     required Map<String, dynamic> properties,
   }) async {
     try {
-      await _httpClient.post(
+      await httpClient.post(
         CDPEndpoints.update,
         {
           'identifier': _currentIdentifier,
@@ -274,7 +278,7 @@ class OpenCDPSDKImplementation {
         deviceId = 'web-${DateTime.now().millisecondsSinceEpoch}';
       }
 
-      await _httpClient.post(
+      await httpClient.post(
         CDPEndpoints.registerDevice,
         {
           'identifier': _currentIdentifier,
@@ -342,6 +346,6 @@ class OpenCDPSDKImplementation {
 
   /// Dispose the SDK instance
   void dispose() {
-    _httpClient.dispose();
+    httpClient.dispose();
   }
 }

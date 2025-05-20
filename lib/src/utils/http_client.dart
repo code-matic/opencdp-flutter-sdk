@@ -9,6 +9,12 @@ class CDPHttpClient {
   final String apiKey;
   final bool debug;
 
+  /// Creates a new CDP HTTP client.
+  ///
+  /// [baseUrl] is the base URL for the CDP API.
+  /// [apiKey] is the API key used for authentication.
+  /// [debug] enables debug logging if true.
+  /// [client] is an optional HTTP client to use. If not provided, a new one is created.
   CDPHttpClient({
     required this.baseUrl,
     required this.apiKey,
@@ -17,6 +23,10 @@ class CDPHttpClient {
   }) : _client = client ?? http.Client();
 
   /// Make a POST request to the CDP API
+  ///
+  /// [endpoint] is the API endpoint to call.
+  /// [body] is the request body as a map.
+  /// [identifier] is an optional identifier for the request.
   Future<Map<String, dynamic>> post(
     String endpoint,
     Map<String, dynamic> body, {
