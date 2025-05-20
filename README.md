@@ -167,12 +167,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
-MIT License
+[MIT](LICENSE)
 
 ---
 
 ## Where to Go Next
 
-- [API Reference](https://pub.dev/documentation/open_cdp_flutter_sdk/latest/)
-- [Issue Tracker](https://github.com/yourusername/open_cdp_flutter_sdk/issues)
+- [API Reference](https://github.com/code-matic/opencdp-flutter-sdk/blob/main/README.md)
+- [Issue Tracker](https://github.com/code-matic/opencdp-flutter-sdk/issues)
 - [Example App](example/README.md) 
