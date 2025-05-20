@@ -1,4 +1,3 @@
-import 'package:customer_io/customer_io_enums.dart';
 import '../constants/endpoints.dart';
 
 // Region enum for CDP API endpoints

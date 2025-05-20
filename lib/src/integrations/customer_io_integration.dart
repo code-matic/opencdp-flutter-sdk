@@ -22,7 +22,7 @@ class CustomerIOIntegration {
       cdpApiKey: config.customerIo!.apiKey,
       inAppConfig: inAppConfig,
       migrationSiteId: config.customerIo!.migrationSiteId,
-      region: config.customerIo!.customerIoRegion == cio_enums.Region.us
+      region: config.customerIo!.customerIoRegion == Region.us
           ? cio_enums.Region.us
           : cio_enums.Region.eu,
       autoTrackDeviceAttributes: config.customerIo!.autoTrackDeviceAttributes,

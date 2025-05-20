@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:device_info_plus/device_info_plus.dart';
+
 import 'package:customer_io/customer_io.dart' as cio;
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/event_type.dart';
-import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 /// Private implementation of the OpenCDP SDK
@@ -99,7 +100,7 @@ class OpenCDPSDKImplementation {
     Map<String, dynamic> properties = const {},
   }) async {
     _validateIdentifier(identifier);
-    final normalizedProps = properties ?? {};
+    final normalizedProps = properties;
 
     try {
       await _httpClient.post(
@@ -138,7 +139,7 @@ class OpenCDPSDKImplementation {
     EventType type = EventType.custom,
   }) async {
     _validateEventName(eventName);
-    final normalizedProps = properties ?? {};
+    final normalizedProps = properties;
 
     try {
       await _httpClient.post(

@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final packageInfo = await PackageInfo.fromPlatform();
-
   // Initialize the SDK
   await OpenCDPSDK.initialize(
-    config: OpenCDPConfig(
+    config: const OpenCDPConfig(
       cdpApiKey: 'your-api-key',
       debug: true,
       autoTrackScreens: true,

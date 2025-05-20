@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/widgets.dart';
-import 'package:open_cdp_flutter_sdk/src/models/config.dart';
+
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
-import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
-import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
+import 'package:open_cdp_flutter_sdk/src/models/config.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 
 export 'src/models/config.dart';
 

@@ -26,7 +26,7 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
       case AppLifecycleState.paused:
         _wasBackgrounded = true;
         sdk.trackLifecycleEvent(
-          eventName: 'app_backgrounded',
+          eventName: 'App_backgrounded',
           properties: {
             'timestamp': DateTime.now().toIso8601String(),
           },
@@ -36,7 +36,7 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         if (_wasBackgrounded) {
           sdk.trackLifecycleEvent(
-            eventName: 'app_foregrounded',
+            eventName: 'App_foregrounded',
             properties: {
               'timestamp': DateTime.now().toIso8601String(),
             },
@@ -44,7 +44,7 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
           _wasBackgrounded = false;
         }
         sdk.trackLifecycleEvent(
-          eventName: 'app_resumed',
+          eventName: 'App_resumed',
           properties: {
             'timestamp': DateTime.now().toIso8601String(),
           },
@@ -53,7 +53,7 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
 
       case AppLifecycleState.inactive:
         sdk.trackLifecycleEvent(
-          eventName: 'app_inactive',
+          eventName: 'App_inactive',
           properties: {
             'timestamp': DateTime.now().toIso8601String(),
           },
@@ -62,7 +62,16 @@ class CDPLifecycleTracker extends WidgetsBindingObserver {
 
       case AppLifecycleState.detached:
         sdk.trackLifecycleEvent(
-          eventName: 'app_detached',
+          eventName: 'App_detached',
+          properties: {
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
+        break;
+
+      case AppLifecycleState.hidden:
+        sdk.trackLifecycleEvent(
+          eventName: 'App_hidden',
           properties: {
             'timestamp': DateTime.now().toIso8601String(),
           },
