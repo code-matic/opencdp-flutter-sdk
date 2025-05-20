@@ -12,13 +12,15 @@ void main() async {
       autoTrackScreens: true,
       trackApplicationLifecycleEvents: true,
       autoTrackDeviceAttributes: true,
-      sendToCustomerIo: true,
-      customerIo: CustomerIoConfig(
-        siteId: 'your-site-id',
-        apiKey: 'your-customer-io-api-key',
-        customerIoRegion: Region.us,
-        autoTrackDeviceAttributes: true,
-      ),
+      sendToCustomerIo: false,
+
+      // Uncomment this to send to Customer.io
+      // customerIo: CustomerIoConfig(
+      //   siteId: 'your-site-id',
+      //   apiKey: 'your-customer-io-api-key',
+      //   customerIoRegion: 'your customer.io region',
+      //   autoTrackDeviceAttributes: 'your preference[boolean]',
+      // ),
     ),
   );
 
