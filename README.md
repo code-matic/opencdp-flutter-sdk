@@ -155,7 +155,7 @@ If you're using Customer.io for push notifications, you need to set up your app 
 
 ## Related Terms
 
-analytics, customer.io, CDP, tracking, Flutter, push notifications, lifecycle, screen view
+analytics, CDP, tracking, Flutter, lifecycle, screen view
 
 ---
 
