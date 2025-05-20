@@ -26,8 +26,8 @@ class OpenCDPSDKImplementation {
   /// Private constructor
   OpenCDPSDKImplementation._({
     required this.config,
-    required CDPHttpClient httpClient,
-  }) : httpClient = httpClient {
+    required this.httpClient,
+  }) {
     _init();
   }
 
@@ -347,5 +347,10 @@ class OpenCDPSDKImplementation {
   /// Dispose the SDK instance
   void dispose() {
     httpClient.dispose();
+  }
+
+  /// Set a custom HTTP client
+  void setHttpClient(dynamic client) {
+    httpClient = client;
   }
 }

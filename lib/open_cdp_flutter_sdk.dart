@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:meta/meta.dart';
 
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
@@ -148,6 +147,6 @@ class OpenCDPSDK {
   /// For testing: inject a mock/test HTTP client into the implementation
   @visibleForTesting
   static void setHttpClientForTest(dynamic client) {
-    _implementation?.httpClient = client;
+    _implementation?.setHttpClient(client);
   }
 }

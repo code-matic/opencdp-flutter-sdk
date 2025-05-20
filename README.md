@@ -1,29 +1,18 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
-
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
 # Open CDP Flutter SDK
 
-A Flutter SDK for Open CDP that provides easy integration with Customer.io and other CDP features.
+A Flutter SDK for integrating with the OpenCDP platform. Track user events, screen views, and device attributes with automatic lifecycle tracking and dual write to Customer.io 
 
 ## Features
 
 - User identification and tracking
-- Event tracking with different types (custom, screen view, lifecycle)
+- Event tracking (custom, screen view, lifecycle)
 - Device registration and push notification support
 - Automatic screen tracking
 - Application lifecycle tracking
 - Customer.io integration
 - Device attributes tracking
+
+---
 
 ## Installation
 
@@ -34,17 +23,15 @@ dependencies:
   open_cdp_flutter_sdk: ^1.0.0
 ```
 
-## Usage
+---
 
-### Initialize the SDK
+## Quick Start
 
 ```dart
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize the SDK
   await OpenCDPSDK.initialize(
     config: OpenCDPConfig(
       cdpApiKey: 'your-api-key',
@@ -69,68 +56,54 @@ void main() async {
       ),
     ),
   );
-
   runApp(MyApp());
 }
 ```
 
-### Identify Users
+---
 
+## Usage
+
+### Identify Users
 ```dart
-// Identify a user
 await OpenCDPSDK.instance.identify(
   identifier: 'user123',
-  properties: {
-    'name': 'John Doe',
-    'email': 'john@example.com',
-  },
+  properties: {'name': 'John Doe', 'email': 'john@example.com'},
 );
 ```
 
 ### Track Events
-
 ```dart
-// Track a custom event
 await OpenCDPSDK.instance.track(
-  identifier: 'user123',
   eventName: 'purchase',
-  properties: {
-    'product_id': '123',
-    'price': 99.99,
-  },
+  properties: {'product_id': '123', 'price': 99.99},
 );
+```
 
-// Track a screen view
-await OpenCDPSDK.instance.screen(
-  identifier: 'user123',
+### Track Screen Views
+```dart
+await OpenCDPSDK.instance.trackScreenView(
   title: 'Product Details',
-  properties: {
-    'product_id': '123',
-  },
+  properties: {'product_id': '123'},
 );
 ```
 
 ### Update User Properties
-
 ```dart
 await OpenCDPSDK.instance.update(
-  identifier: 'user123',
-  properties: {
-    'last_purchase': DateTime.now().toIso8601String(),
-    'total_spent': 299.99,
-  },
+  properties: {'last_purchase': DateTime.now().toIso8601String()},
 );
 ```
 
 ### Register Device for Push Notifications
-
 ```dart
 await OpenCDPSDK.instance.registerDeviceToken(
-  identifier: 'user123',
-  fcmToken: 'firebase-token', // For Android
-  apnToken: 'apns-token',     // For iOS
+  fcmToken: 'firebase-token', // Android
+  apnToken: 'apns-token',     // iOS
 );
 ```
+
+---
 
 ## Configuration Options
 
@@ -157,23 +130,37 @@ await OpenCDPSDK.instance.registerDeviceToken(
 | `autoTrackDeviceAttributes` | bool | Track device attributes in Customer.io |
 | `pushConfig` | CustomerIOPushConfig | Push notification configuration |
 
-## Event Types
+---
 
-The SDK supports different types of events:
+## Event Types
 
 - `custom`: Regular custom events
 - `screenView`: Screen view events
 - `lifecycle`: Application lifecycle events
 - `device`: Device-related events
 
+---
+
+## Related Terms
+
+analytics, customer.io, CDP, tracking, Flutter, push notifications, lifecycle, screen view
+
+---
+
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md) 
+
+---
 
 ## License
 
-This project is licensed under the MIT License 
+MIT License
+
+---
+
+## Where to Go Next
+
+- [API Reference](https://pub.dev/documentation/open_cdp_flutter_sdk/latest/)
+- [Issue Tracker](https://github.com/code-matic/opencdp-flutter-sdk.git/issues)
+- [Example App](example/README.md) 

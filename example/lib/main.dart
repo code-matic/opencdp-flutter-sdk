@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,10 +63,11 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadUserId();
   }
 
-  Future<void> _loadUserId() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _loadUserId() {
+    // This is a dummy implementation
+    // In a real app, you would use SharedPreferences to load the user ID
     setState(() {
-      _userId = prefs.getString('user_id');
+      _userId = 'user123'; // No stored user ID in this example
     });
   }
 

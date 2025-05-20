@@ -1,10 +1,10 @@
 name: open_cdp_flutter_sdk
-description: A Flutter SDK for integrating with the OpenCDP platform. Track user events, screen views, and device attributes with automatic lifecycle tracking and Customer.io integration.
+description: A Flutter SDK for integrating with the OpenCDP platform. Track user events, screen views, and device attributes with automatic lifecycle tracking and dual write to Customer.io.
 version: 1.0.0
-homepage: https://github.com/yourusername/open_cdp_flutter_sdk
-repository: https://github.com/yourusername/open_cdp_flutter_sdk
-documentation: https://github.com/yourusername/open_cdp_flutter_sdk#readme
-issue_tracker: https://github.com/yourusername/open_cdp_flutter_sdk/issues
+homepage: https://github.com/code-matic/opencdp-flutter-sdk
+repository: https://github.com/code-matic/opencdp-flutter-sdk
+documentation: https://github.com/code-matic/opencdp-flutter-sdk#readme
+issue_tracker: https://github.com/code-matic/opencdp-flutter-sdk/issues
 
 environment:
   sdk: ">=2.19.0 <4.0.0"
