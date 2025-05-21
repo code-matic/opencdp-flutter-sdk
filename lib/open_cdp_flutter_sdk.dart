@@ -104,6 +104,12 @@ class OpenCDPSDK {
   }
 
   /// Register a device token for push notifications
+  ///
+  /// [fcmToken] is the Firebase Cloud Messaging token
+  /// [apnToken] is the Apple Push Notification token
+  ///
+  /// This method is used to register a device token for push notifications
+  ///
   Future<void> registerDeviceToken({
     String? fcmToken,
     String? apnToken,
