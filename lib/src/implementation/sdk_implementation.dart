@@ -296,14 +296,17 @@ class OpenCDPSDKImplementation {
       );
 
       // Register device in Customer.io if enabled
-      if (config.sendToCustomerIo) {
-        if (fcmToken != null) {
-          cio.CustomerIO.instance.registerDeviceToken(deviceToken: fcmToken);
-        }
-        if (apnToken != null) {
-          cio.CustomerIO.instance.registerDeviceToken(deviceToken: apnToken);
-        }
-      }
+      /// No need to register device token in Customer.io
+      /// as it'd be setup using the documentation from Customer.io
+
+      // if (config.sendToCustomerIo) {
+      //   if (fcmToken != null) {
+      //     cio.CustomerIO.instance.registerDeviceToken(deviceToken: fcmToken);
+      //   }
+      //   if (apnToken != null) {
+      //     cio.CustomerIO.instance.registerDeviceToken(deviceToken: apnToken);
+      //   }
+      // }
     } catch (e) {
       rethrow;
     }
