@@ -52,7 +52,10 @@ class CDPHttpClient {
       if (debug) {
         final action = endpoint.split('/').last;
         final id = identifier ?? 'unknown';
-        debugPrint('[CDP] $action for $id');
+        debugPrint('[CDP] $action');
+        debugPrint('[CDP] Endpoint: $endpoint');
+        debugPrint('[CDP] Status Code: ${response.statusCode}');
+        debugPrint('[CDP] Response: ${response.body}');
       }
 
       return jsonDecode(response.body) as Map<String, dynamic>;
