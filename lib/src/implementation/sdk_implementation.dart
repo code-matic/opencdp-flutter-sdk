@@ -75,12 +75,12 @@ class OpenCDPSDKImplementation {
       }
     }
 
-    // Track device attributes if enabled
+    _isInitialized = true;
+
+    // Track device attributes if enabled - moved after initialization
     if (config.autoTrackDeviceAttributes) {
       await _trackDeviceAttributes();
     }
-
-    _isInitialized = true;
   }
 
   /// Ensure SDK is initialized
@@ -93,6 +93,11 @@ class OpenCDPSDKImplementation {
   /// Get the current identifier (userId if identified, deviceId if not)
   String get _currentIdentifier {
     _ensureInitialized();
+    return _userId ?? _deviceId ?? 'unknown';
+  }
+
+  /// Get the current identifier without initialization check
+  String get _currentIdentifierUnsafe {
     return _userId ?? _deviceId ?? 'unknown';
   }
 
@@ -155,6 +160,7 @@ class OpenCDPSDKImplementation {
     Map<String, dynamic> properties = const {},
     EventType type = EventType.custom,
   }) async {
+    _ensureInitialized();
     _validateEventName(eventName);
     final normalizedProps = properties;
 
@@ -197,6 +203,7 @@ class OpenCDPSDKImplementation {
   Future<void> updateUserProperties({
     required Map<String, dynamic> properties,
   }) async {
+    _ensureInitialized();
     try {
       await httpClient.post(
         CDPEndpoints.update,
@@ -251,6 +258,7 @@ class OpenCDPSDKImplementation {
     String? fcmToken,
     String? apnToken,
   }) async {
+    _ensureInitialized();
     try {
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
@@ -307,19 +315,6 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
-
-      // Register device in Customer.io if enabled
-      /// No need to register device token in Customer.io
-      /// as it'd be setup using the documentation from Customer.io
-
-      // if (config.sendToCustomerIo) {
-      //   if (fcmToken != null) {
-      //     cio.CustomerIO.instance.registerDeviceToken(deviceToken: fcmToken);
-      //   }
-      //   if (apnToken != null) {
-      //     cio.CustomerIO.instance.registerDeviceToken(deviceToken: apnToken);
-      //   }
-      // }
     } catch (e) {
       rethrow;
     }
@@ -354,8 +349,13 @@ class OpenCDPSDKImplementation {
     }
 
     if (_userId != null) {
-      await updateUserProperties(
-        properties: deviceAttributes,
+      await httpClient.post(
+        CDPEndpoints.update,
+        {
+          'identifier': _currentIdentifierUnsafe,
+          'properties': deviceAttributes,
+        },
+        identifier: _currentIdentifierUnsafe,
       );
     }
   }
