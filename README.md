@@ -69,7 +69,10 @@ dependencies:
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
 void main() async {
+  // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize the SDK - this must be done before using any SDK methods
   await OpenCDPSDK.initialize(
     config: OpenCDPConfig(
       cdpApiKey: 'your-api-key',
@@ -97,6 +100,8 @@ void main() async {
   runApp(MyApp());
 }
 ```
+
+> **Important**: The SDK must be initialized before using any of its methods. Make sure to await the `initialize()` call and handle any potential initialization errors.
 
 ---
 

@@ -22,14 +22,13 @@ class OpenCDPSDKImplementation {
   static String? _deviceId;
   static final _deviceInfo = DeviceInfoPlugin();
   static PackageInfo? _packageInfo;
+  bool _isInitialized = false;
 
   /// Private constructor
   OpenCDPSDKImplementation._({
     required this.config,
     required this.httpClient,
-  }) {
-    _init();
-  }
+  });
 
   /// Factory constructor
   static Future<OpenCDPSDKImplementation> create({
@@ -45,10 +44,13 @@ class OpenCDPSDKImplementation {
 
     _packageInfo = await PackageInfo.fromPlatform();
 
-    return OpenCDPSDKImplementation._(
+    final implementation = OpenCDPSDKImplementation._(
       config: config,
       httpClient: client,
     );
+
+    await implementation._init();
+    return implementation;
   }
 
   /// Get the current user ID
@@ -77,10 +79,20 @@ class OpenCDPSDKImplementation {
     if (config.autoTrackDeviceAttributes) {
       await _trackDeviceAttributes();
     }
+
+    _isInitialized = true;
+  }
+
+  /// Ensure SDK is initialized
+  void _ensureInitialized() {
+    if (!_isInitialized) {
+      throw StateError('SDK not initialized. Call initialize() first.');
+    }
   }
 
   /// Get the current identifier (userId if identified, deviceId if not)
   String get _currentIdentifier {
+    _ensureInitialized();
     return _userId ?? _deviceId ?? 'unknown';
   }
 
@@ -103,6 +115,7 @@ class OpenCDPSDKImplementation {
     required String identifier,
     Map<String, dynamic> properties = const {},
   }) async {
+    _ensureInitialized();
     _validateIdentifier(identifier);
     final normalizedProps = properties;
 
