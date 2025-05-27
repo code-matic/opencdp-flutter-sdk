@@ -12,6 +12,44 @@ A Flutter SDK for integrating with the OpenCDP platform. Track user events, scre
 - Customer.io integration
 - Device attributes tracking
 
+## Screen Tracking
+
+The SDK provides automatic screen tracking through a `NavigatorObserver`. To enable automatic screen tracking:
+
+1. Set `autoTrackScreens: true` in your SDK configuration:
+```dart
+await OpenCDPSDK.initialize(
+  config: OpenCDPConfig(
+    autoTrackScreens: true,
+    // ... other config options
+  ),
+);
+```
+
+2. Add the screen tracker to your app's navigator observers:
+```dart
+MaterialApp(
+  navigatorObservers: [
+    OpenCDPSDK.instance.screenTracker!,
+  ],
+  // ... other app configuration
+);
+```
+
+The screen tracker will automatically:
+- Track all screen views in your app
+- Store anonymous screen views until a user is identified
+- Associate anonymous screen views with users once they are identified
+- Include screen name, route, and timestamp in the tracking data
+
+You can also manually track screen views using:
+```dart
+await OpenCDPSDK.instance.trackScreenView(
+  title: 'Screen Name',
+  properties: {'custom_property': 'value'},
+);
+```
+
 ---
 
 ## Installation
