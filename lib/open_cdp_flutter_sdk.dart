@@ -142,6 +142,17 @@ class OpenCDPSDK {
     );
   }
 
+  /// Clear the current identity and flush all pending requests
+  ///
+  /// This method:
+  /// - Clears any stored user identity
+  /// - Flushes all pending requests in the queue
+  /// - Clears persistent storage
+  /// - Returns immediately without making any network requests
+  Future<void> clearIdentity() async {
+    await _implementation?.clearIdentity();
+  }
+
   /// Dispose the SDK instance
   void dispose() {
     _implementation?.dispose();

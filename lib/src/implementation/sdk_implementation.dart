@@ -6,6 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
@@ -368,5 +369,40 @@ class OpenCDPSDKImplementation {
   /// Set a custom HTTP client
   void setHttpClient(dynamic client) {
     httpClient = client;
+  }
+
+  /// Clear the current identity and flush all pending requests
+  ///
+  /// This method:
+  /// - Flushes any pending requests in the queue
+  /// - Clears the stored user ID
+  /// - Clears persistent storage
+  /// - Returns immediately without making any new network requests
+  Future<void> clearIdentity() async {
+    _ensureInitialized();
+
+    try {
+      // First, flush the request queue to try to send any pending requests
+      // for the current user before clearing everything
+      await httpClient.clearIdentity();
+
+      // Then clear user ID from memory and storage
+      _userId = null;
+      await prefs.remove('user_id');
+
+      // Finally clear Customer.io identity if enabled
+      if (config.sendToCustomerIo) {
+        cio.CustomerIO.instance.clearIdentify();
+      }
+
+      if (config.debug) {
+        debugPrint('[CDP] Identity cleared successfully');
+      }
+    } catch (e) {
+      if (config.debug) {
+        debugPrint('[CDP] Error clearing identity: $e');
+      }
+      rethrow;
+    }
   }
 }
