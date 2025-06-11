@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:meta/meta.dart';
 import 'request_queue.dart';
 
 /// HTTP client wrapper for CDP API calls
@@ -98,7 +97,7 @@ class CDPHttpClient {
 
       if (debug) {
         final action = endpoint.split('/').last;
-        final id = identifier ?? 'unknown';
+        // final id = identifier ?? 'unknown';
         debugPrint('[CDP] $action');
         debugPrint('[CDP] Endpoint: $endpoint');
         debugPrint('[CDP] Status Code: ${response.statusCode}');

@@ -5,7 +5,6 @@ import 'package:customer_io/customer_io.dart' as cio;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:meta/meta.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
