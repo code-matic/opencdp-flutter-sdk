@@ -64,7 +64,7 @@ class CDPHttpClient {
   /// [endpoint] is the API endpoint to call.
   /// [body] is the request body as a map.
   /// [identifier] is an optional identifier for the request.
-  Future<Map<String, dynamic>> post(
+  Future<Map<String, dynamic>?> post(
     String endpoint,
     Map<String, dynamic> body, {
     String? identifier,
@@ -89,10 +89,11 @@ class CDPHttpClient {
         _requestQueue.addRequest(failedRequest);
         await _saveQueue();
 
-        throw CDPException(
-          'Failed to make request to $endpoint: ${response.body}',
-          response.statusCode,
-        );
+        if (debug) {
+          debugPrint(
+              '[CDP] Failed to make request to $endpoint: ${response.body} (Status: ${response.statusCode})');
+        }
+        return null;
       }
 
       if (debug) {
@@ -114,7 +115,7 @@ class CDPHttpClient {
       if (debug) {
         debugPrint('[CDP] Error making request to $endpoint: $e');
       }
-      rethrow;
+      return null;
     }
   }
 
@@ -179,7 +180,6 @@ class CDPHttpClient {
       if (debug) {
         debugPrint('[CDP] Error clearing identity: $e');
       }
-      rethrow;
     }
   }
 

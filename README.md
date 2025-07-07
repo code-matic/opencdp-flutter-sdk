@@ -101,7 +101,7 @@ void main() async {
 }
 ```
 
-> **Important**: The SDK must be initialized before using any of its methods. Make sure to await the `initialize()` call and handle any potential initialization errors.
+> **CRITICAL**: The SDK **MUST** be initialized before using any of its methods. If you don't initialize the SDK, all tracking operations will fail silently and you'll see error messages in the console. Make sure to await the `initialize()` call.
 
 ---
 

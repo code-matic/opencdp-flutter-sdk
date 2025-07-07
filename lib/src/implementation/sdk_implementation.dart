@@ -84,15 +84,21 @@ class OpenCDPSDKImplementation {
   }
 
   /// Ensure SDK is initialized
-  void _ensureInitialized() {
+  bool _ensureInitialized() {
     if (!_isInitialized) {
-      throw StateError('SDK not initialized. Call initialize() first.');
+      if (config.debug) {
+        debugPrint('[CDP] SDK not initialized. Call initialize() first.');
+      }
+      return false;
     }
+    return true;
   }
 
   /// Get the current identifier (userId if identified, deviceId if not)
   String get _currentIdentifier {
-    _ensureInitialized();
+    if (!_ensureInitialized()) {
+      return 'unknown';
+    }
     return _userId ?? _deviceId ?? 'unknown';
   }
 
@@ -102,17 +108,25 @@ class OpenCDPSDKImplementation {
   }
 
   /// Validate identifier
-  void _validateIdentifier(String identifier) {
+  bool _validateIdentifier(String identifier) {
     if (identifier.trim().isEmpty) {
-      throw Exception('Identifier cannot be empty');
+      if (config.debug) {
+        debugPrint('[CDP] Identifier cannot be empty');
+      }
+      return false;
     }
+    return true;
   }
 
   /// Validate event name
-  void _validateEventName(String eventName) {
+  bool _validateEventName(String eventName) {
     if (eventName.trim().isEmpty) {
-      throw Exception('Event name cannot be empty');
+      if (config.debug) {
+        debugPrint('[CDP] Event name cannot be empty');
+      }
+      return false;
     }
+    return true;
   }
 
   /// Implementation of user identification
@@ -120,12 +134,15 @@ class OpenCDPSDKImplementation {
     required String identifier,
     Map<String, dynamic> properties = const {},
   }) async {
-    _ensureInitialized();
-    _validateIdentifier(identifier);
-    final normalizedProps = properties;
-
     try {
-      await httpClient.post(
+      if (!_ensureInitialized()) {
+        return;
+      }
+      if (!_validateIdentifier(identifier)) {
+        return;
+      }
+      final normalizedProps = properties;
+      final response = await httpClient.post(
         CDPEndpoints.identify,
         {
           'identifier': identifier,
@@ -133,6 +150,13 @@ class OpenCDPSDKImplementation {
         },
         identifier: identifier,
       );
+
+      if (response == null) {
+        if (config.debug) {
+          debugPrint('[CDP] Failed to identify user: request returned null');
+        }
+        return;
+      }
 
       _userId = identifier;
       await prefs.setString('user_id', identifier);
@@ -150,7 +174,10 @@ class OpenCDPSDKImplementation {
         await _trackDeviceAttributes();
       }
     } catch (e) {
-      rethrow;
+      // rethrow;
+      if (config.debug) {
+        debugPrint('[CDP] Error identifying user: $e');
+      }
     }
   }
 
@@ -160,12 +187,16 @@ class OpenCDPSDKImplementation {
     Map<String, dynamic> properties = const {},
     EventType type = EventType.custom,
   }) async {
-    _ensureInitialized();
-    _validateEventName(eventName);
-    final normalizedProps = properties;
-
     try {
-      await httpClient.post(
+      if (!_ensureInitialized()) {
+        return;
+      }
+      if (!_validateEventName(eventName)) {
+        return;
+      }
+      final normalizedProps = properties;
+
+      final response = await httpClient.post(
         CDPEndpoints.track,
         {
           'identifier': _currentIdentifier,
@@ -175,27 +206,42 @@ class OpenCDPSDKImplementation {
         identifier: _currentIdentifier,
       );
 
+      if (response == null) {
+        if (config.debug) {
+          debugPrint('[CDP] Failed to track event: request returned null');
+        }
+        return;
+      }
+
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
-        switch (type) {
-          case EventType.screenView:
-            cio.CustomerIO.instance.screen(
-              title: eventName,
-              properties: normalizedProps,
-            );
-            break;
-          case EventType.custom:
-          case EventType.lifecycle:
-          case EventType.device:
-            cio.CustomerIO.instance.track(
-              name: eventName,
-              properties: normalizedProps,
-            );
-            break;
+        try {
+          switch (type) {
+            case EventType.screenView:
+              cio.CustomerIO.instance.screen(
+                title: eventName,
+                properties: normalizedProps,
+              );
+              break;
+            case EventType.custom:
+            case EventType.lifecycle:
+            case EventType.device:
+              cio.CustomerIO.instance.track(
+                name: eventName,
+                properties: normalizedProps,
+              );
+              break;
+          }
+        } catch (e) {
+          if (config.debug) {
+            debugPrint('[CDP] Customer.io track error: $e');
+          }
         }
       }
     } catch (e) {
-      rethrow;
+      if (config.debug) {
+        debugPrint('[CDP] Error tracking event: $e');
+      }
     }
   }
 
@@ -203,9 +249,11 @@ class OpenCDPSDKImplementation {
   Future<void> updateUserProperties({
     required Map<String, dynamic> properties,
   }) async {
-    _ensureInitialized();
     try {
-      await httpClient.post(
+      if (!_ensureInitialized()) {
+        return;
+      }
+      final response = await httpClient.post(
         CDPEndpoints.update,
         {
           'identifier': _currentIdentifier,
@@ -214,15 +262,31 @@ class OpenCDPSDKImplementation {
         identifier: _currentIdentifier,
       );
 
+      if (response == null) {
+        if (config.debug) {
+          debugPrint(
+              '[CDP] Failed to update user properties: request returned null');
+        }
+        return;
+      }
+
       // Update in Customer.io if enabled
       if (config.sendToCustomerIo) {
-        cio.CustomerIO.instance.identify(
-          userId: _currentIdentifier,
-          traits: properties,
-        );
+        try {
+          cio.CustomerIO.instance.identify(
+            userId: _currentIdentifier,
+            traits: properties,
+          );
+        } catch (e) {
+          if (config.debug) {
+            debugPrint('[CDP] Customer.io update error: $e');
+          }
+        }
       }
     } catch (e) {
-      rethrow;
+      if (config.debug) {
+        debugPrint('[CDP] Error updating user properties: $e');
+      }
     }
   }
 
@@ -258,8 +322,10 @@ class OpenCDPSDKImplementation {
     String? fcmToken,
     String? apnToken,
   }) async {
-    _ensureInitialized();
     try {
+      if (!_ensureInitialized()) {
+        return;
+      }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
 
@@ -299,7 +365,7 @@ class OpenCDPSDKImplementation {
         deviceId = 'web-${DateTime.now().millisecondsSinceEpoch}';
       }
 
-      await httpClient.post(
+      final response = await httpClient.post(
         CDPEndpoints.registerDevice,
         {
           'identifier': _currentIdentifier,
@@ -315,48 +381,68 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
+
+      if (response == null) {
+        if (config.debug) {
+          debugPrint('[CDP] Failed to register device: request returned null');
+        }
+        return;
+      }
     } catch (e) {
-      rethrow;
+      if (config.debug) {
+        debugPrint('[CDP] Error registering device: $e');
+      }
     }
   }
 
   /// Track device attributes automatically
   Future<void> _trackDeviceAttributes() async {
-    if (_packageInfo == null) return;
+    try {
+      if (_packageInfo == null) return;
 
-    final deviceAttributes = {
-      'app_version': _packageInfo!.version,
-      'app_build': _packageInfo!.buildNumber,
-      'app_package': _packageInfo!.packageName,
-    };
+      final deviceAttributes = {
+        'app_version': _packageInfo!.version,
+        'app_build': _packageInfo!.buildNumber,
+        'app_package': _packageInfo!.packageName,
+      };
 
-    if (Platform.isAndroid) {
-      final androidInfo = await _deviceInfo.androidInfo;
-      deviceAttributes.addAll({
-        'device_manufacturer': androidInfo.manufacturer,
-        'device_model': androidInfo.model,
-        'os_version': androidInfo.version.release,
-        'os_sdk': androidInfo.version.sdkInt.toString(),
-      });
-    } else if (Platform.isIOS) {
-      final iosInfo = await _deviceInfo.iosInfo;
-      deviceAttributes.addAll({
-        'device_manufacturer': 'Apple',
-        'device_model': iosInfo.model,
-        'os_version': iosInfo.systemVersion,
-        'os_name': iosInfo.systemName,
-      });
-    }
+      if (Platform.isAndroid) {
+        final androidInfo = await _deviceInfo.androidInfo;
+        deviceAttributes.addAll({
+          'device_manufacturer': androidInfo.manufacturer,
+          'device_model': androidInfo.model,
+          'os_version': androidInfo.version.release,
+          'os_sdk': androidInfo.version.sdkInt.toString(),
+        });
+      } else if (Platform.isIOS) {
+        final iosInfo = await _deviceInfo.iosInfo;
+        deviceAttributes.addAll({
+          'device_manufacturer': 'Apple',
+          'device_model': iosInfo.model,
+          'os_version': iosInfo.systemVersion,
+          'os_name': iosInfo.systemName,
+        });
+      }
 
-    if (_userId != null) {
-      await httpClient.post(
-        CDPEndpoints.update,
-        {
-          'identifier': _currentIdentifierUnsafe,
-          'properties': deviceAttributes,
-        },
-        identifier: _currentIdentifierUnsafe,
-      );
+      if (_userId != null) {
+        final response = await httpClient.post(
+          CDPEndpoints.update,
+          {
+            'identifier': _currentIdentifierUnsafe,
+            'properties': deviceAttributes,
+          },
+          identifier: _currentIdentifierUnsafe,
+        );
+
+        if (response == null && config.debug) {
+          debugPrint(
+              '[CDP] Failed to track device attributes: request returned null');
+        }
+      }
+    } catch (e) {
+      if (config.debug) {
+        debugPrint('[CDP] Error tracking device attributes: $e');
+      }
     }
   }
 
@@ -378,9 +464,11 @@ class OpenCDPSDKImplementation {
   /// - Clears persistent storage
   /// - Returns immediately without making any new network requests
   Future<void> clearIdentity() async {
-    _ensureInitialized();
-
     try {
+      if (!_ensureInitialized()) {
+        return;
+      }
+
       // First, flush the request queue to try to send any pending requests
       // for the current user before clearing everything
       await httpClient.clearIdentity();
@@ -391,7 +479,13 @@ class OpenCDPSDKImplementation {
 
       // Finally clear Customer.io identity if enabled
       if (config.sendToCustomerIo) {
-        cio.CustomerIO.instance.clearIdentify();
+        try {
+          cio.CustomerIO.instance.clearIdentify();
+        } catch (e) {
+          if (config.debug) {
+            debugPrint('[CDP] Customer.io clear identity error: $e');
+          }
+        }
       }
 
       if (config.debug) {
@@ -401,7 +495,6 @@ class OpenCDPSDKImplementation {
       if (config.debug) {
         debugPrint('[CDP] Error clearing identity: $e');
       }
-      rethrow;
     }
   }
 }

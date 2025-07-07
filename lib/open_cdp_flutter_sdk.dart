@@ -21,7 +21,10 @@ class OpenCDPSDK {
   /// Get the singleton instance of the SDK
   static OpenCDPSDK get instance {
     if (_instance == null) {
-      throw StateError('SDK not initialized. Call initialize() first.');
+      // Log error but return dummy instance to prevent crashes
+      debugPrint(
+          '[CDP] ERROR: SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return OpenCDPSDK._();
     }
     return _instance!;
   }
@@ -43,30 +46,42 @@ class OpenCDPSDK {
 
   /// Initialize the SDK with configuration
   ///
+  /// **REQUIRED**: This method must be called before using any SDK functionality.
+  /// The SDK will not work properly if this method is not called.
+  ///
   /// [httpClient] is for testing only and should not be used in production.
   static Future<void> initialize({
     required OpenCDPConfig config,
     @visibleForTesting CDPHttpClient? httpClient,
   }) async {
-    if (_instance != null) {
-      throw StateError('SDK already initialized');
+    try {
+      if (_instance != null) {
+        if (config.debug) {
+          debugPrint('[CDP] SDK already initialized');
+        }
+        return;
+      }
+
+      _instance = OpenCDPSDK._();
+      _implementation = await OpenCDPSDKImplementation.create(
+          config: config, httpClient: httpClient);
+
+      // Initialize SDK components
+      _screenTracker = await SDKInitializer.initialize(
+        config: config,
+        sdk: _instance!,
+        implementation: _implementation!,
+      );
+
+      _lifecycleTracker = SDKInitializer.initializeLifecycleTracker(
+        config: config,
+        sdk: _instance!,
+      );
+    } catch (e) {
+      if (config.debug) {
+        debugPrint('[CDP] Error initializing SDK: $e');
+      }
     }
-
-    _instance = OpenCDPSDK._();
-    _implementation = await OpenCDPSDKImplementation.create(
-        config: config, httpClient: httpClient);
-
-    // Initialize SDK components
-    _screenTracker = await SDKInitializer.initialize(
-      config: config,
-      sdk: _instance!,
-      implementation: _implementation!,
-    );
-
-    _lifecycleTracker = SDKInitializer.initializeLifecycleTracker(
-      config: config,
-      sdk: _instance!,
-    );
   }
 
   /// Private constructor
@@ -77,7 +92,12 @@ class OpenCDPSDK {
     required String identifier,
     Map<String, dynamic> properties = const {},
   }) async {
-    await _implementation?.identifyUser(
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot identify user - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.identifyUser(
       identifier: identifier,
       properties: properties,
     );
@@ -88,7 +108,12 @@ class OpenCDPSDK {
     required String eventName,
     Map<String, dynamic> properties = const {},
   }) async {
-    await _implementation?.trackEvent(
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track event - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.trackEvent(
       eventName: eventName,
       properties: properties,
     );
@@ -98,7 +123,12 @@ class OpenCDPSDK {
   Future<void> update({
     required Map<String, dynamic> properties,
   }) async {
-    await _implementation?.updateUserProperties(
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot update user properties - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.updateUserProperties(
       properties: properties,
     );
   }
@@ -114,7 +144,12 @@ class OpenCDPSDK {
     String? fcmToken,
     String? apnToken,
   }) async {
-    await _implementation?.registerDevice(
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot register device - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.registerDevice(
       fcmToken: fcmToken,
       apnToken: apnToken,
     );
@@ -125,7 +160,12 @@ class OpenCDPSDK {
     required String eventName,
     Map<String, dynamic> properties = const {},
   }) async {
-    await _implementation?.trackLifecycleEvent(
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track lifecycle event - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.trackLifecycleEvent(
       eventName: eventName,
       properties: properties,
     );
@@ -136,7 +176,12 @@ class OpenCDPSDK {
     required String title,
     Map<String, dynamic> properties = const {},
   }) async {
-    await _implementation?.trackScreenView(
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track screen view - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.trackScreenView(
       title: title,
       properties: properties,
     );
@@ -150,7 +195,12 @@ class OpenCDPSDK {
   /// - Clears persistent storage
   /// - Returns immediately without making any network requests
   Future<void> clearIdentity() async {
-    await _implementation?.clearIdentity();
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot clear identity - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.clearIdentity();
   }
 
   /// Dispose the SDK instance

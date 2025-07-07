@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:customer_io/customer_io.dart' as cio;
 import 'package:customer_io/customer_io_config.dart' as cio_config;
 import 'package:customer_io/customer_io_enums.dart' as cio_enums;
@@ -9,27 +10,33 @@ class CustomerIOIntegration {
   static Future<void> initialize(OpenCDPConfig config) async {
     if (!config.sendToCustomerIo || config.customerIo == null) return;
 
-    final inAppConfig = cio_config.InAppConfig(
-      siteId: config.customerIo!.inAppConfig!.siteId,
-    );
-    final pushConfig = cio_config.PushConfig(
-      android: _getPushConfigAndroid(
-        config.customerIo?.pushConfig?.pushConfigAndroid.pushClickBehavior,
-      ),
-    );
+    try {
+      final inAppConfig = cio_config.InAppConfig(
+        siteId: config.customerIo!.inAppConfig!.siteId,
+      );
+      final pushConfig = cio_config.PushConfig(
+        android: _getPushConfigAndroid(
+          config.customerIo?.pushConfig?.pushConfigAndroid.pushClickBehavior,
+        ),
+      );
 
-    final cioConfig = cio_config.CustomerIOConfig(
-      cdpApiKey: config.customerIo!.apiKey,
-      inAppConfig: inAppConfig,
-      migrationSiteId: config.customerIo!.migrationSiteId,
-      region: config.customerIo!.customerIoRegion == Region.us
-          ? cio_enums.Region.us
-          : cio_enums.Region.eu,
-      autoTrackDeviceAttributes: config.customerIo!.autoTrackDeviceAttributes,
-      pushConfig: pushConfig,
-    );
+      final cioConfig = cio_config.CustomerIOConfig(
+        cdpApiKey: config.customerIo!.apiKey,
+        inAppConfig: inAppConfig,
+        migrationSiteId: config.customerIo!.migrationSiteId,
+        region: config.customerIo!.customerIoRegion == Region.us
+            ? cio_enums.Region.us
+            : cio_enums.Region.eu,
+        autoTrackDeviceAttributes: config.customerIo!.autoTrackDeviceAttributes,
+        pushConfig: pushConfig,
+      );
 
-    await cio.CustomerIO.initialize(config: cioConfig);
+      await cio.CustomerIO.initialize(config: cioConfig);
+    } catch (e) {
+      if (config.debug) {
+        debugPrint('[CDP] Error initializing Customer.io: $e');
+      }
+    }
   }
 
   /// Get the Android push configuration based on the click behavior
