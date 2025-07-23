@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4
+
+* Updated the SDK to use the new OpenCDP API endpoint  
+  * No changes required in your integration—your app will now automatically connect to the latest, more reliable OpenCDP service.
+  * Ensures continued access to data and improved service stability.
+
 ## 1.0.3
 
 * SDK now handles errors gracefully without crashing your app
