@@ -3,7 +3,7 @@ class CDPEndpoints {
   /// Base URL for the CDP API
   static const String baseUrl = 'https://api.opencdp.io/gateway';
 
-  static const String version = '/v1';
+  static const String version = '';
 
   /// Identify a person
   static const String identify = '$version/persons/identify';
