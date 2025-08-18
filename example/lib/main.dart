@@ -130,24 +130,24 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _updateUserProperties() async {
-    if (_userId == null) {
-      _showSnackBar('Please identify a user first');
-      return;
-    }
+  // Future<void> _updateUserProperties() async {
+  //   if (_userId == null) {
+  //     _showSnackBar('Please identify a user first');
+  //     return;
+  //   }
 
-    try {
-      await OpenCDPSDK.instance.update(
-        properties: {
-          'last_clicked': DateTime.now().toIso8601String(),
-          'total_clicks': _counter,
-        },
-      );
-      _showSnackBar('User properties updated successfully');
-    } catch (e) {
-      _showSnackBar('Error updating user properties: $e');
-    }
-  }
+  //   try {
+  //     await OpenCDPSDK.instance.update(
+  //       properties: {
+  //         'last_clicked': DateTime.now().toIso8601String(),
+  //         'total_clicks': _counter,
+  //       },
+  //     );
+  //     _showSnackBar('User properties updated successfully');
+  //   } catch (e) {
+  //     _showSnackBar('Error updating user properties: $e');
+  //   }
+  // }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -193,11 +193,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
               onPressed: _trackScreenView,
               child: const Text('Track Screen View'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _updateUserProperties,
-              child: const Text('Update User Properties'),
             ),
             const SizedBox(height: 20),
             Text(

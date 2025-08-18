@@ -1,7 +1,7 @@
 /// API endpoints for the Open CDP SDK
 class CDPEndpoints {
   /// Base URL for the CDP API
-  static const String baseUrl = 'https://api.opencdp.io/gateway';
+  static const String baseUrl = 'https://api.opencdp.io/gateway/data-gateway';
 
   static const String version = '/v1';
 
@@ -12,7 +12,7 @@ class CDPEndpoints {
   static const String track = '$version/persons/track';
 
   /// Update person properties
-  static const String update = '$version/persons/update';
+  // static const String update = '$version/persons/update';
 
   /// Register device token
   static const String registerDevice = '$version/persons/registerDevice';

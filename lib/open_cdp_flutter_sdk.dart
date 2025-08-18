@@ -120,18 +120,18 @@ class OpenCDPSDK {
   }
 
   /// Update properties for a user
-  Future<void> update({
-    required Map<String, dynamic> properties,
-  }) async {
-    if (_implementation == null) {
-      debugPrint(
-          '[CDP] ERROR: Cannot update user properties - SDK not initialized. Call OpenCDPSDK.initialize() first.');
-      return;
-    }
-    await _implementation!.updateUserProperties(
-      properties: properties,
-    );
-  }
+  // Future<void> update({
+  //   required Map<String, dynamic> properties,
+  // }) async {
+  //   if (_implementation == null) {
+  //     debugPrint(
+  //         '[CDP] ERROR: Cannot update user properties - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+  //     return;
+  //   }
+  //   await _implementation!.updateUserProperties(
+  //     properties: properties,
+  //   );
+  // }
 
   /// Register a device token for push notifications
   ///
