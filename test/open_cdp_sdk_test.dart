@@ -186,25 +186,25 @@ void main() {
       expect(request['identifier'], identifier);
     });
 
-    test('update should make correct API call', () async {
-      const identifier = 'user_123';
-      final properties = {
-        'last_clicked': DateTime.now().toIso8601String(),
-        'total_clicks': 10,
-      };
+    // test('update should make correct API call', () async {
+    //   const identifier = 'user_123';
+    //   final properties = {
+    //     'last_clicked': DateTime.now().toIso8601String(),
+    //     'total_clicks': 10,
+    //   };
 
-      await sdk.identify(identifier: identifier);
-      await sdk.update(
-        properties: properties,
-      );
+    //   await sdk.identify(identifier: identifier);
+    //   await sdk.update(
+    //     properties: properties,
+    //   );
 
-      expect(httpClient.requests.length, 2);
-      final request = httpClient.requests.last;
-      expect(request['endpoint'], CDPEndpoints.update);
-      expect(request['body']['identifier'], identifier);
-      expect(request['body']['properties'], properties);
-      expect(request['identifier'], identifier);
-    });
+    //   expect(httpClient.requests.length, 2);
+    //   final request = httpClient.requests.last;
+    //   expect(request['endpoint'], CDPEndpoints.update);
+    //   expect(request['body']['identifier'], identifier);
+    //   expect(request['body']['properties'], properties);
+    //   expect(request['identifier'], identifier);
+    // });
 
     test('registerDeviceToken should make correct API call', () async {
       const identifier = 'user_123';

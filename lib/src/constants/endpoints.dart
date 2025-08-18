@@ -12,7 +12,7 @@ class CDPEndpoints {
   static const String track = '$version/persons/track';
 
   /// Update person properties
-  static const String update = '$version/persons/update';
+  // static const String update = '$version/persons/update';
 
   /// Register device token
   static const String registerDevice = '$version/persons/registerDevice';

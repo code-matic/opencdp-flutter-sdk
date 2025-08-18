@@ -77,10 +77,10 @@ class OpenCDPSDKImplementation {
 
     _isInitialized = true;
 
-    // Track device attributes if enabled - moved after initialization
-    if (config.autoTrackDeviceAttributes) {
-      await _trackDeviceAttributes();
-    }
+    // // Track device attributes if enabled - moved after initialization
+    // if (config.autoTrackDeviceAttributes) {
+    //   await _trackDeviceAttributes();
+    // }
   }
 
   /// Ensure SDK is initialized
@@ -171,7 +171,7 @@ class OpenCDPSDKImplementation {
 
       // Track device attributes if enabled
       if (config.autoTrackDeviceAttributes) {
-        await _trackDeviceAttributes();
+        await registerDevice();
       }
     } catch (e) {
       // rethrow;
@@ -245,50 +245,50 @@ class OpenCDPSDKImplementation {
     }
   }
 
-  /// Implementation of user properties update
-  Future<void> updateUserProperties({
-    required Map<String, dynamic> properties,
-  }) async {
-    try {
-      if (!_ensureInitialized()) {
-        return;
-      }
-      final response = await httpClient.post(
-        CDPEndpoints.update,
-        {
-          'identifier': _currentIdentifier,
-          'properties': properties,
-        },
-        identifier: _currentIdentifier,
-      );
+  // /// Implementation of user properties update
+  // Future<void> updateUserProperties({
+  //   required Map<String, dynamic> properties,
+  // }) async {
+  //   try {
+  //     if (!_ensureInitialized()) {
+  //       return;
+  //     }
+  //     final response = await httpClient.post(
+  //       CDPEndpoints.update,
+  //       {
+  //         'identifier': _currentIdentifier,
+  //         'properties': properties,
+  //       },
+  //       identifier: _currentIdentifier,
+  //     );
 
-      if (response == null) {
-        if (config.debug) {
-          debugPrint(
-              '[CDP] Failed to update user properties: request returned null');
-        }
-        return;
-      }
+  //     if (response == null) {
+  //       if (config.debug) {
+  //         debugPrint(
+  //             '[CDP] Failed to update user properties: request returned null');
+  //       }
+  //       return;
+  //     }
 
-      // Update in Customer.io if enabled
-      if (config.sendToCustomerIo) {
-        try {
-          cio.CustomerIO.instance.identify(
-            userId: _currentIdentifier,
-            traits: properties,
-          );
-        } catch (e) {
-          if (config.debug) {
-            debugPrint('[CDP] Customer.io update error: $e');
-          }
-        }
-      }
-    } catch (e) {
-      if (config.debug) {
-        debugPrint('[CDP] Error updating user properties: $e');
-      }
-    }
-  }
+  //     // Update in Customer.io if enabled
+  //     if (config.sendToCustomerIo) {
+  //       try {
+  //         cio.CustomerIO.instance.identify(
+  //           userId: _currentIdentifier,
+  //           traits: properties,
+  //         );
+  //       } catch (e) {
+  //         if (config.debug) {
+  //           debugPrint('[CDP] Customer.io update error: $e');
+  //         }
+  //       }
+  //     }
+  //   } catch (e) {
+  //     if (config.debug) {
+  //       debugPrint('[CDP] Error updating user properties: $e');
+  //     }
+  //   }
+  // }
 
   /// Implementation of screen view tracking
   Future<void> trackScreenView({
@@ -396,55 +396,55 @@ class OpenCDPSDKImplementation {
   }
 
   /// Track device attributes automatically
-  Future<void> _trackDeviceAttributes() async {
-    try {
-      if (_packageInfo == null) return;
+  // Future<void> _trackDeviceAttributes() async {
+  //   try {
+  //     if (_packageInfo == null) return;
 
-      final deviceAttributes = {
-        'app_version': _packageInfo!.version,
-        'app_build': _packageInfo!.buildNumber,
-        'app_package': _packageInfo!.packageName,
-      };
+  //     final deviceAttributes = {
+  //       'app_version': _packageInfo!.version,
+  //       'app_build': _packageInfo!.buildNumber,
+  //       'app_package': _packageInfo!.packageName,
+  //     };
 
-      if (Platform.isAndroid) {
-        final androidInfo = await _deviceInfo.androidInfo;
-        deviceAttributes.addAll({
-          'device_manufacturer': androidInfo.manufacturer,
-          'device_model': androidInfo.model,
-          'os_version': androidInfo.version.release,
-          'os_sdk': androidInfo.version.sdkInt.toString(),
-        });
-      } else if (Platform.isIOS) {
-        final iosInfo = await _deviceInfo.iosInfo;
-        deviceAttributes.addAll({
-          'device_manufacturer': 'Apple',
-          'device_model': iosInfo.model,
-          'os_version': iosInfo.systemVersion,
-          'os_name': iosInfo.systemName,
-        });
-      }
+  //     if (Platform.isAndroid) {
+  //       final androidInfo = await _deviceInfo.androidInfo;
+  //       deviceAttributes.addAll({
+  //         'device_manufacturer': androidInfo.manufacturer,
+  //         'device_model': androidInfo.model,
+  //         'os_version': androidInfo.version.release,
+  //         'os_sdk': androidInfo.version.sdkInt.toString(),
+  //       });
+  //     } else if (Platform.isIOS) {
+  //       final iosInfo = await _deviceInfo.iosInfo;
+  //       deviceAttributes.addAll({
+  //         'device_manufacturer': 'Apple',
+  //         'device_model': iosInfo.model,
+  //         'os_version': iosInfo.systemVersion,
+  //         'os_name': iosInfo.systemName,
+  //       });
+  //     }
 
-      if (_userId != null) {
-        final response = await httpClient.post(
-          CDPEndpoints.update,
-          {
-            'identifier': _currentIdentifierUnsafe,
-            'properties': deviceAttributes,
-          },
-          identifier: _currentIdentifierUnsafe,
-        );
+  //     if (_userId != null) {
+  //       final response = await httpClient.post(
+  //         CDPEndpoints.update,
+  //         {
+  //           'identifier': _currentIdentifierUnsafe,
+  //           'properties': deviceAttributes,
+  //         },
+  //         identifier: _currentIdentifierUnsafe,
+  //       );
 
-        if (response == null && config.debug) {
-          debugPrint(
-              '[CDP] Failed to track device attributes: request returned null');
-        }
-      }
-    } catch (e) {
-      if (config.debug) {
-        debugPrint('[CDP] Error tracking device attributes: $e');
-      }
-    }
-  }
+  //       if (response == null && config.debug) {
+  //         debugPrint(
+  //             '[CDP] Failed to track device attributes: request returned null');
+  //       }
+  //     }
+  //   } catch (e) {
+  //     if (config.debug) {
+  //       debugPrint('[CDP] Error tracking device attributes: $e');
+  //     }
+  //   }
+  // }
 
   /// Dispose the SDK instance
   void dispose() {
