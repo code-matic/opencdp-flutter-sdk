@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.5
+
+* Breaking: Removed `OpenCDPSDK.update` (user properties update)
+  * This method existed in 1.0.4 and earlier; it has now been removed from the public API
+  * Migration: use `identify(identifier: ..., properties: {...})` to update traits
+  * Related internal update method and example/test code have been removed/commented accordingly
+* Updated CDP API endpoints
+  * Base URL
+  * No changes required in your integration—requests are routed automatically
+
 ## 1.0.4
 
 * Updated the SDK to use the new OpenCDP API endpoint  

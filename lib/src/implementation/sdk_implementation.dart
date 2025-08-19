@@ -103,9 +103,9 @@ class OpenCDPSDKImplementation {
   }
 
   /// Get the current identifier without initialization check
-  String get _currentIdentifierUnsafe {
-    return _userId ?? _deviceId ?? 'unknown';
-  }
+  // String get _currentIdentifierUnsafe {
+  //   return _userId ?? _deviceId ?? 'unknown';
+  // }
 
   /// Validate identifier
   bool _validateIdentifier(String identifier) {
@@ -171,7 +171,7 @@ class OpenCDPSDKImplementation {
 
       // Track device attributes if enabled
       if (config.autoTrackDeviceAttributes) {
-        await registerDevice();
+        // await registerDevice(fcmToken: 'noAPNStoken', apnToken: 'noAPNStoken');
       }
     } catch (e) {
       // rethrow;

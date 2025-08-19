@@ -101,7 +101,8 @@ class CDPHttpClient {
         // final id = identifier ?? 'unknown';
         debugPrint('[CDP] $action');
         debugPrint('[CDP] Endpoint: $endpoint');
-        debugPrint('[CDP] Status Code: ${response.statusCode}');
+        debugPrint('[CDP] request body: ${jsonEncode(body)}');
+        debugPrint('[CDP] Response Status Code: ${response.statusCode}');
         debugPrint('[CDP] Response: ${response.body}');
       }
 
