@@ -171,7 +171,7 @@ class OpenCDPSDKImplementation {
 
       // Track device attributes if enabled
       if (config.autoTrackDeviceAttributes) {
-        await registerDevice(fcmToken: 'noAPNStoken', apnToken: 'noAPNStoken');
+        // await registerDevice(fcmToken: 'noAPNStoken', apnToken: 'noAPNStoken');
       }
     } catch (e) {
       // rethrow;
