@@ -49,13 +49,17 @@ class OpenCDPSDK {
   /// **REQUIRED**: This method must be called before using any SDK functionality.
   /// The SDK will not work properly if this method is not called.
   ///
+  /// shouldReinitialize: If true, allows re-initialization of the SDK
+  /// this is useful for testing purposes and also if you need to change config at runtime
+  ///
   /// [httpClient] is for testing only and should not be used in production.
   static Future<void> initialize({
     required OpenCDPConfig config,
+    bool shouldReinitialize = false,
     @visibleForTesting CDPHttpClient? httpClient,
   }) async {
     try {
-      if (_instance != null) {
+      if (_instance != null && shouldReinitialize == false) {
         if (config.debug) {
           debugPrint('[CDP] SDK already initialized');
         }
