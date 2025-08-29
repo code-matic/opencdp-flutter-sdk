@@ -92,6 +92,12 @@ class CDPHttpClient {
         if (debug) {
           debugPrint(
               '[CDP] Failed to make request to $endpoint: ${response.body} (Status: ${response.statusCode})');
+          debugPrint('[CDP] Queued request for retry later');
+          debugPrint(
+              '[CDP] Current queue length: ${_requestQueue.pendingRequests.length}');
+          debugPrint('[CDP] Request body: ${jsonEncode(body)}');
+          debugPrint(
+              '[CDP] API Key: ${apiKey.isNotEmpty ? apiKey.substring(8) : 'not set'}');
         }
         return null;
       }
