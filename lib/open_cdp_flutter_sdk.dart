@@ -65,6 +65,10 @@ class OpenCDPSDK {
         }
         return;
       } else {
+        if (_instance != null && shouldReinitialize == true) {
+          // Dispose previous instance before reinitializing
+          _instance!.dispose();
+        }
         debugPrint('[CDP] Initializing SDK...');
         debugPrint('[CDP] Config: ${config.toMap()}');
         debugPrint('shouldReinitialize: $shouldReinitialize');
