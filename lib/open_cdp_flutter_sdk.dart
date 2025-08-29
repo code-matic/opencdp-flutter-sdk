@@ -64,23 +64,26 @@ class OpenCDPSDK {
           debugPrint('[CDP] SDK already initialized');
         }
         return;
+      } else {
+        debugPrint('[CDP] Initializing SDK...');
+        debugPrint('[CDP] Config: $config');
+        debugPrint('shouldReinitialize: $shouldReinitialize');
+        _instance = OpenCDPSDK._();
+        _implementation = await OpenCDPSDKImplementation.create(
+            config: config, httpClient: httpClient);
+
+        // Initialize SDK components
+        _screenTracker = await SDKInitializer.initialize(
+          config: config,
+          sdk: _instance!,
+          implementation: _implementation!,
+        );
+
+        _lifecycleTracker = SDKInitializer.initializeLifecycleTracker(
+          config: config,
+          sdk: _instance!,
+        );
       }
-
-      _instance = OpenCDPSDK._();
-      _implementation = await OpenCDPSDKImplementation.create(
-          config: config, httpClient: httpClient);
-
-      // Initialize SDK components
-      _screenTracker = await SDKInitializer.initialize(
-        config: config,
-        sdk: _instance!,
-        implementation: _implementation!,
-      );
-
-      _lifecycleTracker = SDKInitializer.initializeLifecycleTracker(
-        config: config,
-        sdk: _instance!,
-      );
     } catch (e) {
       if (config.debug) {
         debugPrint('[CDP] Error initializing SDK: $e');
