@@ -66,7 +66,7 @@ class OpenCDPSDK {
         return;
       } else {
         debugPrint('[CDP] Initializing SDK...');
-        debugPrint('[CDP] Config: $config');
+        debugPrint('[CDP] Config: ${config.toMap()}');
         debugPrint('shouldReinitialize: $shouldReinitialize');
         _instance = OpenCDPSDK._();
         _implementation = await OpenCDPSDKImplementation.create(
