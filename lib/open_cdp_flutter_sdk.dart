@@ -206,8 +206,8 @@ class OpenCDPSDK {
     if (deliveryId != null) {
       // Use your existing tracking mechanism to send the "delivered" event
       // This call MUST NOT require any UI or Flutter engine state.
-      await _implementation!
-          .trackPushNotificationMetric(MetricEvent.delivered, deliveryId);
+      await OpenCDPSDKImplementation.trackPushNotificationMetric(
+          MetricEvent.delivered, deliveryId);
     }
   }
 
@@ -216,8 +216,8 @@ class OpenCDPSDK {
     if (deliveryId != null) {
       // Use your existing tracking mechanism to send the "opened" event
       // This call MUST NOT require any UI or Flutter engine state.
-      await _implementation!
-          .trackPushNotificationMetric(MetricEvent.opened, deliveryId);
+      await OpenCDPSDKImplementation.trackPushNotificationMetric(
+          MetricEvent.opened, deliveryId);
     }
   }
 

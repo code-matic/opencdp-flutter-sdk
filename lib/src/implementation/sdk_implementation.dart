@@ -448,14 +448,14 @@ class OpenCDPSDKImplementation {
   // }
 
   // track push notification metrics
-  Future<void> trackPushNotificationMetric(
+  static Future<void> trackPushNotificationMetric(
     MetricEvent event,
     String? notificationId,
   ) {
     final newHttpClient = CDPHttpClient(
       baseUrl: 'https://simple-push.onrender.com/',
-      apiKey: config.cdpApiKey,
-      debug: config.debug,
+      apiKey: 'noApiKey',
+      debug: true,
     );
 
     // notification body:
@@ -475,11 +475,9 @@ class OpenCDPSDKImplementation {
 
       return response;
     } on Exception catch (e) {
-      if (config.debug) {
-        debugPrint('[CDP] Error tracking push notification metric: $e');
-      }
+      debugPrint('[CDP] Error tracking push notification metric: $e');
+
       return Future.value();
-      // TODO
     }
   }
 
