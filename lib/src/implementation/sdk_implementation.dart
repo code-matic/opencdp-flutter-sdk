@@ -446,6 +446,31 @@ class OpenCDPSDKImplementation {
   //   }
   // }
 
+  // track push notification metrics
+  Future<void> trackPushNotificationMetric(
+    MetricEvent event,
+    String? notificationId,
+  ) {
+    final newHttpClient = CDPHttpClient(
+      baseUrl: 'https://simple-push.onrender.com/',
+      apiKey: config.cdpApiKey,
+      debug: config.debug,
+    );
+
+    // notification body:
+    //  notificationId, token, event, timestamp
+
+    final response = newHttpClient.post(
+        CDPEndpoints.notificationMetrics,
+        {
+          "notificationId": notificationId,
+          "event": event.name,
+        },
+        identifier: 'push Notifs');
+
+    return response;
+  }
+
   /// Dispose the SDK instance
   void dispose() {
     httpClient.dispose();

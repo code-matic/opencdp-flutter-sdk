@@ -16,4 +16,7 @@ class CDPEndpoints {
 
   /// Register device token
   static const String registerDevice = '$version/persons/registerDevice';
+
+  /// push notification metrics
+  static const String notificationMetrics = 'api/metrics';
 }

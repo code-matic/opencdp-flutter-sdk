@@ -198,6 +198,31 @@ class OpenCDPSDK {
     );
   }
 
+  /// Track push notification metrics
+  ///
+
+  static Future<void> handleBackgroundPushDelivery(
+      Map<String, dynamic> data) async {
+    final deliveryId = data['notification_id'] as String?;
+    if (deliveryId != null) {
+      // Use your existing tracking mechanism to send the "delivered" event
+      // This call MUST NOT require any UI or Flutter engine state.
+      await _implementation!
+          .trackPushNotificationMetric(MetricEvent.delivered, deliveryId);
+    }
+  }
+
+  static Future<void> handlePushNotificationOpen(
+      Map<String, dynamic> data) async {
+    final deliveryId = data['notification_id'] as String?;
+    if (deliveryId != null) {
+      // Use your existing tracking mechanism to send the "opened" event
+      // This call MUST NOT require any UI or Flutter engine state.
+      await _implementation!
+          .trackPushNotificationMetric(MetricEvent.opened, deliveryId);
+    }
+  }
+
   /// Clear the current identity and flush all pending requests
   ///
   /// This method:
