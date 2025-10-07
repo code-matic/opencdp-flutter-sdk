@@ -472,6 +472,7 @@ class OpenCDPSDKImplementation {
 
       debugPrint(
           '[CDP] Tracking push notification metric: ${event.name}, notificationId: $notificationId');
+
       return response;
     } on Exception catch (e) {
       if (config.debug) {
