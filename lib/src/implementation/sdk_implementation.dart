@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:customer_io/customer_io.dart' as cio;
@@ -460,15 +461,25 @@ class OpenCDPSDKImplementation {
     // notification body:
     //  notificationId, token, event, timestamp
 
-    final response = newHttpClient.post(
-        CDPEndpoints.notificationMetrics,
-        {
-          "notificationId": notificationId,
-          "event": event.name,
-        },
-        identifier: 'push Notifs');
+    try {
+      final response = newHttpClient.post(
+          CDPEndpoints.notificationMetrics,
+          {
+            "notificationId": notificationId,
+            "event": event.name,
+          },
+          identifier: 'push Notifs');
 
-    return response;
+      debugPrint(
+          '[CDP] Tracking push notification metric: ${event.name}, notificationId: $notificationId');
+      return response;
+    } on Exception catch (e) {
+      if (config.debug) {
+        debugPrint('[CDP] Error tracking push notification metric: $e');
+      }
+      return Future.value();
+      // TODO
+    }
   }
 
   /// Dispose the SDK instance
