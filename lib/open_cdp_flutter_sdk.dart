@@ -199,9 +199,9 @@ class OpenCDPSDK {
   }
 
   /// Track push notification metrics
-  ///
-
-  Future<void> handleBackgroundPushDelivery(Map<String, dynamic> data) async {
+  /// Handle background push delivery events
+  static Future<void> handleBackgroundPushDelivery(
+      Map<String, dynamic> data) async {
     final deliveryId = data['notification_id'] as String?;
     if (deliveryId != null) {
       // Use your existing tracking mechanism to send the "delivered" event
@@ -211,7 +211,10 @@ class OpenCDPSDK {
     }
   }
 
-  Future<void> handlePushNotificationOpen(Map<String, dynamic> data) async {
+  /// Track push notification metrics
+  /// Handle push notification open events
+  static Future<void> handlePushNotificationOpen(
+      Map<String, dynamic> data) async {
     final deliveryId = data['notification_id'] as String?;
     if (deliveryId != null) {
       // Use your existing tracking mechanism to send the "opened" event
