@@ -1,9 +1,11 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:customer_io/customer_io.dart' as cio;
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
+import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -448,36 +450,90 @@ class OpenCDPSDKImplementation {
   // }
 
   // track push notification metrics
-  static Future<void> trackPushNotificationMetric(
+  // static Future<void> trackPushNotificationMetric(
+  //   MetricEvent event,
+  //   String? notificationId,
+  //   bool isBackground,
+  // ) async {
+  //   CDPHttpClient newHttpClient;
+  //   // check if isBackground is true, and if the current platform is android
+  //   if (isBackground && Platform.isAndroid) {
+  //     // if android and is background, return
+  //     // get the api key from the shared preferences
+  //     final apiKey = await NativeBridge.getApiKeyFromNative(appGroup: '');
+  //     if (apiKey == null || apiKey.isEmpty) {
+  //       debugPrint('[CDP] No API key found for push metric tracking');
+  //       return Future.value();
+  //     }
+  //     // create a new http client with the api key
+  //     newHttpClient = CDPHttpClient(
+  //       baseUrl: 'https://simple-push.onrender.com/',
+  //       apiKey: apiKey,
+  //       debug: true,
+  //     );
+  //   } else {
+  //     newHttpClient = CDPHttpClient(
+  //       baseUrl: 'https://simple-push.onrender.com/',
+  //       apiKey: config.cdpApiKey,
+  //       debug: true,
+  //     );
+
+  //     // notification body:
+  //     //  notificationId, token, event, timestamp
+
+  //     try {
+  //       final response = newHttpClient.post(
+  //           CDPEndpoints.notificationMetrics,
+  //           {
+  //             "notificationId": notificationId,
+  //             "event": event.name,
+  //           },
+  //           identifier: 'push Notifs');
+
+  //       debugPrint(
+  //           '[CDP] Tracking push notification metric: ${event.name}, notificationId: $notificationId');
+
+  //       return response;
+  //     } on Exception catch (e) {
+  //       debugPrint('[CDP] Error tracking push notification metric: $e');
+
+  //       return Future.value();
+  //     }
+  //   }
+  // }
+
+  static Future<void> trackBackgroundPushNotificationMetric(
     MetricEvent event,
-    String? notificationId,
-  ) {
-    final newHttpClient = CDPHttpClient(
-      baseUrl: 'https://simple-push.onrender.com/',
-      apiKey: 'noApiKey',
-      debug: true,
-    );
-
-    // notification body:
-    //  notificationId, token, event, timestamp
-
+    String deliveryId,
+    bool isBackground,
+  ) async {
     try {
-      final response = newHttpClient.post(
-          CDPEndpoints.notificationMetrics,
-          {
-            "notificationId": notificationId,
-            "event": event.name,
-          },
-          identifier: 'push Notifs');
+      final apiKey = isBackground
+          ? await NativeBridge.getApiKeyFromNative(
+              appGroup: '') //() // Secure native storage fetch
+          : ''; // Regular instance API key
 
-      debugPrint(
-          '[CDP] Tracking push notification metric: ${event.name}, notificationId: $notificationId');
+      if (apiKey == null || apiKey.isEmpty) {
+        debugPrint('[CDP] Missing API key for push tracking.');
+        return;
+      }
 
-      return response;
-    } on Exception catch (e) {
-      debugPrint('[CDP] Error tracking push notification metric: $e');
+      await PushNotificationTracker.sendMetric(apiKey, event, deliveryId);
+    } catch (e, st) {
+      debugPrint('[CDP] Error tracking push metric: $e\n$st');
+    }
+  }
 
-      return Future.value();
+  Future<void> trackPushNotificationMetric(
+    MetricEvent event,
+    String deliveryId,
+    bool isBackground,
+  ) async {
+    try {
+      await PushNotificationTracker.sendMetric(
+          config.cdpApiKey, event, deliveryId);
+    } catch (e, st) {
+      debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }
   }
 

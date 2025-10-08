@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
+import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
@@ -198,30 +199,52 @@ class OpenCDPSDK {
     );
   }
 
-  /// Track push notification metrics
-  /// Handle background push delivery events
+  /// Handles a delivered push notification when app is in foreground
+  static Future<void> handleForegroundPushDelivery(
+      Map<String, dynamic> data) async {
+    final deliveryId = data['notification_id'] as String?;
+    if (deliveryId == null || deliveryId.isEmpty) {
+      debugPrint('[CDP] No notification_id found in foreground push payload.');
+      return;
+    }
+
+    await _implementation!.trackPushNotificationMetric(
+      MetricEvent.delivered,
+      deliveryId,
+      false,
+    );
+  }
+
+  /// Handles a delivered push notification when app is in background
   static Future<void> handleBackgroundPushDelivery(
       Map<String, dynamic> data) async {
     final deliveryId = data['notification_id'] as String?;
-    if (deliveryId != null) {
-      // Use your existing tracking mechanism to send the "delivered" event
-      // This call MUST NOT require any UI or Flutter engine state.
-      await OpenCDPSDKImplementation.trackPushNotificationMetric(
-          MetricEvent.delivered, deliveryId);
+    if (deliveryId == null || deliveryId.isEmpty) {
+      debugPrint('[CDP] No notification_id found in background push payload.');
+      return;
     }
+
+    await OpenCDPSDKImplementation.trackBackgroundPushNotificationMetric(
+      MetricEvent.delivered,
+      deliveryId,
+      true,
+    );
   }
 
-  /// Track push notification metrics
-  /// Handle push notification open events
+  /// Handles when the user opens a push notification
   static Future<void> handlePushNotificationOpen(
       Map<String, dynamic> data) async {
     final deliveryId = data['notification_id'] as String?;
-    if (deliveryId != null) {
-      // Use your existing tracking mechanism to send the "opened" event
-      // This call MUST NOT require any UI or Flutter engine state.
-      await OpenCDPSDKImplementation.trackPushNotificationMetric(
-          MetricEvent.opened, deliveryId);
+    if (deliveryId == null || deliveryId.isEmpty) {
+      debugPrint('[CDP] No notification_id found in opened push payload.');
+      return;
     }
+
+    await _implementation!.trackPushNotificationMetric(
+      MetricEvent.opened,
+      deliveryId,
+      false,
+    );
   }
 
   /// Clear the current identity and flush all pending requests

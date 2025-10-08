@@ -44,7 +44,7 @@ enum ScreenView {
 enum CioLogLevel { none, error, info, debug }
 
 /// Enum to specify the type of metric for tracking
-enum MetricEvent { delivered, opened, converted }
+// enum MetricEvent { delivered, opened, converted }
 
 /// Enum to specify the click behavior of push notification for Android
 enum PushClickBehaviorAndroid {
@@ -156,6 +156,10 @@ class OpenCDPConfig {
   /// CDP API Key
   final String cdpApiKey;
 
+  /// iOS App Group(required for push notification tracking on iOS)
+  /// If not provided, background push tracking may fail for iOS.
+  final String? iOSAppGroup;
+
   /// Optional custom CDP endpoint
   final String? cdpEndpoint;
 
@@ -190,6 +194,7 @@ class OpenCDPConfig {
 
   const OpenCDPConfig({
     required this.cdpApiKey,
+    this.iOSAppGroup,
     this.cdpEndpoint,
     this.sendToCustomerIo = false,
     this.customerIo,

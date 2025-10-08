@@ -1,13 +1,13 @@
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
+import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
+import 'package:open_cdp_flutter_sdk/src/integrations/customer_io_integration.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
-import 'package:open_cdp_flutter_sdk/src/integrations/customer_io_integration.dart';
-import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
 /// Handles SDK initialization and setup
 class SDKInitializer {
@@ -28,28 +28,33 @@ class SDKInitializer {
       );
     }
 
-    final MethodChannel _apiKeyChannel = MethodChannel('cdp/open-cdp');
-
-    // The main initialization method for your SDK
-
-    // ... your existing SDK initialization logic with the apiKey ...
-
-    // Automatically store the key for push tracking if on iOS and app group is provided
-    // kIsWeb is used to avoid running this on web platforms
-    if (!kIsWeb && Platform.isIOS) {
-      // if (config.iOSAppGroup == null) {
-      //   debugPrint(
-      //       "YourSdk Warning: 'iOSAppGroup' is not provided. Push notification delivery tracking will be disabled on iOS.");
-      // }
+    // ✅ Save API key natively so background handlers can use it
+    if (!kIsWeb) {
       try {
-        await _apiKeyChannel.invokeMethod('saveApiKey', {
-          'apiKey': config.cdpApiKey,
-          // 'appGroup': config.iOSAppGroup,
-        });
+        if (Platform.isIOS) {
+          // iOS requires an app group for Notification Service Extension
+          if (config.iOSAppGroup != null) {
+            await NativeBridge.saveApiKeyToNative(
+              apiKey: config.cdpApiKey,
+              appGroup: config.iOSAppGroup!,
+            );
+          } else {
+            debugPrint(
+              "[CDP] iOS App Group not provided. Background push tracking may fail.",
+            );
+          }
+        } else if (Platform.isAndroid) {
+          // ✅ For Android, just save using SharedPreferences
+          await NativeBridge.saveApiKeyToNative(
+            apiKey: config.cdpApiKey,
+            appGroup: '', // not used but required by method signature
+          );
+        }
       } on PlatformException catch (e) {
-        debugPrint("Failed to save API key for push tracking: '${e.message}'.");
+        debugPrint("[CDP] Failed to save API key natively: ${e.message}");
       }
     }
+
     return null;
   }
 
