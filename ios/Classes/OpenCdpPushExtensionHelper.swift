@@ -35,7 +35,7 @@ public class OpenCdpPushExtensionHelper {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
         let body: [String: Any] = [
-            "event_type": "delivered",
+            "event": "delivered",
             "notification_id": deliveryId
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)

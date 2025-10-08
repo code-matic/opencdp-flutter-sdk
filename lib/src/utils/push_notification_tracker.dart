@@ -14,9 +14,10 @@ class PushNotificationTracker {
     MetricEvent event,
     String deliveryId,
   ) async {
-    final endpoint = '$_baseUrl/push/${event.name}';
+    final endpoint = '$_baseUrl';
     final body = {
-      'notification_id': deliveryId,
+      'notificationId': deliveryId,
+      'event': event.name
     };
 
     try {
