@@ -1,5 +1,5 @@
 Pod::Spec.new do |s|
-  s.name             = 'open_cdp_sdk'
+  s.name             = 'open_cdp_flutter_sdk'
   s.version          = '0.0.1'
   s.summary          = 'Native iOS components for Open CDP SDK.'
   s.description      = <<-DESC
