@@ -5,7 +5,8 @@ import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 
 /// Handles sending push notification tracking metrics to the CDP backend.
 class PushNotificationTracker {
-  static const _baseUrl = 'https://api.opencdp.io/v1/metrics';
+  static const _baseUrl =
+      'https://simple-push.onrender.com/api/notifications/metrics';
 
   /// Sends a push notification metric (delivered/opened) to the CDP backend.
   static Future<void> sendMetric(
@@ -15,7 +16,7 @@ class PushNotificationTracker {
   ) async {
     final endpoint = '$_baseUrl/push/${event.name}';
     final body = {
-      'delivery_id': deliveryId,
+      'notification_id': deliveryId,
     };
 
     try {

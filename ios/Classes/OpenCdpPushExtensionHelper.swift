@@ -36,7 +36,7 @@ public class OpenCdpPushExtensionHelper {
 
         let body: [String: Any] = [
             "event_type": "delivered",
-            "delivery_id": deliveryId
+            "notification_id": deliveryId
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
