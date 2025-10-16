@@ -34,7 +34,7 @@ class NativeBridge {
       return null;
     }
   }
-  
+
   /// Clear API key from native shared storage
   /// This is important for reinitialization to ensure we're not using the old key
   static Future<void> clearApiKeyFromNative({

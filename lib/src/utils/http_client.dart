@@ -569,13 +569,13 @@ class CDPHttpClient {
     try {
       // 1. Cancel any ongoing processing
       _isProcessingQueue = false;
-      
+
       // 2. Close the HTTP client to release network resources
       _client.close();
-      
+
       // Note: We don't clear the queue here as that would lose pending requests
       // If you need to clear the queue, call clearIdentity() before dispose()
-      
+
       if (debug) {
         debugPrint('[CDP] HTTP client disposed');
       }

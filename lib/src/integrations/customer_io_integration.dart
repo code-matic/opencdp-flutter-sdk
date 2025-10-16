@@ -63,13 +63,13 @@ class CustomerIOIntegration {
         return null;
     }
   }
-  
+
   /// Reset Customer.io integration - clearing any state
   static Future<void> reset() async {
     try {
       // Clear the customer identifier
       cio.CustomerIO.instance.clearIdentify();
-      
+
       // Additional reset operations specific to CustomerIO if needed
       // Note: Customer.io SDK doesn't have a full reset method,
       // so we're doing what we can with clearIdentify()

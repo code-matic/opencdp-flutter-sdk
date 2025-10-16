@@ -541,10 +541,10 @@ class OpenCDPSDKImplementation {
   void dispose() {
     // Dispose HTTP client resources
     httpClient.dispose();
-    
+
     // Reset instance state
     _isInitialized = false;
-    
+
     // Note: We don't clear static variables here as that's handled by resetStaticVariables()
     // which should be called during reinitialization
   }

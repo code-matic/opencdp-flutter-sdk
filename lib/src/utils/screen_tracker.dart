@@ -115,19 +115,19 @@ class CDPScreenTracker extends NavigatorObserver {
     // Clear the anonymous screen views after associating them
     _anonymousScreenViews.clear();
   }
-  
+
   /// Cleans up resources and data used by the screen tracker.
   ///
   /// This is called when the SDK is being disposed or reinitialized.
   void dispose() {
     // Clear any stored anonymous screen views
     _anonymousScreenViews.clear();
-    
+
     // Note: Navigator observers are typically removed by setting
     // navigatorObservers: [] in MaterialApp/CupertinoApp
     // or by calling Navigator.of(context).widget.observers.remove(this)
     // which cannot be done here automatically
-    
+
     if (debug) {
       debugPrint('[CDP] Screen tracker disposed');
     }
