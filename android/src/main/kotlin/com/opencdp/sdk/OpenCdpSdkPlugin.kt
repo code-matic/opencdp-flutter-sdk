@@ -48,6 +48,11 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.error("NOT_FOUND", "API key not found", null)
                 }
             }
+            
+            "opencdpsdk_clear_api_key" -> {
+                clearApiKeyFromSharedPreferences()
+                result.success(null)
+            }
 
             else -> result.notImplemented()
         }
@@ -72,5 +77,15 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
         val sharedPreferences: SharedPreferences =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPreferences.getString(API_KEY_KEY, null)
+    }
+    
+    // Clear the API key from SharedPreferences
+    private fun clearApiKeyFromSharedPreferences() {
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            remove(API_KEY_KEY)
+            apply()
+        }
     }
 }

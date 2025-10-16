@@ -38,12 +38,12 @@ class OpenCDPSDKImplementation {
     required OpenCDPConfig config,
     CDPHttpClient? httpClient,
   }) async {
-    final client = httpClient ??
-        CDPHttpClient(
+    final CDPHttpClient client = httpClient ??
+        (await CDPHttpClient.create(
           baseUrl: config.baseUrl,
           apiKey: config.cdpApiKey,
           debug: config.debug,
-        );
+        ));
 
     _packageInfo = await PackageInfo.fromPlatform();
 
@@ -539,7 +539,14 @@ class OpenCDPSDKImplementation {
 
   /// Dispose the SDK instance
   void dispose() {
+    // Dispose HTTP client resources
     httpClient.dispose();
+    
+    // Reset instance state
+    _isInitialized = false;
+    
+    // Note: We don't clear static variables here as that's handled by resetStaticVariables()
+    // which should be called during reinitialization
   }
 
   /// Set a custom HTTP client
@@ -587,5 +594,13 @@ class OpenCDPSDKImplementation {
         debugPrint('[CDP] Error clearing identity: $e');
       }
     }
+  }
+
+  /// Reset all static variables for reinitialization
+  /// This should be called when reinitializing the SDK
+  static void resetStaticVariables() {
+    _userId = null;
+    _deviceId = null;
+    _packageInfo = null;
   }
 }

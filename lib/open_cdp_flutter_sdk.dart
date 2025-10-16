@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
+import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
+import 'package:open_cdp_flutter_sdk/src/integrations/customer_io_integration.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
@@ -38,11 +41,21 @@ class OpenCDPSDK {
 
   /// Reset the SDK instance (for testing purposes)
   @visibleForTesting
-  static void resetForTest() {
+  static Future<void> resetForTest() async {
+    if (_instance != null) {
+      _instance!.dispose();
+    }
+    
+    // Reset static variables in implementation
+    OpenCDPSDKImplementation.resetStaticVariables();
+    
+    // Reset all instance variables
     _instance = null;
     _implementation = null;
     _screenTracker = null;
     _lifecycleTracker = null;
+    
+    debugPrint('[CDP] SDK reset for testing');
   }
 
   /// Initialize the SDK with configuration
@@ -67,12 +80,20 @@ class OpenCDPSDK {
         return;
       } else {
         if (_instance != null && shouldReinitialize == true) {
-          // Dispose previous instance before reinitializing
-          _instance!.dispose();
+          // Full cleanup of previous instance before reinitializing
+          await _fullCleanup(config);
         }
+        
         debugPrint('[CDP] Initializing SDK...');
         debugPrint('[CDP] Config: ${config.toMap()}');
-        debugPrint('shouldReinitialize: $shouldReinitialize');
+        
+        // Reset implementation's static variables if reinitializing
+        if (shouldReinitialize) {
+          OpenCDPSDKImplementation.resetStaticVariables();
+          debugPrint('[CDP] Reset static variables for reinitialization');
+        }
+        
+        // Create new instance
         _instance = OpenCDPSDK._();
         _implementation = await OpenCDPSDKImplementation.create(
             config: config, httpClient: httpClient);
@@ -94,6 +115,46 @@ class OpenCDPSDK {
         debugPrint('[CDP] Error initializing SDK: $e');
       }
     }
+  }
+  
+  /// Performs a full cleanup of all SDK resources for reinitialization
+  static Future<void> _fullCleanup(OpenCDPConfig config) async {
+    // 1. Clear any identity information first to ensure pending requests are flushed
+    if (_implementation != null) {
+      await _implementation!.clearIdentity();
+    }
+    
+    // 2. Reset Customer.io integration
+    try {
+      if (config.sendToCustomerIo) {
+        await CustomerIOIntegration.reset();
+      }
+    } catch (e) {
+      debugPrint('[CDP] Error resetting Customer.io integration: $e');
+    }
+    
+    // 3. Clear native API key storage if needed
+    if (!kIsWeb) {
+      try {
+        final appGroup = config.iOSAppGroup ?? '';
+        await NativeBridge.clearApiKeyFromNative(appGroup: appGroup);
+      } catch (e) {
+        debugPrint('[CDP] Error clearing native API key: $e');
+      }
+    }
+    
+    // 4. Dispose the current instance (this will release HTTP client resources)
+    if (_instance != null) {
+      _instance!.dispose();
+    }
+    
+    // 5. Set instance variables to null
+    _instance = null;
+    _implementation = null;
+    _screenTracker = null;
+    _lifecycleTracker = null;
+    
+    debugPrint('[CDP] Full SDK cleanup completed for reinitialization');
   }
 
   /// Private constructor
@@ -265,10 +326,20 @@ class OpenCDPSDK {
 
   /// Dispose the SDK instance
   void dispose() {
-    _implementation?.dispose();
+    if (_implementation != null) {
+      _implementation!.dispose();
+      _implementation = null;
+    }
+    
+    // Remove lifecycle tracker if exists
     if (_lifecycleTracker != null) {
       WidgetsBinding.instance.removeObserver(_lifecycleTracker!);
+      _lifecycleTracker = null;
     }
+    
+    // Clean up screen tracker
+    _screenTracker?.dispose();
+    _screenTracker = null;
   }
 
   /// For testing: inject a mock/test HTTP client into the implementation

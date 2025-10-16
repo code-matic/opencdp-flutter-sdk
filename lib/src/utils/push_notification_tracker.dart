@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 
 /// Handles sending push notification tracking metrics to the CDP backend.
 class PushNotificationTracker {
   static const _url =
-      'https://simple-push.onrender.com/api/notifications/metrics';
+      '${CDPEndpoints.baseUrl}${CDPEndpoints.notificationMetrics}';
 
   /// Sends a push notification metric (delivered/opened) to the CDP backend.
   static Future<void> sendMetric(

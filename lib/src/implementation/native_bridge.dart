@@ -34,4 +34,19 @@ class NativeBridge {
       return null;
     }
   }
+  
+  /// Clear API key from native shared storage
+  /// This is important for reinitialization to ensure we're not using the old key
+  static Future<void> clearApiKeyFromNative({
+    required String appGroup,
+  }) async {
+    try {
+      await _channel.invokeMethod('opencdpsdk_clear_api_key', {
+        'appGroup': appGroup,
+      });
+      debugPrint('[CDP] API key cleared from native storage');
+    } on PlatformException catch (e) {
+      debugPrint('[CDP] Failed to clear API key from native: ${e.message}');
+    }
+  }
 }
