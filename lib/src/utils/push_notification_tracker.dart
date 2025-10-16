@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
+import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
 
 /// Handles sending push notification tracking metrics to the CDP backend.
 /// This is designed to be lightweight and usable in background contexts.
@@ -42,9 +43,50 @@ class PushNotificationTracker {
   static Future<bool> sendMetric(
     String apiKey,
     MetricEvent event,
-    String deliveryId,
-  ) async {
-    final body = {'notificationId': deliveryId, 'event': event.name};
+    String messageId, {
+    String? personId,
+    String sendContext = "transactional",
+    String sendContextId = "",
+    bool isBackground = false,
+    String? appGroup,
+  }) async {
+    // If personId is not provided and we're in background mode, try to get from native storage
+    String? userId = personId;
+    if (userId == null && isBackground) {
+      // For iOS, we need the app group
+      // For Android, app group is not needed
+      userId = await NativeBridge.getUserIdFromNative(
+        appGroup: appGroup, // Will be used on iOS, ignored on Android
+      );
+    }
+
+    // If we still don't have a userId, check if it's in the messageId (some systems embed it)
+    if (userId == null && messageId.contains(':')) {
+      final parts = messageId.split(':');
+      if (parts.length > 1) {
+        userId = parts[0];
+        debugPrint(
+            '[CDP] Extracted user ID from message ID: ${safeSubstring(userId, 5)}');
+      }
+    }
+
+    // If we still don't have a userId, we can't send the metric
+    if (userId == null) {
+      debugPrint('[CDP] Cannot send push metric: No user ID available');
+      return false;
+    }
+
+    // Get current timestamp in ISO8601 format with UTC timezone
+    final timestamp = DateTime.now().toUtc().toIso8601String();
+
+    final body = {
+      'message_id': messageId,
+      'person_id': userId,
+      'send_context': sendContext,
+      'send_context_id': sendContextId,
+      'status': _mapEventToStatus(event),
+      'ts': timestamp,
+    };
     int retryCount = 0;
 
     while (retryCount <= _maxRetries) {
@@ -63,13 +105,14 @@ class PushNotificationTracker {
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           if (kDebugMode) {
-            debugPrint('[CDP] Push metric sent successfully: ${event.name}');
+            debugPrint(
+                '[CDP] Push metric sent successfully: ${_mapEventToStatus(event)}');
           }
           return true;
         } else {
           if (retryCount == _maxRetries) {
             debugPrint(
-              '[CDP] Failed to send ${event.name} metric after $_maxRetries retries '
+              '[CDP] Failed to send ${_mapEventToStatus(event)} metric after $_maxRetries retries '
               '(status: ${response.statusCode}) => ${response.body}',
             );
             return false;
@@ -95,13 +138,52 @@ class PushNotificationTracker {
 
   /// Sends a metric and doesn't wait for the result
   /// Useful for fire-and-forget scenarios in notification service extensions
+  /// On iOS, requires appGroup for background operations
+  /// On Android, appGroup is not needed
   static void sendMetricAndForget(
     String apiKey,
     MetricEvent event,
-    String deliveryId,
-  ) {
+    String messageId, {
+    String? personId,
+    String sendContext = "transactional",
+    String sendContextId = "",
+    bool isBackground = false,
+    String? appGroup,
+  }) {
     // Don't await - just fire the request and move on
     // Important for background tasks with limited execution time
-    sendMetric(apiKey, event, deliveryId);
+    sendMetric(
+      apiKey,
+      event,
+      messageId,
+      personId: personId,
+      sendContext: sendContext,
+      sendContextId: sendContextId,
+      isBackground: isBackground,
+      appGroup: appGroup,
+    );
+  }
+
+  /// Maps a MetricEvent to the corresponding status string for the API
+  static String _mapEventToStatus(MetricEvent event) {
+    switch (event) {
+      case MetricEvent.delivered:
+        return 'delivered';
+      case MetricEvent.opened:
+        return 'opened';
+      case MetricEvent.converted:
+        return 'converted';
+      case MetricEvent.failed:
+        return 'failed';
+      default:
+        return 'unknown';
+    }
+  }
+
+  /// Helper to safely get a substring prefix of a string
+  static String safeSubstring(String input, int maxLength) {
+    if (input.isEmpty) return '';
+    final length = min(maxLength, input.length);
+    return '${input.substring(0, length)}${length < input.length ? '...' : ''}';
   }
 }

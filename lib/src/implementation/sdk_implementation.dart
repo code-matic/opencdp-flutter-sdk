@@ -164,6 +164,14 @@ class OpenCDPSDKImplementation {
       _userId = identifier;
       await prefs.setString('user_id', identifier);
 
+      // Store in native storage for push notification handling in background
+      // For iOS, we pass the app group
+      // For Android, app group is not required
+      await NativeBridge.saveUserIdToNative(
+        userId: identifier,
+        appGroup: config.appGroup,
+      );
+
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
         cio.CustomerIO.instance.identify(
@@ -582,6 +590,12 @@ class OpenCDPSDKImplementation {
       _userId = null;
       await prefs.remove('user_id');
 
+      // Clear from native storage for background push notification handling
+      // Works for both iOS and Android with the updated method
+      await NativeBridge.clearUserIdFromNative(
+        appGroup: config.appGroup,
+      );
+
       // Finally clear Customer.io identity if enabled
       if (config.sendToCustomerIo) {
         try {
@@ -609,5 +623,8 @@ class OpenCDPSDKImplementation {
     _userId = null;
     _deviceId = null;
     _packageInfo = null;
+
+    // Also clear resources in the PushNotificationTracker
+    PushNotificationTracker.dispose();
   }
 }

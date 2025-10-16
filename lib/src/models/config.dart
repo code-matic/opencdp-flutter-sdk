@@ -192,6 +192,12 @@ class OpenCDPConfig {
     return CDPEndpoints.baseUrl;
   }
 
+  /// App Group ID (used for background push notification tracking)
+  /// Returns iOSAppGroup on iOS, or a default value on Android
+  String? get appGroup {
+    return iOSAppGroup;
+  }
+
   const OpenCDPConfig({
     required this.cdpApiKey,
     this.iOSAppGroup,
@@ -210,6 +216,7 @@ class OpenCDPConfig {
       'cdpApiKey': cdpApiKey,
       'cdpEndpoint': cdpEndpoint,
       'baseUrl': baseUrl,
+      'iOSAppGroup': appGroup,
       'sendToCustomerIo': sendToCustomerIo,
       'customerIo': customerIo?.toMap(),
       'debug': debug,
