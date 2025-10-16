@@ -12,6 +12,7 @@ import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 
 export 'src/models/config.dart';
 
@@ -123,7 +124,7 @@ class OpenCDPSDK {
     if (_implementation != null) {
       await _implementation!.clearIdentity();
     }
-
+    
     // 2. Reset Customer.io integration
     try {
       if (config.sendToCustomerIo) {
@@ -132,7 +133,7 @@ class OpenCDPSDK {
     } catch (e) {
       debugPrint('[CDP] Error resetting Customer.io integration: $e');
     }
-
+    
     // 3. Clear native API key storage if needed
     if (!kIsWeb) {
       try {
@@ -142,22 +143,27 @@ class OpenCDPSDK {
         debugPrint('[CDP] Error clearing native API key: $e');
       }
     }
-
-    // 4. Dispose the current instance (this will release HTTP client resources)
+    
+    // 4. Clean up push notification tracker resources
+    try {
+      PushNotificationTracker.dispose();
+    } catch (e) {
+      debugPrint('[CDP] Error disposing push notification tracker: $e');
+    }
+    
+    // 5. Dispose the current instance (this will release HTTP client resources)
     if (_instance != null) {
       _instance!.dispose();
     }
-
-    // 5. Set instance variables to null
+    
+    // 6. Set instance variables to null
     _instance = null;
     _implementation = null;
     _screenTracker = null;
     _lifecycleTracker = null;
-
+    
     debugPrint('[CDP] Full SDK cleanup completed for reinitialization');
-  }
-
-  /// Private constructor
+  }  /// Private constructor
   OpenCDPSDK._();
 
   /// Identify a user with optional traits

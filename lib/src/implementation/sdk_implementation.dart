@@ -518,7 +518,13 @@ class OpenCDPSDKImplementation {
         return;
       }
 
-      await PushNotificationTracker.sendMetric(apiKey, event, deliveryId);
+      // For background operations, fire-and-forget might be more appropriate
+      // to avoid keeping the background task alive unnecessarily
+      if (isBackground) {
+        PushNotificationTracker.sendMetricAndForget(apiKey, event, deliveryId);
+      } else {
+        await PushNotificationTracker.sendMetric(apiKey, event, deliveryId);
+      }
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }
@@ -530,6 +536,7 @@ class OpenCDPSDKImplementation {
     bool isBackground,
   ) async {
     try {
+      // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
           config.cdpApiKey, event, deliveryId);
     } catch (e, st) {
