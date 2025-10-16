@@ -27,7 +27,7 @@ public class OpenCdpPushExtensionHelper {
     }
 
     private static func reportPushDelivered(deliveryId: String, apiKey: String) {
-        guard let url = URL(string: "https://your-backend.com/v1/push-events") else { return }
+        guard let url = URL(string: "https://simple-push.onrender.com/api/notifications/metrics") else { return }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
