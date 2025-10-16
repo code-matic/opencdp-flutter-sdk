@@ -406,115 +406,18 @@ class OpenCDPSDKImplementation {
     }
   }
 
-  /// Track device attributes automatically
-  // Future<void> _trackDeviceAttributes() async {
-  //   try {
-  //     if (_packageInfo == null) return;
-
-  //     final deviceAttributes = {
-  //       'app_version': _packageInfo!.version,
-  //       'app_build': _packageInfo!.buildNumber,
-  //       'app_package': _packageInfo!.packageName,
-  //     };
-
-  //     if (Platform.isAndroid) {
-  //       final androidInfo = await _deviceInfo.androidInfo;
-  //       deviceAttributes.addAll({
-  //         'device_manufacturer': androidInfo.manufacturer,
-  //         'device_model': androidInfo.model,
-  //         'os_version': androidInfo.version.release,
-  //         'os_sdk': androidInfo.version.sdkInt.toString(),
-  //       });
-  //     } else if (Platform.isIOS) {
-  //       final iosInfo = await _deviceInfo.iosInfo;
-  //       deviceAttributes.addAll({
-  //         'device_manufacturer': 'Apple',
-  //         'device_model': iosInfo.model,
-  //         'os_version': iosInfo.systemVersion,
-  //         'os_name': iosInfo.systemName,
-  //       });
-  //     }
-
-  //     if (_userId != null) {
-  //       final response = await httpClient.post(
-  //         CDPEndpoints.update,
-  //         {
-  //           'identifier': _currentIdentifierUnsafe,
-  //           'properties': deviceAttributes,
-  //         },
-  //         identifier: _currentIdentifierUnsafe,
-  //       );
-
-  //       if (response == null && config.debug) {
-  //         debugPrint(
-  //             '[CDP] Failed to track device attributes: request returned null');
-  //       }
-  //     }
-  //   } catch (e) {
-  //     if (config.debug) {
-  //       debugPrint('[CDP] Error tracking device attributes: $e');
-  //     }
-  //   }
-  // }
-
-  // track push notification metrics
-  // static Future<void> trackPushNotificationMetric(
-  //   MetricEvent event,
-  //   String? notificationId,
-  //   bool isBackground,
-  // ) async {
-  //   CDPHttpClient newHttpClient;
-  //   // check if isBackground is true, and if the current platform is android
-  //   if (isBackground && Platform.isAndroid) {
-  //     // if android and is background, return
-  //     // get the api key from the shared preferences
-  //     final apiKey = await NativeBridge.getApiKeyFromNative(appGroup: '');
-  //     if (apiKey == null || apiKey.isEmpty) {
-  //       debugPrint('[CDP] No API key found for push metric tracking');
-  //       return Future.value();
-  //     }
-  //     // create a new http client with the api key
-  //     newHttpClient = CDPHttpClient(
-  //       baseUrl: 'https://simple-push.onrender.com/',
-  //       apiKey: apiKey,
-  //       debug: true,
-  //     );
-  //   } else {
-  //     newHttpClient = CDPHttpClient(
-  //       baseUrl: 'https://simple-push.onrender.com/',
-  //       apiKey: config.cdpApiKey,
-  //       debug: true,
-  //     );
-
-  //     // notification body:
-  //     //  notificationId, token, event, timestamp
-
-  //     try {
-  //       final response = newHttpClient.post(
-  //           CDPEndpoints.notificationMetrics,
-  //           {
-  //             "notificationId": notificationId,
-  //             "event": event.name,
-  //           },
-  //           identifier: 'push Notifs');
-
-  //       debugPrint(
-  //           '[CDP] Tracking push notification metric: ${event.name}, notificationId: $notificationId');
-
-  //       return response;
-  //     } on Exception catch (e) {
-  //       debugPrint('[CDP] Error tracking push notification metric: $e');
-
-  //       return Future.value();
-  //     }
-  //   }
-  // }
+  /// Implementation of push notification tracking
 
   static Future<void> trackBackgroundPushNotificationMetric(
-    MetricEvent event,
-    String deliveryId,
-    bool isBackground,
-  ) async {
+      // MetricEvent event,
+      // String deliveryId,
+      // bool isBackground,
+
+      MetricEvent event,
+      String messageId,
+      String sendContext,
+      String sendContextId,
+      bool isBackground) async {
     try {
       final apiKey = isBackground
           ? await NativeBridge.getApiKeyFromNative(
@@ -529,24 +432,27 @@ class OpenCDPSDKImplementation {
       // For background operations, fire-and-forget might be more appropriate
       // to avoid keeping the background task alive unnecessarily
       if (isBackground) {
-        PushNotificationTracker.sendMetricAndForget(apiKey, event, deliveryId);
+        PushNotificationTracker.sendMetricAndForget(apiKey, event, messageId,
+            sendContext: sendContext, sendContextId: sendContextId);
       } else {
-        await PushNotificationTracker.sendMetric(apiKey, event, deliveryId);
+        await PushNotificationTracker.sendMetric(apiKey, event, messageId,
+            sendContext: sendContext, sendContextId: sendContextId);
       }
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }
   }
 
-  Future<void> trackPushNotificationMetric(
-    MetricEvent event,
-    String deliveryId,
-    bool isBackground,
-  ) async {
+  Future<void> trackPushNotificationMetric(MetricEvent event, String messageId,
+      bool isBackground, String sendContext, String sendContextId) async {
     try {
       // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
-          config.cdpApiKey, event, deliveryId);
+          config.cdpApiKey, event, messageId,
+          isBackground: isBackground,
+          appGroup: config.appGroup,
+          sendContext: sendContext,
+          sendContextId: sendContextId);
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }

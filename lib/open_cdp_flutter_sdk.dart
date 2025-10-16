@@ -271,48 +271,71 @@ class OpenCDPSDK {
   /// Handles a delivered push notification when app is in foreground
   static Future<void> handleForegroundPushDelivery(
       Map<String, dynamic> data) async {
-    final deliveryId = data['notification_id'] as String?;
-    if (deliveryId == null || deliveryId.isEmpty) {
-      debugPrint('[CDP] No notification_id found in foreground push payload.');
+    final messageId = data['message_id'] as String?;
+    if (messageId == null || messageId.isEmpty) {
+      debugPrint('[CDP] No message_id found in foreground push payload.');
       return;
     }
+    final sendContextId = data['send_context_id'] ?? "";
+    final sendContext = data['send_context'] ?? "";
 
     await _implementation!.trackPushNotificationMetric(
       MetricEvent.delivered,
-      deliveryId,
+      messageId,
       false,
+      sendContext,
+      sendContextId,
     );
   }
 
   /// Handles a delivered push notification when app is in background
   static Future<void> handleBackgroundPushDelivery(
       Map<String, dynamic> data) async {
-    final deliveryId = data['notification_id'] as String?;
-    if (deliveryId == null || deliveryId.isEmpty) {
-      debugPrint('[CDP] No notification_id found in background push payload.');
+    final messageId = data['message_id'] as String?;
+    if (messageId == null || messageId.isEmpty) {
+      debugPrint('[CDP] No message_id found in background push payload.');
       return;
     }
+    final sendContextId = data['send_context_id'] ?? "";
+    final sendContext = data['send_context'] ?? "";
 
     await OpenCDPSDKImplementation.trackBackgroundPushNotificationMetric(
       MetricEvent.delivered,
-      deliveryId,
-      true,
+      messageId,
+      sendContext,
+      sendContextId,
+      false,
     );
   }
 
   /// Handles when the user opens a push notification
+  // static Future<void> handlePushNotificationOpen(
+  //     Map<String, dynamic> data) async {
+  //   final messageId = data['message_id'] as String?;
+  //   if (messageId == null || messageId.isEmpty) {
+  //     debugPrint('[CDP] No message_id found in opened push payload.');
+  //     return;
+  //   }
+  // }
+
+  /// Handles when the user opens a push notification
   static Future<void> handlePushNotificationOpen(
       Map<String, dynamic> data) async {
-    final deliveryId = data['notification_id'] as String?;
-    if (deliveryId == null || deliveryId.isEmpty) {
-      debugPrint('[CDP] No notification_id found in opened push payload.');
+    final messageId = data['message_id'] as String?;
+    if (messageId == null || messageId.isEmpty) {
+      debugPrint('[CDP] No message_id found in opened push payload.');
       return;
     }
 
+    final sendContextId = data['send_context_id'] ?? "";
+    final sendContext = data['send_context'] ?? "";
+
     await _implementation!.trackPushNotificationMetric(
       MetricEvent.opened,
-      deliveryId,
+      messageId,
       false,
+      sendContext,
+      sendContextId,
     );
   }
 
