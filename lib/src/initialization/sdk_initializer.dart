@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
@@ -20,36 +19,36 @@ class SDKInitializer {
     // Initialize Customer.io if configured
     await CustomerIOIntegration.initialize(config);
 
+    // ✅ Save API key natively so background handlers can use it.
+    // This is done early to ensure it's available for all app states.
+    if (!kIsWeb) {
+      try {
+        // Save API key to native storage for background push notification handling
+        await NativeBridge.saveApiKeyToNative(
+          apiKey: config.cdpApiKey,
+          appGroup: config.iOSAppGroup, // On Android, this argument is ignored
+        );
+
+        // Warn if on iOS and the app group is missing
+        if (Platform.isIOS && config.iOSAppGroup == null) {
+          debugPrint(
+            "[CDP] WARNING: iOS App Group not provided. Background push tracking may fail on iOS.",
+          );
+        }
+
+        debugPrint(
+            "[CDP] API key saved to native storage for background push tracking.");
+      } catch (e) {
+        debugPrint("[CDP] Failed to save API key natively: $e");
+      }
+    }
+
     // Initialize screen tracker if auto tracking is enabled
     if (config.autoTrackScreens) {
       return CDPScreenTracker(
         sdk: sdk,
         debug: config.debug,
       );
-    }
-
-    // ✅ Save API key natively so background handlers can use it
-    if (!kIsWeb) {
-      try {
-        // Save API key to native storage for background push notification handling
-        // Works with appGroup on iOS, and without it on Android
-        await NativeBridge.saveApiKeyToNative(
-          apiKey: config.cdpApiKey,
-          appGroup: config
-              .appGroup, // Will use iOSAppGroup on iOS, ignored on Android
-        );
-
-        if (Platform.isIOS && config.iOSAppGroup == null) {
-          debugPrint(
-            "[CDP] iOS App Group not provided. Background push tracking may fail on iOS.",
-          );
-        }
-
-        debugPrint(
-            "[CDP] API key saved to native storage for background push tracking");
-      } catch (e) {
-        debugPrint("[CDP] Failed to save API key natively: $e");
-      }
     }
 
     return null;
@@ -60,7 +59,9 @@ class SDKInitializer {
     required OpenCDPConfig config,
     required OpenCDPSDK sdk,
   }) {
-    if (!config.trackApplicationLifecycleEvents) return null;
+    if (!config.trackApplicationLifecycleEvents) {
+      return null;
+    }
 
     final lifecycleTracker = CDPLifecycleTracker(
       sdk: sdk,

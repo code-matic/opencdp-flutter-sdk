@@ -87,6 +87,8 @@ class PushNotificationTracker {
       'status': _mapEventToStatus(event),
       'ts': timestamp,
     };
+    debugPrint('[CDP] Sending push metric: ${jsonEncode(body)}...');
+
     int retryCount = 0;
 
     while (retryCount <= _maxRetries) {
