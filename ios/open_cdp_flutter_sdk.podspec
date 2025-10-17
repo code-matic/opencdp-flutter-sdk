@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   This pod provides the native helper functions for push notification tracking in Open CDP SDK.
                      DESC
   s.homepage         = 'http://opencdp.io'
-  s.license          = { :type => 'MIT', :file => 'LICENSE' }
+  s.license          = { :type => 'MIT', :file => '../LICENSE' }
   s.author           = { 'Codematic Technology Services' => 'developers@codematic.io' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*' # This line includes all files in the Classes directory
