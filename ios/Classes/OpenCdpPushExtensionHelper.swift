@@ -25,18 +25,18 @@ public class OpenCdpPushExtensionHelper {
                     
                     // 3. Make the API call to report the "delivered" event.
                     reportPushStatus(
-                        messageId: messageId, 
-                        personId: personId, 
+                        messageId: messageId,
+                        personId: personId,
                         sendContext: sendContext,
                         sendContextId: sendContextId,
                         status: "delivered",
                         apiKey: apiKey
                     )
                 } else {
-                    print("Could not find person_id in payload or shared storage.")
+                    log("Could not find person_id in payload or shared storage.")
                 }
             } else {
-                print("API Key not found in shared storage.")
+                log("API Key not found in shared storage.")
             }
         }
     }
@@ -45,7 +45,7 @@ public class OpenCdpPushExtensionHelper {
         if let userDefaults = UserDefaults(suiteName: appGroup) {
             return userDefaults.string(forKey: "opencdpsdk_api_key")
         }
-        print("Could not read API Key: Invalid App Group ID provided.")
+        log("Could not read API Key: Invalid App Group ID provided.")
         return nil
     }
     
@@ -53,7 +53,7 @@ public class OpenCdpPushExtensionHelper {
         if let userDefaults = UserDefaults(suiteName: appGroup) {
             return userDefaults.string(forKey: "opencdpsdk_user_id")
         }
-        print("Could not read User ID: Invalid App Group ID provided.")
+        log("Could not read User ID: Invalid App Group ID provided.")
         return nil
     }
 
@@ -70,7 +70,7 @@ public class OpenCdpPushExtensionHelper {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue((apiKey), forHTTPHeaderField: "Authorization")
+        request.setValue(apiKey, forHTTPHeaderField: "Authorization")
 
         // Get current timestamp in ISO8601 format with UTC timezone
         let dateFormatter = ISO8601DateFormatter()
@@ -89,15 +89,22 @@ public class OpenCdpPushExtensionHelper {
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("Failed to report push status: \(error.localizedDescription)")
+                log("Failed to report push status: \(error.localizedDescription)")
             } else if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
-                    print("Push \(status) event reported successfully.")
+                    log("Push \(status) event reported successfully.")
                 } else {
-                    print("Failed to report push status. Status code: \(httpResponse.statusCode)")
+                    log("Failed to report push status. Status code: \(httpResponse.statusCode)")
                 }
             }
         }
         task.resume()
+    }
+
+    /// Debug Logger - Only logs in DEBUG mode
+    private static func log(_ message: String) {
+        #if DEBUG
+        debugPrint("[OpenCDP SDK] \(message)")
+        #endif
     }
 }
