@@ -298,18 +298,20 @@ class OpenCDPSDK {
     }
     final sendContextId = data['send_context_id'] ?? "";
     final sendContext = data['send_context'] ?? "";
-    
+
     // Get API key from instance if initialized, otherwise null and will rely on native storage
     String? apiKey;
     String? appGroup;
-    
+
     // Check if SDK is initialized and grab config values if available
     if (_implementation != null) {
       apiKey = _implementation!.config.cdpApiKey;
       appGroup = _implementation!.config.appGroup;
-      debugPrint('[CDP] Using SDK instance API key for background push tracking');
+      debugPrint(
+          '[CDP] Using SDK instance API key for background push tracking');
     } else {
-      debugPrint('[CDP] SDK not initialized, will try to use stored API key for background push tracking');
+      debugPrint(
+          '[CDP] SDK not initialized, will try to use stored API key for background push tracking');
     }
 
     await OpenCDPSDKImplementation.trackBackgroundPushNotificationMetric(

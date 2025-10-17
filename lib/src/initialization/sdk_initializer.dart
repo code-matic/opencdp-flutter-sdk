@@ -35,16 +35,18 @@ class SDKInitializer {
         // Works with appGroup on iOS, and without it on Android
         await NativeBridge.saveApiKeyToNative(
           apiKey: config.cdpApiKey,
-          appGroup: config.appGroup,  // Will use iOSAppGroup on iOS, ignored on Android
+          appGroup: config
+              .appGroup, // Will use iOSAppGroup on iOS, ignored on Android
         );
-        
+
         if (Platform.isIOS && config.iOSAppGroup == null) {
           debugPrint(
             "[CDP] iOS App Group not provided. Background push tracking may fail on iOS.",
           );
         }
-        
-        debugPrint("[CDP] API key saved to native storage for background push tracking");
+
+        debugPrint(
+            "[CDP] API key saved to native storage for background push tracking");
       } catch (e) {
         debugPrint("[CDP] Failed to save API key natively: $e");
       }

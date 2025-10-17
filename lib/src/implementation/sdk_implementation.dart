@@ -414,7 +414,8 @@ class OpenCDPSDKImplementation {
       String sendContext,
       String sendContextId,
       bool isBackground,
-      {String? appGroup, String? apiKeyOverride}) async {
+      {String? appGroup,
+      String? apiKeyOverride}) async {
     try {
       // Determine the API key based on context
       String? apiKey;
@@ -426,7 +427,7 @@ class OpenCDPSDKImplementation {
           // For background operations, get API key from native storage
           // This works for both iOS (with appGroup) and Android
           apiKey = await NativeBridge.getApiKeyFromNative(
-            appGroup: appGroup,  // Optional app group for iOS
+            appGroup: appGroup, // Optional app group for iOS
           );
         }
       } else {
@@ -444,7 +445,7 @@ class OpenCDPSDKImplementation {
       if (isBackground) {
         // For background operations, get user ID from native storage
         personId = await NativeBridge.getUserIdFromNative(
-          appGroup: appGroup,  // Optional app group for iOS
+          appGroup: appGroup, // Optional app group for iOS
         );
       } else {
         personId = _userId;
@@ -454,8 +455,8 @@ class OpenCDPSDKImplementation {
       // to avoid keeping the background task alive unnecessarily
       if (isBackground) {
         PushNotificationTracker.sendMetricAndForget(
-          apiKey, 
-          event, 
+          apiKey,
+          event,
           messageId,
           sendContext: sendContext,
           sendContextId: sendContextId,
@@ -465,8 +466,8 @@ class OpenCDPSDKImplementation {
         );
       } else {
         await PushNotificationTracker.sendMetric(
-          apiKey, 
-          event, 
+          apiKey,
+          event,
           messageId,
           sendContext: sendContext,
           sendContextId: sendContextId,

@@ -17,7 +17,7 @@ class NativeBridge {
       if (appGroup != null) {
         args['appGroup'] = appGroup;
       }
-      
+
       await _channel.invokeMethod('opencdpsdk_save_api_key', args);
       debugPrint('[CDP] API key saved to native storage');
     } on PlatformException catch (e) {
@@ -59,7 +59,7 @@ class NativeBridge {
       if (appGroup != null) {
         args['appGroup'] = appGroup;
       }
-      
+
       final apiKey = await _channel.invokeMethod<String>(
         'opencdpsdk_get_api_key',
         args,
@@ -108,7 +108,7 @@ class NativeBridge {
       if (appGroup != null) {
         args['appGroup'] = appGroup;
       }
-      
+
       await _channel.invokeMethod('opencdpsdk_clear_api_key', args);
       debugPrint('[CDP] API key cleared from native storage');
     } on PlatformException catch (e) {
