@@ -409,43 +409,70 @@ class OpenCDPSDKImplementation {
   /// Implementation of push notification tracking
 
   static Future<void> trackBackgroundPushNotificationMetric(
-      // MetricEvent event,
-      // String deliveryId,
-      // bool isBackground,
-
       MetricEvent event,
       String messageId,
       String sendContext,
       String sendContextId,
-      bool isBackground) async {
+      bool isBackground,
+      {String? appGroup, String? apiKeyOverride}) async {
     try {
-      final apiKey = isBackground
-          ? await NativeBridge.getApiKeyFromNative(
-              appGroup: '') //() // Secure native storage fetch
-          : ''; // Regular instance API key
+      // Determine the API key based on context
+      String? apiKey;
+      if (isBackground) {
+        // If provided directly, use the override
+        if (apiKeyOverride != null && apiKeyOverride.isNotEmpty) {
+          apiKey = apiKeyOverride;
+        } else {
+          // For background operations, get API key from native storage
+          // This works for both iOS (with appGroup) and Android
+          apiKey = await NativeBridge.getApiKeyFromNative(
+            appGroup: appGroup,  // Optional app group for iOS
+          );
+        }
+      } else {
+        // For non-background, we should be getting the apiKey from the instance that calls this
+        apiKey = apiKeyOverride;
+      }
 
       if (apiKey == null || apiKey.isEmpty) {
         debugPrint('[CDP] Missing API key for push tracking.');
         return;
       }
 
-      final personId = isBackground
-          ? await NativeBridge.getUserIdFromNative(
-              appGroup: '') //() // Secure native storage fetch
-          : _userId;
+      // Get the user ID
+      String? personId;
+      if (isBackground) {
+        // For background operations, get user ID from native storage
+        personId = await NativeBridge.getUserIdFromNative(
+          appGroup: appGroup,  // Optional app group for iOS
+        );
+      } else {
+        personId = _userId;
+      }
 
       // For background operations, fire-and-forget might be more appropriate
       // to avoid keeping the background task alive unnecessarily
       if (isBackground) {
-        PushNotificationTracker.sendMetricAndForget(apiKey, event, messageId,
-            sendContext: sendContext,
-            sendContextId: sendContextId,
-            personId: personId);
+        PushNotificationTracker.sendMetricAndForget(
+          apiKey, 
+          event, 
+          messageId,
+          sendContext: sendContext,
+          sendContextId: sendContextId,
+          personId: personId,
+          isBackground: true,
+          appGroup: appGroup,
+        );
       } else {
-        await PushNotificationTracker.sendMetric(apiKey, event, messageId,
-            sendContext: sendContext,
-            sendContextId: sendContextId,
-            personId: personId);
+        await PushNotificationTracker.sendMetric(
+          apiKey, 
+          event, 
+          messageId,
+          sendContext: sendContext,
+          sendContextId: sendContextId,
+          personId: personId,
+          isBackground: false,
+        );
       }
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');

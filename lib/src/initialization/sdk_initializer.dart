@@ -31,27 +31,22 @@ class SDKInitializer {
     // ✅ Save API key natively so background handlers can use it
     if (!kIsWeb) {
       try {
-        if (Platform.isIOS) {
-          // iOS requires an app group for Notification Service Extension
-          if (config.iOSAppGroup != null) {
-            await NativeBridge.saveApiKeyToNative(
-              apiKey: config.cdpApiKey,
-              appGroup: config.iOSAppGroup!,
-            );
-          } else {
-            debugPrint(
-              "[CDP] iOS App Group not provided. Background push tracking may fail.",
-            );
-          }
-        } else if (Platform.isAndroid) {
-          // ✅ For Android, just save using SharedPreferences
-          await NativeBridge.saveApiKeyToNative(
-            apiKey: config.cdpApiKey,
-            appGroup: '', // not used but required by method signature
+        // Save API key to native storage for background push notification handling
+        // Works with appGroup on iOS, and without it on Android
+        await NativeBridge.saveApiKeyToNative(
+          apiKey: config.cdpApiKey,
+          appGroup: config.appGroup,  // Will use iOSAppGroup on iOS, ignored on Android
+        );
+        
+        if (Platform.isIOS && config.iOSAppGroup == null) {
+          debugPrint(
+            "[CDP] iOS App Group not provided. Background push tracking may fail on iOS.",
           );
         }
-      } on PlatformException catch (e) {
-        debugPrint("[CDP] Failed to save API key natively: ${e.message}");
+        
+        debugPrint("[CDP] API key saved to native storage for background push tracking");
+      } catch (e) {
+        debugPrint("[CDP] Failed to save API key natively: $e");
       }
     }
 

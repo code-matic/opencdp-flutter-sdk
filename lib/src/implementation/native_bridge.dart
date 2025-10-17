@@ -5,15 +5,21 @@ class NativeBridge {
   static const MethodChannel _channel = MethodChannel('open_cdp_sdk');
 
   /// Save API key to native shared storage (Android: SharedPreferences, iOS: UserDefaults)
+  /// On iOS, requires an app group
+  /// On Android, the app group is not used
   static Future<void> saveApiKeyToNative({
     required String apiKey,
-    required String appGroup,
+    String? appGroup,
   }) async {
     try {
-      await _channel.invokeMethod('opencdpsdk_save_api_key', {
-        'apiKey': apiKey,
-        'appGroup': appGroup,
-      });
+      // Create a map that will include appGroup only if it's not null
+      final Map<String, dynamic> args = {'apiKey': apiKey};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      
+      await _channel.invokeMethod('opencdpsdk_save_api_key', args);
+      debugPrint('[CDP] API key saved to native storage');
     } on PlatformException catch (e) {
       debugPrint('[CDP] Failed to save API key to native: ${e.message}');
     }
@@ -42,13 +48,21 @@ class NativeBridge {
   }
 
   /// Retrieve API key from native shared storage
+  /// On iOS, requires an app group
+  /// On Android, the app group is not used
   static Future<String?> getApiKeyFromNative({
-    required String appGroup,
+    String? appGroup,
   }) async {
     try {
+      // Create a map that will include appGroup only if it's not null
+      final Map<String, dynamic> args = {};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      
       final apiKey = await _channel.invokeMethod<String>(
         'opencdpsdk_get_api_key',
-        {'appGroup': appGroup},
+        args,
       );
       return apiKey;
     } on PlatformException catch (e) {
@@ -83,13 +97,19 @@ class NativeBridge {
 
   /// Clear API key from native shared storage
   /// This is important for reinitialization to ensure we're not using the old key
+  /// On iOS, requires an app group
+  /// On Android, the app group is not used
   static Future<void> clearApiKeyFromNative({
-    required String appGroup,
+    String? appGroup,
   }) async {
     try {
-      await _channel.invokeMethod('opencdpsdk_clear_api_key', {
-        'appGroup': appGroup,
-      });
+      // Create a map that will include appGroup only if it's not null
+      final Map<String, dynamic> args = {};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      
+      await _channel.invokeMethod('opencdpsdk_clear_api_key', args);
       debugPrint('[CDP] API key cleared from native storage');
     } on PlatformException catch (e) {
       debugPrint('[CDP] Failed to clear API key from native: ${e.message}');

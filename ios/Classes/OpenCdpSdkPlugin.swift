@@ -13,17 +13,25 @@ public class OpenCdpSdkPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "opencdpsdk_save_api_key":
             guard let args = call.arguments as? [String: Any],
-                  let apiKey = args["apiKey"] as? String,
-                  let appGroup = args["appGroup"] as? String else {
-                result(FlutterError(code: "INVALID_ARGS", message: "Missing or invalid arguments", details: nil))
+                  let apiKey = args["apiKey"] as? String else {
+                result(FlutterError(code: "INVALID_ARGS", message: "Missing apiKey argument", details: nil))
                 return
             }
-
-            if saveApiKeyToSharedStorage(apiKey: apiKey, appGroup: appGroup) {
-                print("✅ API Key saved successfully to shared storage.")
-                result(true)
+            
+            // Get app group if provided
+            let appGroup = args["appGroup"] as? String
+            
+            if let appGroup = appGroup, !appGroup.isEmpty {
+                if saveApiKeyToSharedStorage(apiKey: apiKey, appGroup: appGroup) {
+                    print("✅ API Key saved successfully to shared storage.")
+                    result(true)
+                } else {
+                    result(FlutterError(code: "SAVE_FAILED", message: "Invalid App Group ID", details: nil))
+                }
             } else {
-                result(FlutterError(code: "SAVE_FAILED", message: "Invalid App Group ID", details: nil))
+                // No app group provided - might be running on Android
+                print("⚠️ No app group provided, cannot save API key on iOS.")
+                result(false)
             }
             
         case "opencdpsdk_save_user_id":
@@ -50,17 +58,25 @@ public class OpenCdpSdkPlugin: NSObject, FlutterPlugin {
             }
             
         case "opencdpsdk_clear_api_key":
-            guard let args = call.arguments as? [String: Any],
-                  let appGroup = args["appGroup"] as? String else {
-                result(FlutterError(code: "INVALID_ARGS", message: "Missing appGroup argument", details: nil))
+            guard let args = call.arguments as? [String: Any] else {
+                result(FlutterError(code: "INVALID_ARGS", message: "Missing arguments", details: nil))
                 return
             }
             
-            if clearApiKeyFromSharedStorage(appGroup: appGroup) {
-                print("✅ API Key cleared successfully from shared storage.")
-                result(true)
+            // Get app group if provided
+            let appGroup = args["appGroup"] as? String
+            
+            if let appGroup = appGroup, !appGroup.isEmpty {
+                if clearApiKeyFromSharedStorage(appGroup: appGroup) {
+                    print("✅ API Key cleared successfully from shared storage.")
+                    result(true)
+                } else {
+                    result(FlutterError(code: "CLEAR_FAILED", message: "Invalid App Group ID", details: nil))
+                }
             } else {
-                result(FlutterError(code: "CLEAR_FAILED", message: "Invalid App Group ID", details: nil))
+                // No app group provided - might be running on Android
+                print("⚠️ No app group provided, cannot clear API key on iOS.")
+                result(false)
             }
             
         case "opencdpsdk_clear_user_id":
@@ -86,14 +102,22 @@ public class OpenCdpSdkPlugin: NSObject, FlutterPlugin {
             }
             
         case "opencdpsdk_get_api_key":
-            guard let args = call.arguments as? [String: Any],
-                  let appGroup = args["appGroup"] as? String else {
-                result(FlutterError(code: "INVALID_ARGS", message: "Missing appGroup argument", details: nil))
+            guard let args = call.arguments as? [String: Any] else {
+                result(FlutterError(code: "INVALID_ARGS", message: "Missing arguments", details: nil))
                 return
             }
             
-            let apiKey = getApiKeyFromSharedStorage(appGroup: appGroup)
-            result(apiKey)
+            // Get app group if provided
+            let appGroup = args["appGroup"] as? String
+            
+            if let appGroup = appGroup, !appGroup.isEmpty {
+                let apiKey = getApiKeyFromSharedStorage(appGroup: appGroup)
+                result(apiKey)
+            } else {
+                // No app group provided - might be running on Android
+                print("⚠️ No app group provided, cannot get API key on iOS.")
+                result(nil)
+            }
             
         case "opencdpsdk_get_user_id":
             guard let args = call.arguments as? [String: Any] else {
