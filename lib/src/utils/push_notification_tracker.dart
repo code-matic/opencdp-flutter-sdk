@@ -118,7 +118,7 @@ class PushNotificationTracker {
           if (retryCount == _maxRetries) {
             debugPrint(
               '[CDP] Failed to send ${_mapEventToStatus(event)} metric after $_maxRetries retries '
-              '(status: ${response.statusCode}) => ${response.body}',
+              '(status: ${response.statusCode})Request body:{jsonEncode(body)} Response body:=> ${response.body}',
             );
             return false;
           }
