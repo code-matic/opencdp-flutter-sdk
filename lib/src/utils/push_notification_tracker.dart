@@ -103,7 +103,7 @@ class PushNotificationTracker {
           Uri.parse(_url),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
+            'Authorization': apiKey,
           },
           body: jsonEncode(body),
         );
