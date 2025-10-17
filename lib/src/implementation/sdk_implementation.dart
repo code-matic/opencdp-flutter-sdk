@@ -429,14 +429,23 @@ class OpenCDPSDKImplementation {
         return;
       }
 
+      final personId = isBackground
+          ? await NativeBridge.getUserIdFromNative(
+              appGroup: '') //() // Secure native storage fetch
+          : _userId;
+
       // For background operations, fire-and-forget might be more appropriate
       // to avoid keeping the background task alive unnecessarily
       if (isBackground) {
         PushNotificationTracker.sendMetricAndForget(apiKey, event, messageId,
-            sendContext: sendContext, sendContextId: sendContextId);
+            sendContext: sendContext,
+            sendContextId: sendContextId,
+            personId: personId);
       } else {
         await PushNotificationTracker.sendMetric(apiKey, event, messageId,
-            sendContext: sendContext, sendContextId: sendContextId);
+            sendContext: sendContext,
+            sendContextId: sendContextId,
+            personId: personId);
       }
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
@@ -452,6 +461,7 @@ class OpenCDPSDKImplementation {
           isBackground: isBackground,
           appGroup: config.appGroup,
           sendContext: sendContext,
+          personId: _userId,
           sendContextId: sendContextId);
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
