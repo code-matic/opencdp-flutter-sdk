@@ -96,6 +96,9 @@ class PushNotificationTracker {
         // Use a new client for each attempt in case of connection issues
         final client = _getClient();
 
+        debugPrint(
+            '[CDP] Sending push metric $apiKey$retryCount: ${jsonEncode(body)}...');
+
         final response = await client.post(
           Uri.parse(_url),
           headers: {
