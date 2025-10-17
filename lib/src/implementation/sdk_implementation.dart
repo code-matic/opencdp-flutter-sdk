@@ -368,8 +368,12 @@ class OpenCDPSDKImplementation {
         });
       } else if (Platform.isIOS) {
         final iosInfo = await _deviceInfo.iosInfo;
+
         platform = 'ios';
-        deviceId = iosInfo.identifierForVendor ?? '';
+
+        final getdeviceId =
+            '${iosInfo.modelName}-${'Apple'}-$_currentIdentifier';
+        deviceId = generateMd5Hash(getdeviceId);
         deviceAttributes.addAll({
           'device_manufacturer': 'Apple',
           'device_model': iosInfo.modelName,
