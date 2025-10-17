@@ -5,6 +5,7 @@ import 'package:customer_io/customer_io.dart' as cio;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/hash_generator.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -354,7 +355,11 @@ class OpenCDPSDKImplementation {
       if (Platform.isAndroid) {
         final androidInfo = await _deviceInfo.androidInfo;
         platform = 'android';
-        deviceId = androidInfo.id;
+        final getdeviceId =
+            '${androidInfo.model}-${androidInfo.manufacturer}-$_currentIdentifier';
+        //hash to make deviceId unique per user
+        deviceId = generateMd5Hash(getdeviceId);
+
         deviceAttributes.addAll({
           'device_manufacturer': androidInfo.manufacturer,
           'device_model': androidInfo.model,
@@ -367,7 +372,7 @@ class OpenCDPSDKImplementation {
         deviceId = iosInfo.identifierForVendor ?? '';
         deviceAttributes.addAll({
           'device_manufacturer': 'Apple',
-          'device_model': iosInfo.model,
+          'device_model': iosInfo.modelName,
           'os_version': iosInfo.systemVersion,
           'os_name': iosInfo.systemName,
         });
