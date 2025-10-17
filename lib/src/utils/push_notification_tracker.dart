@@ -43,10 +43,10 @@ class PushNotificationTracker {
   static Future<bool> sendMetric(
     String apiKey,
     MetricEvent event,
-    String messageId, {
+    String deliveryMessageId, {
     String? personId,
-    String sendContext = "transactional",
-    String sendContextId = "",
+    String deliverySendContext = "transactional",
+    String deliverySendContextId = "",
     bool isBackground = false,
     String? appGroup,
   }) async {
@@ -60,9 +60,9 @@ class PushNotificationTracker {
       );
     }
 
-    // If we still don't have a userId, check if it's in the messageId (some systems embed it)
-    if (userId == null && messageId.contains(':')) {
-      final parts = messageId.split(':');
+    // If we still don't have a userId, check if it's in the deliveryMessageId (some systems embed it)
+    if (userId == null && deliveryMessageId.contains(':')) {
+      final parts = deliveryMessageId.split(':');
       if (parts.length > 1) {
         userId = parts[0];
         debugPrint(
@@ -80,10 +80,10 @@ class PushNotificationTracker {
     final timestamp = DateTime.now().toUtc().toIso8601String();
 
     final body = {
-      'message_id': messageId,
+      'delivery_message_id': deliveryMessageId,
       'person_id': userId,
-      'send_context': sendContext,
-      'send_context_id': sendContextId,
+      'delivery_send_context': deliverySendContext,
+      'delivery_send_context_id': deliverySendContextId,
       'status': _mapEventToStatus(event),
       'ts': timestamp,
     };
@@ -148,10 +148,10 @@ class PushNotificationTracker {
   static void sendMetricAndForget(
     String apiKey,
     MetricEvent event,
-    String messageId, {
+    String deliveryMessageId, {
     String? personId,
-    String sendContext = "transactional",
-    String sendContextId = "",
+    String deliverySendContext = "transactional",
+    String deliverySendContextId = "",
     bool isBackground = false,
     String? appGroup,
   }) {
@@ -160,10 +160,10 @@ class PushNotificationTracker {
     sendMetric(
       apiKey,
       event,
-      messageId,
+      deliveryMessageId,
       personId: personId,
-      sendContext: sendContext,
-      sendContextId: sendContextId,
+      deliverySendContext: deliverySendContext,
+      deliverySendContextId: deliverySendContextId,
       isBackground: isBackground,
       appGroup: appGroup,
     );

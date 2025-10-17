@@ -419,9 +419,9 @@ class OpenCDPSDKImplementation {
 
   static Future<void> trackBackgroundPushNotificationMetric(
       MetricEvent event,
-      String messageId,
-      String sendContext,
-      String sendContextId,
+      String deliveryMessageId,
+      String deliverySendContext,
+      String deliverySendContextId,
       bool isBackground,
       {String? appGroup,
       String? apiKeyOverride}) async {
@@ -466,9 +466,9 @@ class OpenCDPSDKImplementation {
         PushNotificationTracker.sendMetricAndForget(
           apiKey,
           event,
-          messageId,
-          sendContext: sendContext,
-          sendContextId: sendContextId,
+          deliveryMessageId,
+          deliverySendContext: deliverySendContext,
+          deliverySendContextId: deliverySendContextId,
           personId: personId,
           isBackground: true,
           appGroup: appGroup,
@@ -477,9 +477,9 @@ class OpenCDPSDKImplementation {
         await PushNotificationTracker.sendMetric(
           apiKey,
           event,
-          messageId,
-          sendContext: sendContext,
-          sendContextId: sendContextId,
+          deliveryMessageId,
+          deliverySendContext: deliverySendContext,
+          deliverySendContextId: deliverySendContextId,
           personId: personId,
           isBackground: false,
         );
@@ -489,17 +489,21 @@ class OpenCDPSDKImplementation {
     }
   }
 
-  Future<void> trackPushNotificationMetric(MetricEvent event, String messageId,
-      bool isBackground, String sendContext, String sendContextId) async {
+  Future<void> trackPushNotificationMetric(
+      MetricEvent event,
+      String deliveryMessageId,
+      bool isBackground,
+      String deliverySendContext,
+      String deliverySendContextId) async {
     try {
       // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
-          config.cdpApiKey, event, messageId,
+          config.cdpApiKey, event, deliveryMessageId,
           isBackground: isBackground,
           appGroup: config.appGroup,
-          sendContext: sendContext,
+          deliverySendContext: deliverySendContext,
           personId: _userId,
-          sendContextId: sendContextId);
+          deliverySendContextId: deliverySendContextId);
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }

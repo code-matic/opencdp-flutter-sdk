@@ -271,33 +271,35 @@ class OpenCDPSDK {
   /// Handles a delivered push notification when app is in foreground
   static Future<void> handleForegroundPushDelivery(
       Map<String, dynamic> data) async {
-    final messageId = data['message_id'] as String?;
-    if (messageId == null || messageId.isEmpty) {
-      debugPrint('[CDP] No message_id found in foreground push payload.');
+    final deliveryMessageId = data['delivery_message_id'] as String?;
+    if (deliveryMessageId == null || deliveryMessageId.isEmpty) {
+      debugPrint(
+          '[CDP] No delivery_message_id found in foreground push payload.');
       return;
     }
-    final sendContextId = data['send_context_id'] ?? "";
-    final sendContext = data['send_context'] ?? "";
+    final deliverySendContextId = data['delivery_send_context_id'] ?? "";
+    final deliverySendContext = data['delivery_send_context'] ?? "";
 
     await _implementation!.trackPushNotificationMetric(
       MetricEvent.delivered,
-      messageId,
+      deliveryMessageId,
       false,
-      sendContext,
-      sendContextId,
+      deliverySendContext,
+      deliverySendContextId,
     );
   }
 
   /// Handles a delivered push notification when app is in background
   static Future<void> handleBackgroundPushDelivery(
       Map<String, dynamic> data) async {
-    final messageId = data['message_id'] as String?;
-    if (messageId == null || messageId.isEmpty) {
-      debugPrint('[CDP] No message_id found in background push payload.');
+    final deliveryMessageId = data['delivery_message_id'] as String?;
+    if (deliveryMessageId == null || deliveryMessageId.isEmpty) {
+      debugPrint(
+          '[CDP] No delivery_message_id found in background push payload.');
       return;
     }
-    final sendContextId = data['send_context_id'] ?? "";
-    final sendContext = data['send_context'] ?? "";
+    final deliverySendContextId = data['delivery_send_context_id'] ?? "";
+    final deliverySendContext = data['delivery_send_context'] ?? "";
 
     // Get API key from instance if initialized, otherwise null and will rely on native storage
     String? apiKey;
@@ -316,9 +318,9 @@ class OpenCDPSDK {
 
     await OpenCDPSDKImplementation.trackBackgroundPushNotificationMetric(
       MetricEvent.delivered,
-      messageId,
-      sendContext,
-      sendContextId,
+      deliveryMessageId,
+      deliverySendContext,
+      deliverySendContextId,
       true, // This is a background event
       apiKeyOverride: apiKey,
       appGroup: appGroup,
@@ -328,21 +330,21 @@ class OpenCDPSDK {
   /// Handles when the user opens a push notification
   static Future<void> handlePushNotificationOpen(
       Map<String, dynamic> data) async {
-    final messageId = data['message_id'] as String?;
-    if (messageId == null || messageId.isEmpty) {
-      debugPrint('[CDP] No message_id found in opened push payload.');
+    final deliveryMessageId = data['delivery_message_id'] as String?;
+    if (deliveryMessageId == null || deliveryMessageId.isEmpty) {
+      debugPrint('[CDP] No delivery_message_id found in opened push payload.');
       return;
     }
 
-    final sendContextId = data['send_context_id'] ?? "";
-    final sendContext = data['send_context'] ?? "";
+    final deliverySendContextId = data['delivery_send_context_id'] ?? "";
+    final deliverySendContext = data['delivery_send_context'] ?? "";
 
     await _implementation!.trackPushNotificationMetric(
       MetricEvent.opened,
-      messageId,
+      deliveryMessageId,
       false,
-      sendContext,
-      sendContextId,
+      deliverySendContext,
+      deliverySendContextId,
     );
   }
 

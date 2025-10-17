@@ -7,8 +7,8 @@ public class OpenCdpPushExtensionHelper {
         let userInfo = request.content.userInfo
 
         // 1. Extract your unique delivery ID from the push payload.
-        if let messageId = userInfo["message_id"] as? String,
-           let sendContext = userInfo["send_context"] as? String {
+        if let deliveryMessageId = userInfo["delivery_message_id"] as? String,
+           let deliverySendContext = userInfo["delivery_send_context"] as? String {
             
             // 2. Read the API Key from the shared storage
             if let apiKey = readApiKeyFromSharedStorage(appGroup: appGroup) {
@@ -21,14 +21,14 @@ public class OpenCdpPushExtensionHelper {
                 // If we have a personId (either from payload or storage), proceed
                 if let personId = personId {
                     // Optional send context ID from the payload
-                    let sendContextId = userInfo["send_context_id"] as? String ?? ""
+                    let deliverySendContextId = userInfo["delivery_send_context_id"] as? String ?? ""
                     
                     // 3. Make the API call to report the "delivered" event.
                     reportPushStatus(
-                        messageId: messageId,
+                        deliveryMessageId: deliveryMessageId,
                         personId: personId,
-                        sendContext: sendContext,
-                        sendContextId: sendContextId,
+                        deliverySendContext: deliverySendContext,
+                        deliverySendContextId: deliverySendContextId,
                         status: "delivered",
                         apiKey: apiKey
                     )
@@ -58,10 +58,10 @@ public class OpenCdpPushExtensionHelper {
     }
 
     private static func reportPushStatus(
-        messageId: String,
+        deliveryMessageId: String,
         personId: String,
-        sendContext: String,
-        sendContextId: String,
+        deliverySendContext: String,
+        deliverySendContextId: String,
         status: String,
         apiKey: String
     ) {
@@ -78,10 +78,10 @@ public class OpenCdpPushExtensionHelper {
         let timestamp = dateFormatter.string(from: Date())
         
         let body: [String: Any] = [
-            "message_id": messageId,
+            "delivery_message_id": deliveryMessageId,
             "person_id": personId,
-            "send_context": sendContext,
-            "send_context_id": sendContextId,
+            "delivery_send_context": deliverySendContext,
+            "delivery_send_context_id": deliverySendContextId,
             "status": status,
             "ts": timestamp
         ]
