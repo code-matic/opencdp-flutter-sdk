@@ -120,11 +120,9 @@ public class OpenCdpPushExtensionHelper {
         task.resume()
     }
 
-   private static let logger = Logger(subsystem: "com.aella.pushExtension", category: "OpenCDP")
-
    private static func log(_ message: String) {
-    logger.debug("\(message)")
-   }
+    os_log("[OpenCDP SDK - Push Extension] %@", message)
+    }
 
 
     
