@@ -117,5 +117,15 @@ public class OpenCdpPushExtensionHelper {
         task.resume()
     }
     
-    // ... (log function remains the same) ...
+        /// Debug Logger - Only logs in DEBUG mode
+    private static func log(_ message: String) {
+        #if DEBUG
+        debugPrint("[OpenCDP SDK - Push Extension] \(message)")
+        #else
+        // In release mode, only log error messages
+        if message.contains("Failed") || message.contains("Invalid") || message.contains("Could not") {
+            print("[OpenCDP SDK] \(message)")
+        }
+        #endif
+    }
 }
