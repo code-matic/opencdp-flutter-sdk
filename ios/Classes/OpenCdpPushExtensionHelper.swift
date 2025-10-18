@@ -1,29 +1,29 @@
-// In OpenCdpPushExtensionHelper.swift
-
 import Foundation
 import UserNotifications
+import os.log
 
 public class OpenCdpPushExtensionHelper {
 
     public static func didReceiveNotificationExtensionRequest(
         _ request: UNNotificationRequest,
         appGroup: String,
-        contentHandler: @escaping (UNNotificationContent) -> Void
+        completion: @escaping (UNNotificationContent) -> Void
     ) {
         log("Push notification received in extension")
         let bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent) ?? UNMutableNotificationContent()
         let userInfo = request.content.userInfo
 
+        // ✅ Check required payload keys
         guard let deliveryMessageId = userInfo["delivery_message_id"] as? String,
               let deliverySendContext = userInfo["delivery_send_context"] as? String else {
-            log("Essential delivery tracking info missing from payload.")
-            contentHandler(request.content)
+            log("Missing delivery tracking info. Returning original content.")
+            completion(request.content)
             return
         }
         
         guard let apiKey = readApiKeyFromSharedStorage(appGroup: appGroup) else {
-            log("API Key not found. Delivering original content.")
-            contentHandler(request.content)
+            log("API Key not found. Returning original content.")
+            completion(request.content)
             return
         }
 
@@ -31,13 +31,14 @@ public class OpenCdpPushExtensionHelper {
         let personIdFromPayload = userInfo["person_id"] as? String
         
         guard let personId = personIdFromPayload ?? userId else {
-            log("Could not find person_id. Delivering original content.")
-            contentHandler(request.content)
+            log("Could not find person_id. Returning original content.")
+            completion(request.content)
             return
         }
         
         let deliverySendContextId = userInfo["delivery_send_context_id"] as? String ?? ""
         
+        // 📡 Report push status
         reportPushStatus(
             deliveryMessageId: deliveryMessageId,
             personId: personId,
@@ -46,7 +47,9 @@ public class OpenCdpPushExtensionHelper {
             status: "delivered",
             apiKey: apiKey
         ) {
-            contentHandler(bestAttemptContent)
+            // ✅ Modify content here if needed
+            // bestAttemptContent.title = "New Title"
+            completion(bestAttemptContent)
         }
     }
 
@@ -106,27 +109,33 @@ public class OpenCdpPushExtensionHelper {
         
         request.httpBody = jsonData
             
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession.shared.dataTask(with: request) { _, response, error in
             if let error = error {
                 log("Failed to report push status: \(error.localizedDescription)")
             } else if let httpResponse = response as? HTTPURLResponse {
-                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
-                    log("Push \(status) event reported successfully")
-                } else {
-                    log("Failed to report push status. Status code: \(httpResponse.statusCode)")
-                }
+                log("Push status response: \(httpResponse.statusCode)")
             }
             completion()
         }
         task.resume()
     }
+
+   private static let logger = Logger(subsystem: "com.aella.pushExtension", category: "OpenCDP")
+
+   private static func log(_ message: String) {
+    logger.debug("\(message)")
+   }
+
+
     
-    /// Debug Logger - Only logs in DEBUG mode
-    private static func log(_ message: String) {
-        #if DEBUG
-        debugPrint("[OpenCDP SDK - Push Extension] \(message)")
-        #else
-        //do nothing in release mode
-        #endif
-    }
+    // private static func log(_ message: String) {
+    //     #if DEBUG
+    //     debugPrint("[OpenCDP SDK - Push Extension] \(message)")
+    //     #endif
+    // }
+
+
+
+
+
 }
