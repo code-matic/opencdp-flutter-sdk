@@ -14,16 +14,13 @@ public class OpenCdpPushExtensionHelper {
         let bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent) ?? UNMutableNotificationContent()
         let userInfo = request.content.userInfo
 
-        // 1. Extract your unique delivery ID from the push payload.
         guard let deliveryMessageId = userInfo["delivery_message_id"] as? String,
               let deliverySendContext = userInfo["delivery_send_context"] as? String else {
-            // If essential info is missing, deliver original content immediately
             log("Essential delivery tracking info missing from payload.")
             contentHandler(request.content)
             return
         }
         
-        // 2. Read the API Key from the shared storage
         guard let apiKey = readApiKeyFromSharedStorage(appGroup: appGroup) else {
             log("API Key not found. Delivering original content.")
             contentHandler(request.content)
@@ -33,17 +30,14 @@ public class OpenCdpPushExtensionHelper {
         let userId = readUserIdFromSharedStorage(appGroup: appGroup)
         let personIdFromPayload = userInfo["person_id"] as? String
         
-        // If we have a personId (either from payload or storage), proceed
         guard let personId = personIdFromPayload ?? userId else {
             log("Could not find person_id. Delivering original content.")
             contentHandler(request.content)
             return
         }
         
-        // Optional send context ID
         let deliverySendContextId = userInfo["delivery_send_context_id"] as? String ?? ""
         
-        // 3. Make the API call and pass the contentHandler to it
         reportPushStatus(
             deliveryMessageId: deliveryMessageId,
             personId: personId,
@@ -52,13 +46,25 @@ public class OpenCdpPushExtensionHelper {
             status: "delivered",
             apiKey: apiKey
         ) {
-            // This completion block is now called after the network request.
-            // Now it's safe to deliver the notification.
             contentHandler(bestAttemptContent)
         }
     }
 
-    // ... (readApiKeyFromSharedStorage and readUserIdFromSharedStorage remain the same) ...
+    private static func readApiKeyFromSharedStorage(appGroup: String) -> String? {
+        if let userDefaults = UserDefaults(suiteName: appGroup) {
+            return userDefaults.string(forKey: "opencdpsdk_api_key")
+        }
+        log("Could not read API Key: Invalid App Group ID provided.")
+        return nil
+    }
+    
+    private static func readUserIdFromSharedStorage(appGroup: String) -> String? {
+        if let userDefaults = UserDefaults(suiteName: appGroup) {
+            return userDefaults.string(forKey: "opencdpsdk_user_id")
+        }
+        log("Could not read User ID: Invalid App Group ID provided.")
+        return nil
+    }
 
     private static func reportPushStatus(
         deliveryMessageId: String,
@@ -67,11 +73,10 @@ public class OpenCdpPushExtensionHelper {
         deliverySendContextId: String,
         status: String,
         apiKey: String,
-        completion: @escaping () -> Void // <-- Add a completion handler
+        completion: @escaping () -> Void
     ) {
         guard let url = URL(string: "https://api.opencdp.io/gateway/data-gateway/v1/message/delivery/push") else {
-            log("Invalid URL for reporting push status")
-            completion() // <-- Call completion on failure
+            completion()
             return
         }
 
@@ -95,14 +100,13 @@ public class OpenCdpPushExtensionHelper {
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
             log("Failed to serialize request body to JSON")
-            completion() // <-- Call completion on failure
+            completion()
             return
         }
         
         request.httpBody = jsonData
             
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // This block runs when the network call is finished
             if let error = error {
                 log("Failed to report push status: \(error.localizedDescription)")
             } else if let httpResponse = response as? HTTPURLResponse {
@@ -112,20 +116,17 @@ public class OpenCdpPushExtensionHelper {
                     log("Failed to report push status. Status code: \(httpResponse.statusCode)")
                 }
             }
-            completion() // <-- IMPORTANT: Call completion here, regardless of success or failure
+            completion()
         }
         task.resume()
     }
     
-        /// Debug Logger - Only logs in DEBUG mode
+    /// Debug Logger - Only logs in DEBUG mode
     private static func log(_ message: String) {
         #if DEBUG
         debugPrint("[OpenCDP SDK - Push Extension] \(message)")
         #else
-        // In release mode, only log error messages
-        if message.contains("Failed") || message.contains("Invalid") || message.contains("Could not") {
-            print("[OpenCDP SDK] \(message)")
-        }
+        //do nothing in release mode
         #endif
     }
 }
