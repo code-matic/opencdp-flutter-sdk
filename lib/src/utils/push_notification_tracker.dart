@@ -80,10 +80,10 @@ class PushNotificationTracker {
     final timestamp = DateTime.now().toUtc().toIso8601String();
 
     final body = {
-      'delivery_message_id': deliveryMessageId,
+      'message_id': deliveryMessageId,
       'person_id': userId,
-      'delivery_send_context': deliverySendContext,
-      'delivery_send_context_id': deliverySendContextId,
+      'send_context': deliverySendContext,
+      'send_context_id': deliverySendContextId,
       'status': _mapEventToStatus(event),
       'ts': timestamp,
     };

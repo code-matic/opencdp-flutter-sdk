@@ -90,10 +90,10 @@ public class OpenCdpPushExtensionHelper {
         let timestamp = dateFormatter.string(from: Date())
         
         let body: [String: Any] = [
-            "delivery_message_id": deliveryMessageId,
+            "message_id": deliveryMessageId,
             "person_id": personId,
-            "delivery_send_context": deliverySendContext,
-            "delivery_send_context_id": deliverySendContextId,
+            "send_context": deliverySendContext,
+            "send_context_id": deliverySendContextId,
             "status": status,
             "ts": timestamp
         ]
