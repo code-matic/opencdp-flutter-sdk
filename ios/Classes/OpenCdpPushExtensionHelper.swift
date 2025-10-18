@@ -4,6 +4,7 @@ import UserNotifications
 public class OpenCdpPushExtensionHelper {
 
     public static func didReceiveNotificationExtensionRequest(_ request: UNNotificationRequest, appGroup: String) {
+        log("Push notification received in extension")
         let userInfo = request.content.userInfo
 
         // 1. Extract your unique delivery ID from the push payload.
@@ -85,26 +86,36 @@ public class OpenCdpPushExtensionHelper {
             "status": status,
             "ts": timestamp
         ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                log("Failed to report push status: \(error.localizedDescription)")
-            } else if let httpResponse = response as? HTTPURLResponse {
-                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
-                    log("Push \(status) event reported successfully.")
-                } else {
-                    log("Failed to report push status. Status code: \(httpResponse.statusCode)")
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: body) {
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    log("Failed to report push status: \(error.localizedDescription)")
+                } else if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                        log("Push \(status) event reported successfully")
+                    } else {
+                        log("Failed to report push status. Status code: \(httpResponse.statusCode)")
+                    }
                 }
             }
+            task.resume()
+        } else {
+            log("Failed to serialize request body to JSON")
         }
-        task.resume()
     }
 
     /// Debug Logger - Only logs in DEBUG mode
     private static func log(_ message: String) {
         #if DEBUG
-        debugPrint("[OpenCDP SDK] \(message)")
+        debugPrint("[OpenCDP SDK - Push Extension] \(message)")
+        #else
+        // In release mode, only log error messages
+        if message.contains("Failed") || message.contains("Invalid") || message.contains("Could not") {
+            print("[OpenCDP SDK] \(message)")
+        }
         #endif
     }
 }
