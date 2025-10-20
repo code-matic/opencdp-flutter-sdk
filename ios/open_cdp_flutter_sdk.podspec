@@ -9,13 +9,19 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'MIT', :file => '../LICENSE' }
   s.author           = { 'Codematic Technology Services' => 'developers@codematic.io' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*' # This line includes all files in the Classes directory
+
+  # Correctly specify source files and explicitly expose public headers
+  s.source_files = 'Classes/**/*.{h,m,swift}'
+  s.public_header_files = 'Classes/**/*.h'
+
   s.dependency 'Flutter'
   s.platform = :ios, '11.0'
 
+  # NOTE: The explicit 'module_name' has been removed. 
+  # This allows CocoaPods to correctly infer the name from 's.name', avoiding casing conflicts.
+
   # Make it modular and usable in Swift/Extensions
   s.static_framework = true
-  s.module_name      = 'OpenCDPFlutterSDK'
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
