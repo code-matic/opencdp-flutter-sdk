@@ -13,6 +13,10 @@ Pod::Spec.new do |s|
   s.dependency 'Flutter'
   s.platform = :ios, '11.0'
 
+  # Make it modular and usable in Swift/Extensions
+  s.static_framework = true
+  s.module_name      = 'OpenCDPFlutterSDK'
+
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
   s.swift_version = '5.0'
