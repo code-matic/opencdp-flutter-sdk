@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0] - 2024-06-20
+* Push notification tracking and deliverability improvements
+  * Enhanced support for push notification handling in iOS app extensions using the specified app group
+  * Ensures proper tracking of notifications received in app extensions
+  * Android push notification tracking improvements
+* Updated README with clearer instructions for push notification setup
+
+
 ## 1.0.5
 
 * Breaking: Removed `OpenCDPSDK.update` (user properties update)

@@ -11,7 +11,7 @@ import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
 class PushNotificationTracker {
   // URL for push notification metrics
   static const _url =
-      'https://simple-push.onrender.com/${CDPEndpoints.notificationMetrics}';
+      '${CDPEndpoints.baseUrl}${CDPEndpoints.notificationMetrics}';
 
   // Maximum number of retry attempts
   static const _maxRetries = 3;

@@ -13,7 +13,7 @@ public class OpenCdpPushExtensionHelper {
         let bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent) ?? UNMutableNotificationContent()
         let userInfo = request.content.userInfo
 
-        // ✅ Check required payload keys
+        // Check required payload keys
         guard let deliveryMessageId = userInfo["delivery_message_id"] as? String,
               let deliverySendContext = userInfo["delivery_send_context"] as? String else {
             log("Missing delivery tracking info. Returning original content.")
@@ -47,7 +47,7 @@ public class OpenCdpPushExtensionHelper {
             status: "delivered",
             apiKey: apiKey
         ) {
-            // ✅ Modify content here if needed
+            // Modify content here if needed
             // bestAttemptContent.title = "New Title"
             completion(bestAttemptContent)
         }
@@ -78,12 +78,7 @@ public class OpenCdpPushExtensionHelper {
         apiKey: String,
         completion: @escaping () -> Void
     ) {
-        // guard let url = URL(string: "https://api.opencdp.io/gateway/data-gateway/v1/message/delivery/push") else {
-        //     completion()
-        //     return
-        // }
-        // use this: https://simple-push.onrender.com
-        guard let url = URL(string: "https://simple-push.onrender.com/v1/message/delivery/push") else {
+        guard let url = URL(string: "https://api.opencdp.io/gateway/data-gateway/v1/message/delivery/push") else {
             completion()
             return
         }
