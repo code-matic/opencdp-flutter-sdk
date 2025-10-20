@@ -78,7 +78,12 @@ public class OpenCdpPushExtensionHelper {
         apiKey: String,
         completion: @escaping () -> Void
     ) {
-        guard let url = URL(string: "https://api.opencdp.io/gateway/data-gateway/v1/message/delivery/push") else {
+        // guard let url = URL(string: "https://api.opencdp.io/gateway/data-gateway/v1/message/delivery/push") else {
+        //     completion()
+        //     return
+        // }
+        // use this: https://simple-push.onrender.com
+        guard let url = URL(string: "https://simple-push.onrender.com/v1/message/delivery/push") else {
             completion()
             return
         }
