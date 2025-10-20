@@ -31,7 +31,7 @@ class QueuedRequest {
     this.identifier,
     this.retryCount = 0,
     DateTime? createdAt,
-  }) : this.createdAt = createdAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now();
 
   /// Creates a `QueuedRequest` instance from a JSON map.
   factory QueuedRequest.fromJson(Map<String, dynamic> json) {

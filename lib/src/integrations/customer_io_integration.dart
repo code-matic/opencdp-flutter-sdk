@@ -59,8 +59,6 @@ class CustomerIOIntegration {
         return cio_config.PushConfigAndroid(
           pushClickBehavior: cio_enums.PushClickBehaviorAndroid.resetTaskStack,
         );
-      default:
-        return null;
     }
   }
 

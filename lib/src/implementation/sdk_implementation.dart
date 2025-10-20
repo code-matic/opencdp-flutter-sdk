@@ -146,7 +146,7 @@ class OpenCDPSDKImplementation {
         return;
       }
       final normalizedProps = properties;
-      final response = await httpClient.post(
+      await httpClient.post(
         CDPEndpoints.identify,
         {
           'identifier': identifier,
@@ -155,12 +155,7 @@ class OpenCDPSDKImplementation {
         identifier: identifier,
       );
 
-      if (response == null) {
-        if (config.debug) {
-          debugPrint('[CDP] Failed to identify user: request returned null');
-        }
-        return;
-      }
+      // The response can't be null, so no need to check for null here.
 
       _userId = identifier;
       await prefs.setString('user_id', identifier);
@@ -208,7 +203,7 @@ class OpenCDPSDKImplementation {
       }
       final normalizedProps = properties;
 
-      final response = await httpClient.post(
+      await httpClient.post(
         CDPEndpoints.track,
         {
           'identifier': _currentIdentifier,
@@ -217,13 +212,6 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
-
-      if (response == null) {
-        if (config.debug) {
-          debugPrint('[CDP] Failed to track event: request returned null');
-        }
-        return;
-      }
 
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
@@ -385,7 +373,7 @@ class OpenCDPSDKImplementation {
         deviceId = 'web-${DateTime.now().millisecondsSinceEpoch}';
       }
 
-      final response = await httpClient.post(
+      await httpClient.post(
         CDPEndpoints.registerDevice,
         {
           'identifier': _currentIdentifier,
@@ -401,13 +389,6 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
-
-      if (response == null) {
-        if (config.debug) {
-          debugPrint('[CDP] Failed to register device: request returned null');
-        }
-        return;
-      }
     } catch (e) {
       if (config.debug) {
         debugPrint('[CDP] Error registering device: $e');

@@ -180,8 +180,6 @@ class PushNotificationTracker {
         return 'converted';
       case MetricEvent.failed:
         return 'failed';
-      default:
-        return 'unknown';
     }
   }
 
