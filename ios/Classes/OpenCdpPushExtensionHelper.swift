@@ -1,8 +1,11 @@
 import Foundation
 import UserNotifications
-import os.log
+import os.log // Use the older os.log for backward compatibility
 
 public class OpenCdpPushExtensionHelper {
+    
+    // 1. Create a static OSLog object for categorization. This is backward compatible.
+    private static let osLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "com.opencdp.sdk", category: "PushExtension")
 
     public static func didReceiveNotificationExtensionRequest(
         _ request: UNNotificationRequest,
@@ -111,29 +114,20 @@ public class OpenCdpPushExtensionHelper {
             
         let task = URLSession.shared.dataTask(with: request) { _, response, error in
             if let error = error {
-                log("Failed to report push status: \(error.localizedDescription)")
+                // Use os_log directly for errors, marking the description as public.
+                os_log("Failed to report push status: %{public}@", log: Self.osLog, type: .error, error.localizedDescription)
             } else if let httpResponse = response as? HTTPURLResponse {
-                log("Push status response: \(httpResponse.statusCode)")
+                // For integers, use the %d format specifier. It's not redacted by default.
+                os_log("Push status response: %d", log: Self.osLog, type: .info, httpResponse.statusCode)
             }
             completion()
         }
         task.resume()
     }
 
-   private static func log(_ message: String) {
-    os_log("[OpenCDP SDK - Push Extension] %@", message)
+    // 2. Update the log function to use the older os_log API with public formatting.
+    private static func log(_ message: String) {
+        os_log("[OpenCDP SDK] %{public}@", log: Self.osLog, type: .info, message)
     }
-
-
-    
-    // private static func log(_ message: String) {
-    //     #if DEBUG
-    //     debugPrint("[OpenCDP SDK - Push Extension] \(message)")
-    //     #endif
-    // }
-
-
-
-
-
 }
+
