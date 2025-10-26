@@ -1,6 +1,16 @@
 # Changelog
 
 ## [1.1.0] - 2024-06-20
+
+* Breaking Changes
+  * Updated minimum Android SDK version to 24
+  * Updated compileSdk to 36 for Android
+
+* Updated dependencies
+* Updated Kotlin version to 2.1.0
+* Updated Android Gradle plugin to 8.9.1
+
+## [1.1.0] - 2024-06-20
 * Push notification tracking and deliverability improvements
   * Enhanced support for push notification handling in iOS app extensions using the specified app group
   * Ensures proper tracking of notifications received in app extensions

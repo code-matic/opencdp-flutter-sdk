@@ -11,13 +11,12 @@ dependencies:
     sdk: flutter
   open_cdp_flutter_sdk:
     path: ../
-  firebase_core: ^2.24.2
-  customer_io: ^2.1.6
+  customer_io: ^3.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^6.0.0
 
 flutter:
-  uses-material-design: true 
+  uses-material-design: true
