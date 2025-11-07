@@ -119,6 +119,15 @@ class OpenCDPSDKImplementation {
       }
       return false;
     }
+    // Check if identifier is an email address
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (emailRegex.hasMatch(identifier.trim())) {
+      if (config.debug) {
+        debugPrint('[CDP] Identifier cannot be an email address');
+      }
+      return false;
+    }
     return true;
   }
 
@@ -137,6 +146,7 @@ class OpenCDPSDKImplementation {
   Future<void> identifyUser({
     required String identifier,
     Map<String, dynamic> properties = const {},
+    String? customerIoId,
   }) async {
     try {
       if (!_ensureInitialized()) {
@@ -170,8 +180,13 @@ class OpenCDPSDKImplementation {
 
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
+        // Use customer_io_id if provided and not empty, otherwise fall back to identifier
+        final cioUserId =
+            (customerIoId != null && customerIoId.trim().isNotEmpty)
+                ? customerIoId
+                : _currentIdentifier;
         cio.CustomerIO.instance.identify(
-          userId: identifier,
+          userId: cioUserId,
           traits: normalizedProps,
         );
       }

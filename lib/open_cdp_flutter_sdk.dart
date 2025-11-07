@@ -172,6 +172,7 @@ class OpenCDPSDK {
   Future<void> identify({
     required String identifier,
     Map<String, dynamic> properties = const {},
+    String? customerIoId,
   }) async {
     if (_implementation == null) {
       debugPrint(
@@ -181,6 +182,7 @@ class OpenCDPSDK {
     await _implementation!.identifyUser(
       identifier: identifier,
       properties: properties,
+      customerIoId: customerIoId,
     );
   }
 
