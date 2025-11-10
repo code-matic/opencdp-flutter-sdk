@@ -116,6 +116,19 @@ await OpenCDPSDK.instance.identify(
 );
 ```
 
+#### Identify with Customer.io ID (Dual-Write)
+For clients who use email as their ID during Customer.io SDK integration, you can provide a separate `customerIoId`:
+
+```dart
+await OpenCDPSDK.instance.identify(
+  identifier: 'user123', // Non-email identifier for CDP
+  customerIoId: 'user@example.com', // Email for Customer.io integration
+  properties: {'name': 'John Doe', 'email': 'user@example.com'},
+);
+```
+
+**Note**: The `identifier` parameter cannot be an email address. If you need to use an email for Customer.io, use the `customerIoId` parameter.
+
 ### Track Events
 ```dart
 await OpenCDPSDK.instance.track(
@@ -146,6 +159,57 @@ await OpenCDPSDK.instance.registerDeviceToken(
   apnToken: 'apns-token',     // iOS
 );
 ```
+
+### Error Handling
+
+The SDK provides configurable error handling through the `throwErrorsBack` configuration option.
+
+#### Silent Error Handling (Default)
+By default, errors are logged in debug mode but don't interrupt your app flow:
+
+```dart
+await OpenCDPSDK.initialize(
+  config: OpenCDPConfig(
+    cdpApiKey: 'your-api-key',
+    debug: true, // Errors will be logged
+    throwErrorsBack: false, // Default: errors are silent
+  ),
+);
+
+// Errors are logged but don't throw exceptions
+await OpenCDPSDK.instance.identify(identifier: 'user@example.com'); // Logs error, continues
+```
+
+#### Strict Error Handling
+Enable `throwErrorsBack` to have errors thrown as exceptions that you can handle:
+
+```dart
+await OpenCDPSDK.initialize(
+  config: OpenCDPConfig(
+    cdpApiKey: 'your-api-key',
+    throwErrorsBack: true, // Errors will be thrown
+  ),
+);
+
+try {
+  await OpenCDPSDK.instance.identify(identifier: 'user@example.com');
+} on CDPValidationException catch (e) {
+  // Handle validation errors
+  print('Validation error: ${e.message}');
+  print('Field: ${e.field}');
+} on CDPException catch (e) {
+  // Handle API errors
+  print('API error: ${e.message}');
+  print('Status code: ${e.statusCode}');
+} catch (e) {
+  // Handle other errors
+  print('Unexpected error: $e');
+}
+```
+
+**Available Exception Types:**
+- `CDPValidationException`: Thrown when validation fails (e.g., empty identifier, email identifier)
+- `CDPException`: Thrown when API requests fail (e.g., network errors, non-2xx status codes)
 
 ---
 
@@ -381,6 +445,7 @@ end
 | `autoTrackDeviceAttributes` | bool | Automatically track device attributes |
 | `sendToCustomerIo` | bool | Enable Customer.io integration |
 | `customerIo` | CustomerIOConfig | Customer.io configuration |
+| `throwErrorsBack` | bool | When `true`, throws exceptions on errors. When `false` (default), errors are only logged in debug mode |
 
 ### CustomerIOConfig
 

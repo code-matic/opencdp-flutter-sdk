@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/event_type.dart';
+import 'package:open_cdp_flutter_sdk/src/models/validation_exception.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 /// Private implementation of the OpenCDP SDK
@@ -112,10 +113,19 @@ class OpenCDPSDKImplementation {
   // }
 
   /// Validate identifier
+  ///
+  /// Validates that the identifier is not empty and not an email address.
+  /// Error handling follows the [throwErrorsBack] configuration:
+  /// - If `throwErrorsBack` is true: throws [CDPValidationException]
+  /// - If `throwErrorsBack` is false: only logs in debug mode, returns false
   bool _validateIdentifier(String identifier) {
     if (identifier.trim().isEmpty) {
+      final errorMessage = 'Identifier cannot be empty';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'identifier');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Identifier cannot be empty');
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -123,8 +133,12 @@ class OpenCDPSDKImplementation {
     final emailRegex =
         RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     if (emailRegex.hasMatch(identifier.trim())) {
+      final errorMessage = 'Identifier cannot be an email address';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'identifier');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Identifier cannot be an email address');
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -132,10 +146,61 @@ class OpenCDPSDKImplementation {
   }
 
   /// Validate event name
+  ///
+  /// Validates that the event name is not empty.
+  /// Error handling follows the [throwErrorsBack] configuration:
+  /// - If `throwErrorsBack` is true: throws [CDPValidationException]
+  /// - If `throwErrorsBack` is false: only logs in debug mode, returns false
   bool _validateEventName(String eventName) {
     if (eventName.trim().isEmpty) {
+      final errorMessage = 'Event name cannot be empty';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'eventName');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Event name cannot be empty');
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// Validate customer.io ID (if provided, must not be empty)
+  ///
+  /// Validates that if customerIoId is provided, it must not be empty.
+  /// Error handling follows the [throwErrorsBack] configuration:
+  /// - If `throwErrorsBack` is true: throws [CDPValidationException]
+  /// - If `throwErrorsBack` is false: only logs in debug mode, returns false
+  bool _validateCustomerIoId(String? customerIoId) {
+    if (customerIoId != null && customerIoId.trim().isEmpty) {
+      final errorMessage = 'Customer.io ID cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'customerIoId');
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// Validate push notification token (if provided, must not be empty)
+  ///
+  /// Validates that if a push token is provided, it must not be empty.
+  /// Error handling follows the [throwErrorsBack] configuration:
+  /// - If `throwErrorsBack` is true: throws [CDPValidationException]
+  /// - If `throwErrorsBack` is false: only logs in debug mode, returns false
+  ///
+  /// [fieldName] is used in the error message to identify which token failed validation.
+  bool _validatePushToken(String? token, String fieldName) {
+    if (token != null && token.trim().isEmpty) {
+      final errorMessage = '$fieldName cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, fieldName);
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -143,6 +208,13 @@ class OpenCDPSDKImplementation {
   }
 
   /// Implementation of user identification
+  ///
+  /// Identifies a user with the given identifier and optional properties.
+  /// If [customerIoId] is provided, it will be used for Customer.io integration
+  /// instead of the main identifier.
+  ///
+  /// Throws [CDPValidationException] if validation fails and [throwErrorsBack] is enabled.
+  /// Throws [CDPException] if API request fails and [throwErrorsBack] is enabled.
   Future<void> identifyUser({
     required String identifier,
     Map<String, dynamic> properties = const {},
@@ -153,6 +225,9 @@ class OpenCDPSDKImplementation {
         return;
       }
       if (!_validateIdentifier(identifier)) {
+        return;
+      }
+      if (!_validateCustomerIoId(customerIoId)) {
         return;
       }
       final normalizedProps = properties;
@@ -180,15 +255,25 @@ class OpenCDPSDKImplementation {
 
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
-        // Use customer_io_id if provided and not empty, otherwise fall back to identifier
-        final cioUserId =
-            (customerIoId != null && customerIoId.trim().isNotEmpty)
-                ? customerIoId
-                : _currentIdentifier;
-        cio.CustomerIO.instance.identify(
-          userId: cioUserId,
-          traits: normalizedProps,
-        );
+        try {
+          // Use customer_io_id if provided and not empty, otherwise fall back to identifier
+          final cioUserId =
+              (customerIoId != null && customerIoId.trim().isNotEmpty)
+                  ? customerIoId
+                  : _currentIdentifier;
+          cio.CustomerIO.instance.identify(
+            userId: cioUserId,
+            traits: normalizedProps,
+          );
+        } catch (e) {
+          // If throwErrorsBack is enabled, rethrow Customer.io errors
+          if (config.throwErrorsBack) {
+            rethrow;
+          }
+          if (config.debug) {
+            debugPrint('[CDP] Customer.io identify error: $e');
+          }
+        }
       }
 
       // Track device attributes if enabled
@@ -196,7 +281,12 @@ class OpenCDPSDKImplementation {
         // await registerDevice(fcmToken: 'noAPNStoken', apnToken: 'noAPNStoken');
       }
     } catch (e) {
-      // rethrow;
+      // If throwErrorsBack is enabled, rethrow validation and API errors
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
+      // Only log errors in debug mode when throwErrorsBack is false
       if (config.debug) {
         debugPrint('[CDP] Error identifying user: $e');
       }
@@ -204,6 +294,11 @@ class OpenCDPSDKImplementation {
   }
 
   /// Implementation of event tracking
+  ///
+  /// Tracks an event with the given name and optional properties.
+  ///
+  /// Throws [CDPValidationException] if validation fails and [throwErrorsBack] is enabled.
+  /// Throws [CDPException] if API request fails and [throwErrorsBack] is enabled.
   Future<void> trackEvent({
     required String eventName,
     Map<String, dynamic> properties = const {},
@@ -248,12 +343,22 @@ class OpenCDPSDKImplementation {
               break;
           }
         } catch (e) {
+          // If throwErrorsBack is enabled, rethrow Customer.io errors
+          if (config.throwErrorsBack) {
+            rethrow;
+          }
           if (config.debug) {
             debugPrint('[CDP] Customer.io track error: $e');
           }
         }
       }
     } catch (e) {
+      // If throwErrorsBack is enabled, rethrow validation and API errors
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
+      // Only log errors in debug mode when throwErrorsBack is false
       if (config.debug) {
         debugPrint('[CDP] Error tracking event: $e');
       }
@@ -333,12 +438,24 @@ class OpenCDPSDKImplementation {
   }
 
   /// Implementation of device registration
+  ///
+  /// Registers a device for push notifications with optional FCM and APN tokens.
+  ///
+  /// Throws [CDPValidationException] if validation fails and [throwErrorsBack] is enabled.
+  /// Throws [CDPException] if API request fails and [throwErrorsBack] is enabled.
   Future<void> registerDevice({
     String? fcmToken,
     String? apnToken,
   }) async {
     try {
       if (!_ensureInitialized()) {
+        return;
+      }
+      // Validate push tokens if provided
+      if (!_validatePushToken(fcmToken, 'fcmToken')) {
+        return;
+      }
+      if (!_validatePushToken(apnToken, 'apnToken')) {
         return;
       }
       // Get device attributes
@@ -405,6 +522,12 @@ class OpenCDPSDKImplementation {
         identifier: _currentIdentifier,
       );
     } catch (e) {
+      // If throwErrorsBack is enabled, rethrow validation and API errors
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
+      // Only log errors in debug mode when throwErrorsBack is false
       if (config.debug) {
         debugPrint('[CDP] Error registering device: $e');
       }

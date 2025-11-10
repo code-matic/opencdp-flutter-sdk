@@ -218,7 +218,8 @@ class CDPHttpClient {
         body: jsonEncode(body),
       );
 
-      if (response.statusCode != 200) {
+      // Check for non-2xx status codes (200-299 are success codes)
+      if (response.statusCode < 200 || response.statusCode >= 300) {
         // Queue the failed request and throw an exception.
         final failedRequest = QueuedRequest(
           endpoint: endpoint,
@@ -286,7 +287,8 @@ class CDPHttpClient {
             body: jsonEncode(request.body),
           );
 
-          if (response.statusCode == 200) {
+          // Check for 2xx status codes (200-299 are success codes)
+          if (response.statusCode >= 200 && response.statusCode < 300) {
             _requestQueue.removeRequest(request);
             if (debug) {
               debugPrint(

@@ -15,6 +15,8 @@ import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 
 export 'src/models/config.dart';
+export 'src/models/validation_exception.dart';
+export 'src/utils/http_client.dart' show CDPException;
 
 /// Main SDK class for Open CDP
 class OpenCDPSDK {

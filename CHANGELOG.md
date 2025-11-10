@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.1] - TBD
+
+  * Added `customerIoId` parameter to `identify()` method for dual-write functionality
+    * Supports clients who use email as their ID during Customer.io SDK integration
+    * When provided, uses `customerIoId` for Customer.io while using `identifier` for CDP API calls
+    * Falls back to `identifier` if `customerIoId` is not provided or empty
+  * Added `throwErrorsBack` configuration option to `OpenCDPConfig`
+    * When `true`: throws `CDPValidationException` and `CDPException` for user handling
+    * When `false` (default): errors are only logged in debug mode, methods return silently
+
+  * Identifier validation now rejects email addresses
+    * `identifier` parameter must not be an email address
+    * Use `customerIoId` parameter if you need to use an email for Customer.io integration
+  * Added validation for `customerIoId` (if provided, must not be empty)
+  * Added validation for `fcmToken` and `apnToken` (if provided, must not be empty)
+
+
 ## [1.2.0] - 2025-10-26
 
 * Breaking Changes
