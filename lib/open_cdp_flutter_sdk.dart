@@ -169,6 +169,23 @@ class OpenCDPSDK {
   OpenCDPSDK._();
 
   /// Identify a user with optional traits
+  ///
+  /// **Important:** The [identifier] must NOT be an email address.
+  ///
+  /// [identifier] - Unique user identifier (used for CDP API and native storage)
+  /// [properties] - Optional user properties/traits
+  /// [customerIoId] - Optional Customer.io-specific identifier.
+  ///   Use this when you need to identify users with an email address in Customer.io
+  ///   while maintaining a non-email identifier for CDP operations.
+  ///
+  /// Example with Customer.io dual-write:
+  /// ```dart
+  /// await OpenCDPSDK.instance.identify(
+  ///   identifier: 'user_123',           // Non-email ID for CDP
+  ///   customerIoId: 'user@example.com', // Email ID for Customer.io
+  ///   properties: {'name': 'John Doe'},
+  /// );
+  /// ```
   Future<void> identify({
     required String identifier,
     Map<String, dynamic> properties = const {},

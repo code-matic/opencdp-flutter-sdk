@@ -109,12 +109,33 @@ void main() async {
 ## Usage
 
 ### Identify Users
+
+**Important:** The `identifier` parameter must NOT be an email address. Use a unique user ID instead.
+
+#### Basic Usage
 ```dart
 await OpenCDPSDK.instance.identify(
-  identifier: 'user123',
+  identifier: 'user123',  // Must NOT be an email address
   properties: {'name': 'John Doe', 'email': 'john@example.com'},
 );
 ```
+
+#### Dual-Write with Customer.io (using email as Customer.io ID)
+
+If you need to use an email address as the identifier in Customer.io while maintaining a non-email identifier for CDP:
+
+```dart
+await OpenCDPSDK.instance.identify(
+  identifier: 'user123',           // Non-email ID for CDP API and native storage
+  customerIoId: 'user@example.com', // Email ID for Customer.io integration
+  properties: {'name': 'John Doe'},
+);
+```
+
+**How it works:**
+- `identifier` is used for CDP API calls and native storage (push notifications)
+- `customerIoId` (optional) is used exclusively for Customer.io integration
+- If `customerIoId` is not provided or empty, `identifier` is used for Customer.io as well
 
 ### Track Events
 ```dart

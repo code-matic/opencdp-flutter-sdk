@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.2.1] - TBD
+
+### Breaking Changes
+* Identifier validation now rejects email addresses
+  * The `identifier` parameter in `identify()` must not be an email address
+  * If you need to use email for Customer.io integration, use the new `customerIoId` parameter
+  * Validation failure logs error in debug mode and returns silently
+
+### New Features
+* Added optional `customerIoId` parameter to `identify()` method for dual-write functionality
+  * Supports clients who use email as their ID during Customer.io SDK integration
+  * When provided, uses `customerIoId` for Customer.io while using `identifier` for CDP API calls and native storage
+  * Falls back to `identifier` if `customerIoId` is not provided or empty
+  * This allows organizations using email-based IDs in Customer.io to maintain proper user identification
+
+### Usage Example
+
+**Basic Usage (with non-email identifier):**
+```dart
+await OpenCDPSDK.instance.identify(
+  identifier: 'user_123',
+  properties: {'name': 'John Doe'}
+);
+```
+
+**Dual-Write Usage (with Customer.io email ID):**
+```dart
+await OpenCDPSDK.instance.identify(
+  identifier: 'user_123',           // Non-email ID for CDP
+  customerIoId: 'user@example.com', // Email ID for Customer.io
+  properties: {'name': 'John Doe'}
+);
+```
+
 ## [1.2.0] - 2025-10-26
 
 * Breaking Changes

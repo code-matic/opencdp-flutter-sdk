@@ -143,6 +143,15 @@ class OpenCDPSDKImplementation {
   }
 
   /// Implementation of user identification
+  ///
+  /// Identifies a user in the CDP and optionally in Customer.io.
+  ///
+  /// [identifier] - Unique user identifier (must NOT be an email address)
+  /// [properties] - Optional user properties/traits
+  /// [customerIoId] - Optional Customer.io-specific identifier for dual-write.
+  ///   If provided, this ID is used for Customer.io while [identifier] is used
+  ///   for CDP API calls and native storage. Useful for clients using email as
+  ///   their Customer.io ID while maintaining a non-email identifier for CDP.
   Future<void> identifyUser({
     required String identifier,
     Map<String, dynamic> properties = const {},
@@ -180,23 +189,23 @@ class OpenCDPSDKImplementation {
 
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
-        // Use customer_io_id if provided and not empty, otherwise fall back to identifier
-        final cioUserId =
-            (customerIoId != null && customerIoId.trim().isNotEmpty)
-                ? customerIoId
-                : _currentIdentifier;
-        cio.CustomerIO.instance.identify(
-          userId: cioUserId,
-          traits: normalizedProps,
-        );
-      }
-
-      // Track device attributes if enabled
-      if (config.autoTrackDeviceAttributes) {
-        // await registerDevice(fcmToken: 'noAPNStoken', apnToken: 'noAPNStoken');
+        try {
+          // Use customer_io_id if provided and not empty, otherwise fall back to identifier
+          final cioUserId =
+              (customerIoId != null && customerIoId.trim().isNotEmpty)
+                  ? customerIoId
+                  : _currentIdentifier;
+          cio.CustomerIO.instance.identify(
+            userId: cioUserId,
+            traits: normalizedProps,
+          );
+        } catch (e) {
+          if (config.debug) {
+            debugPrint('[CDP] Customer.io identify error: $e');
+          }
+        }
       }
     } catch (e) {
-      // rethrow;
       if (config.debug) {
         debugPrint('[CDP] Error identifying user: $e');
       }
