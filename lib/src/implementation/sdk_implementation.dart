@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/event_type.dart';
+import 'package:open_cdp_flutter_sdk/src/models/validation_exception.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 /// Private implementation of the OpenCDP SDK
@@ -114,8 +115,12 @@ class OpenCDPSDKImplementation {
   /// Validate identifier
   bool _validateIdentifier(String identifier) {
     if (identifier.trim().isEmpty) {
+      const errorMessage = 'Identifier cannot be empty';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'identifier');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Identifier cannot be empty');
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -123,8 +128,12 @@ class OpenCDPSDKImplementation {
     final emailRegex =
         RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     if (emailRegex.hasMatch(identifier.trim())) {
+      const errorMessage = 'Identifier cannot be an email address';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'identifier');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Identifier cannot be an email address');
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -134,8 +143,46 @@ class OpenCDPSDKImplementation {
   /// Validate event name
   bool _validateEventName(String eventName) {
     if (eventName.trim().isEmpty) {
+      const errorMessage = 'Event name cannot be empty';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'eventName');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Event name cannot be empty');
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// Validate customerIoId
+  bool _validateCustomerIoId(String? customerIoId) {
+    if (customerIoId == null) return true; // Optional, so null is valid
+
+    if (customerIoId.trim().isEmpty) {
+      const errorMessage = 'customerIoId cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'customerIoId');
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// Validate push token (FCM or APN)
+  bool _validatePushToken(String? token, String tokenType) {
+    if (token == null) return true; // Optional, so null is valid
+
+    if (token.trim().isEmpty) {
+      final errorMessage = '$tokenType cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, tokenType);
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -162,6 +209,9 @@ class OpenCDPSDKImplementation {
         return;
       }
       if (!_validateIdentifier(identifier)) {
+        return;
+      }
+      if (!_validateCustomerIoId(customerIoId)) {
         return;
       }
       final normalizedProps = properties;
@@ -200,12 +250,19 @@ class OpenCDPSDKImplementation {
             traits: normalizedProps,
           );
         } catch (e) {
+          if (config.throwErrorsBack) {
+            rethrow;
+          }
           if (config.debug) {
             debugPrint('[CDP] Customer.io identify error: $e');
           }
         }
       }
     } catch (e) {
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
       if (config.debug) {
         debugPrint('[CDP] Error identifying user: $e');
       }
@@ -257,12 +314,19 @@ class OpenCDPSDKImplementation {
               break;
           }
         } catch (e) {
+          if (config.throwErrorsBack) {
+            rethrow;
+          }
           if (config.debug) {
             debugPrint('[CDP] Customer.io track error: $e');
           }
         }
       }
     } catch (e) {
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
       if (config.debug) {
         debugPrint('[CDP] Error tracking event: $e');
       }
@@ -350,6 +414,12 @@ class OpenCDPSDKImplementation {
       if (!_ensureInitialized()) {
         return;
       }
+      if (!_validatePushToken(fcmToken, 'fcmToken')) {
+        return;
+      }
+      if (!_validatePushToken(apnToken, 'apnToken')) {
+        return;
+      }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
 
@@ -414,6 +484,10 @@ class OpenCDPSDKImplementation {
         identifier: _currentIdentifier,
       );
     } catch (e) {
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
       if (config.debug) {
         debugPrint('[CDP] Error registering device: $e');
       }
@@ -563,6 +637,9 @@ class OpenCDPSDKImplementation {
         try {
           cio.CustomerIO.instance.clearIdentify();
         } catch (e) {
+          if (config.throwErrorsBack) {
+            rethrow;
+          }
           if (config.debug) {
             debugPrint('[CDP] Customer.io clear identity error: $e');
           }
@@ -573,6 +650,10 @@ class OpenCDPSDKImplementation {
         debugPrint('[CDP] Identity cleared successfully');
       }
     } catch (e) {
+      if (config.throwErrorsBack &&
+          (e is CDPValidationException || e is CDPException)) {
+        rethrow;
+      }
       if (config.debug) {
         debugPrint('[CDP] Error clearing identity: $e');
       }

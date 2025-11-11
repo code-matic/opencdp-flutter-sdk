@@ -184,6 +184,24 @@ class OpenCDPConfig {
   /// Screen view tracking configuration
   final ScreenView screenViewUse;
 
+  /// Whether to throw errors back to the caller for handling.
+  ///
+  /// When `true`:
+  /// - Validation errors throw [CDPValidationException] (works in both debug and prod)
+  /// - API errors throw [CDPException] (works in both debug and prod)
+  /// - Customer.io errors are rethrown (works in both debug and prod)
+  /// - Users must handle these exceptions in their code
+  ///
+  /// When `false` (default):
+  /// - Errors are only logged when `debug` is `true` (debug mode only)
+  /// - No errors are thrown in production
+  /// - Methods return silently on errors
+  ///
+  /// This allows users to choose between:
+  /// - Strict error handling: `throwErrorsBack: true` - catch and handle all errors
+  /// - Silent error handling: `throwErrorsBack: false` - errors are logged but don't interrupt flow
+  final bool throwErrorsBack;
+
   /// Base URL for API endpoints
   String get baseUrl {
     if (cdpEndpoint != null) {
@@ -209,6 +227,7 @@ class OpenCDPConfig {
     this.autoTrackScreens = false,
     this.trackApplicationLifecycleEvents = true,
     this.screenViewUse = ScreenView.all,
+    this.throwErrorsBack = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -222,6 +241,7 @@ class OpenCDPConfig {
       'debug': debug,
       'autoTrackDeviceAttributes': autoTrackDeviceAttributes,
       'autoTrackScreens': autoTrackScreens,
+      'throwErrorsBack': throwErrorsBack,
       'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
       'screenViewUse': screenViewUse.toString().split('.').last,
     };

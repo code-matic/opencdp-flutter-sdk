@@ -137,6 +137,73 @@ await OpenCDPSDK.instance.identify(
 - `customerIoId` (optional) is used exclusively for Customer.io integration
 - If `customerIoId` is not provided or empty, `identifier` is used for Customer.io as well
 
+---
+
+## Error Handling
+
+The SDK provides two modes of error handling through the `throwErrorsBack` configuration option:
+
+### Silent Error Handling (Default)
+
+By default, errors are handled silently to prevent crashes:
+
+```dart
+await OpenCDPSDK.initialize(
+  config: OpenCDPConfig(
+    cdpApiKey: 'your-api-key',
+    debug: true,  // Errors logged only in debug mode
+    throwErrorsBack: false,  // Default - silent error handling
+  ),
+);
+
+// Errors are logged but don't throw exceptions
+await OpenCDPSDK.instance.identify(
+  identifier: 'user@example.com',  // Validation fails silently
+  properties: {'name': 'John'},
+);
+```
+
+### Strict Error Handling
+
+Enable `throwErrorsBack` to catch and handle errors explicitly:
+
+```dart
+await OpenCDPSDK.initialize(
+  config: OpenCDPConfig(
+    cdpApiKey: 'your-api-key',
+    throwErrorsBack: true,  // Throw errors for explicit handling
+  ),
+);
+
+// Now you must handle exceptions
+try {
+  await OpenCDPSDK.instance.identify(
+    identifier: 'user@example.com',  // Throws CDPValidationException
+    properties: {'name': 'John'},
+  );
+} on CDPValidationException catch (e) {
+  // Handle validation errors (user input problems)
+  print('Validation error: ${e.message}');
+  // Show error to user, fix input, etc.
+} on CDPException catch (e) {
+  // Handle API errors (network/server problems)
+  print('API error: ${e.message}, Status: ${e.statusCode}');
+  // Retry, show error message, etc.
+} catch (e) {
+  // Handle other errors
+  print('Unexpected error: $e');
+}
+```
+
+**Exception Types:**
+- `CDPValidationException` - Input validation failures (empty fields, invalid formats)
+- `CDPException` - API/network errors (connection issues, server errors)
+
+**Best Practices:**
+- Use `throwErrorsBack: false` (default) for better UX - errors logged but don't crash
+- Use `throwErrorsBack: true` for critical flows where you need to handle errors explicitly
+- Always enable `debug: true` during development to see error logs
+
 ### Track Events
 ```dart
 await OpenCDPSDK.instance.track(
