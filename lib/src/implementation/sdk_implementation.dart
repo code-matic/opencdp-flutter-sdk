@@ -125,8 +125,10 @@ class OpenCDPSDKImplementation {
       return false;
     }
     // Check if identifier is an email address
-    final emailRegex =
-        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    final emailRegex = RegExp(
+      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+      caseSensitive: false,
+    );
     if (emailRegex.hasMatch(identifier.trim())) {
       const errorMessage = 'Identifier cannot be an email address';
       if (config.throwErrorsBack) {
@@ -187,6 +189,26 @@ class OpenCDPSDKImplementation {
       return false;
     }
     return true;
+  }
+
+  /// Standard error handling for SDK public methods
+  void _handleError(String operation, dynamic error) {
+    if (config.throwErrorsBack &&
+        (error is CDPValidationException || error is CDPException)) {
+      throw error;
+    }
+
+    if (config.debug) {
+      debugPrint('[CDP] $operation: $error');
+    }
+  }
+
+  /// Error handling for nested integrations (like Customer.io)
+  /// Never rethrows - nested integrations should never block the main flow
+  void _handleNestedError(String operation, dynamic error) {
+    if (config.debug) {
+      debugPrint('[CDP] $operation: $error');
+    }
   }
 
   /// Implementation of user identification
@@ -250,22 +272,11 @@ class OpenCDPSDKImplementation {
             traits: normalizedProps,
           );
         } catch (e) {
-          if (config.throwErrorsBack) {
-            rethrow;
-          }
-          if (config.debug) {
-            debugPrint('[CDP] Customer.io identify error: $e');
-          }
+          _handleNestedError('Customer.io identify error', e);
         }
       }
     } catch (e) {
-      if (config.throwErrorsBack &&
-          (e is CDPValidationException || e is CDPException)) {
-        rethrow;
-      }
-      if (config.debug) {
-        debugPrint('[CDP] Error identifying user: $e');
-      }
+      _handleError('Error identifying user', e);
     }
   }
 
@@ -314,22 +325,11 @@ class OpenCDPSDKImplementation {
               break;
           }
         } catch (e) {
-          if (config.throwErrorsBack) {
-            rethrow;
-          }
-          if (config.debug) {
-            debugPrint('[CDP] Customer.io track error: $e');
-          }
+          _handleNestedError('Customer.io track error', e);
         }
       }
     } catch (e) {
-      if (config.throwErrorsBack &&
-          (e is CDPValidationException || e is CDPException)) {
-        rethrow;
-      }
-      if (config.debug) {
-        debugPrint('[CDP] Error tracking event: $e');
-      }
+      _handleError('Error tracking event', e);
     }
   }
 
@@ -484,13 +484,7 @@ class OpenCDPSDKImplementation {
         identifier: _currentIdentifier,
       );
     } catch (e) {
-      if (config.throwErrorsBack &&
-          (e is CDPValidationException || e is CDPException)) {
-        rethrow;
-      }
-      if (config.debug) {
-        debugPrint('[CDP] Error registering device: $e');
-      }
+      _handleError('Error registering device', e);
     }
   }
 
@@ -637,12 +631,7 @@ class OpenCDPSDKImplementation {
         try {
           cio.CustomerIO.instance.clearIdentify();
         } catch (e) {
-          if (config.throwErrorsBack) {
-            rethrow;
-          }
-          if (config.debug) {
-            debugPrint('[CDP] Customer.io clear identity error: $e');
-          }
+          _handleNestedError('Customer.io clear identity error', e);
         }
       }
 
@@ -650,13 +639,7 @@ class OpenCDPSDKImplementation {
         debugPrint('[CDP] Identity cleared successfully');
       }
     } catch (e) {
-      if (config.throwErrorsBack &&
-          (e is CDPValidationException || e is CDPException)) {
-        rethrow;
-      }
-      if (config.debug) {
-        debugPrint('[CDP] Error clearing identity: $e');
-      }
+      _handleError('Error clearing identity', e);
     }
   }
 

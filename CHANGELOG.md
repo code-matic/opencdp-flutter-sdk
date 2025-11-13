@@ -1,21 +1,16 @@
 # Changelog
 
-## [1.2.1] - TBD
+## [1.2.1] - 2025-11-13
 
-* The `identifier` parameter in `identify()` must not be an email address
-  * If you're currently using email as your identifier, switch to a unique user ID
-  * Use the new `customerIoId` parameter if you need to send email to Customer.io
-* **Dual-Write Support**: Added `customerIoId` parameter to `identify()` method
-  * Use this when you need different identifiers for CDP and Customer.io
-  * Example: non-email ID for CDP, email for Customer.io
-  
-* **Configurable Error Handling**: New `throwErrorsBack` option in `OpenCDPConfig`
+* Updated `identify()` method to not accept email as identifier
+  * Use the new `customerIoId` parameter if you need to use email as Id for Customer.io
+* Added `customerIoId` parameter to `identify()` method for dual-write support
+  * Use this when you need different identifiers for OpenCDP and Customer.io
+* Added `throwErrorsBack` option to `OpenCDPConfig` for configurable error handling
   * Default (`false`): Errors are logged but don't throw exceptions - your app won't crash
   * Set to `true`: Catch and handle `CDPValidationException` and `CDPException` yourself
   * Choose based on your app's error handling strategy
-
 * Enhanced input validation with helpful error messages
-* Comprehensive documentation with error handling examples
 
 ### Usage Examples
 
@@ -30,7 +25,7 @@ await OpenCDPSDK.instance.identify(
 **Dual-Write Usage (with Customer.io email ID):**
 ```dart
 await OpenCDPSDK.instance.identify(
-  identifier: 'user_123',           // Non-email ID for CDP
+  identifier: 'user_123',           // Non-email ID for OpenCDP
   customerIoId: 'user@example.com', // Email ID for Customer.io
   properties: {'name': 'John Doe'}
 );
