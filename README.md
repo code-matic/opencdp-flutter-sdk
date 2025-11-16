@@ -382,7 +382,7 @@ In the new NotificationService folder in Xcode, open NotificationService.swift a
 ```swift
 // In NotificationService/NotificationService.swift
 import UserNotifications
-import open_cdp_flutter_sdk // Import the SDK's native package
+import OpenCdpPushExtension  // Import the push extension helper (no Flutter dependency)
 
 class NotificationService: UNNotificationServiceExtension {
 
@@ -423,7 +423,7 @@ class NotificationService: UNNotificationServiceExtension {
 
 Open the Podfile in your ios directory.
 
-Modify your Podfile to match the structure below. This is a robust configuration that correctly links all dependencies for both your main app and the extension.
+Modify your Podfile to match the structure below. **Important**: The `NotificationService` target must use the separate `open_cdp_push_extension` pod (not the main Flutter plugin), as notification service extensions cannot link against Flutter.
 
 ```ruby
 # In ios/Podfile
@@ -431,26 +431,41 @@ Modify your Podfile to match the structure below. This is a robust configuration
 # ... (existing content like platform and project setup) ...
 
 target 'Runner' do
-  use_modular_headers! 
+  use_frameworks!
+  use_modular_headers!
+  
+  # Flutter automatically adds plugin pods (including open_cdp_flutter_sdk)
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Explicitly link the plugin to the main Runner target so GeneratedPluginRegistrant can find it.
-  pod 'open_cdp_flutter_sdk', :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
 end
 
 target 'NotificationService' do
-  # Inherit search paths allows the extension to find Flutter and other frameworks.
-  inherit! :search_paths
-  # This allows module imports without forcing dynamic frameworks.
-  # Try to match with what is in the Runner target. 
-  use_modular_headers! 
-  # This explicitly links your SDK's native code to the extension.
-  pod 'open_cdp_flutter_sdk', :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
+  use_frameworks!
+  use_modular_headers!
+
+  # IMPORTANT: Use the extension-only pod (no Flutter dependency).
+  # Do NOT add 'open_cdp_flutter_sdk' here - it will cause linker errors.
+  pod 'open_cdp_push_extension',
+      :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
 end
 
 post_install do |installer|
-  # ... (existing content) ...
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
 end
+```
+
+After updating the Podfile, run:
+
+```bash
+cd ios
+rm -rf Pods Podfile.lock
+pod install
+cd ..
 ```
 
 ---

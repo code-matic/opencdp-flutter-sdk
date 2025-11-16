@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
-  s.name             = 'open_cdp_flutter_sdk_extension'
+  s.name             = 'open_cdp_push_extension'
   s.version          = '0.0.1'
-  s.summary          = 'Open CDP notification service extension helper.'
+  s.summary          = 'Open CDP push delivery tracking helper for iOS notification service extensions.'
   s.description      = <<-DESC
   Pure native helper used from iOS notification service extensions. Contains no Flutter dependency.
   DESC
@@ -14,8 +14,8 @@ Pod::Spec.new do |s|
   s.swift_version    = '5.0'
 
   # Expose a nice Swift-style module name so clients can:
-  #   import OpenCdpFlutterSdkExtension
-  s.module_name      = 'OpenCdpFlutterSdkExtension'
+  #   import OpenCdpPushExtension
+  s.module_name      = 'OpenCdpPushExtension'
 
   # Only include the helper used by notification service extensions.
   # NOTE: Do NOT include OpenCdpSdkPlugin.swift here, and do NOT depend on Flutter.

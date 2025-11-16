@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.2.2] - 2025-01-16
+
+### Bug Fixes
+
+* Fixed iOS build errors when using push notification tracking with notification service extensions
+  * Resolved "Undefined symbol" linker errors that prevented iOS apps from building
+
+### Breaking Changes
+
+* **iOS Notification Service Extension setup required update**
+  * If you're using push notification tracking with an iOS notification service extension, you must update your configuration:
+  
+  **Update your `Podfile`:**
+  ```ruby
+  target 'NotificationService' do
+    use_frameworks!
+    use_modular_headers!
+
+    pod 'open_cdp_push_extension',
+        :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
+  end
+  ```
+  
+  **Update your `NotificationService.swift`:**
+  ```swift
+  import UserNotifications
+  import OpenCdpPushExtension  // Changed from: import open_cdp_flutter_sdk
+  ```
+  
+  * After updating, run:
+    ```bash
+    cd ios
+    rm -rf Pods Podfile.lock
+    pod install
+    ```
+  
+  * See the [README.md](README.md) for complete setup instructions
+
 ## [1.2.1] - 2025-11-13
 
 * Updated `identify()` method to not accept email as identifier
