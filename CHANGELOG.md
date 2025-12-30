@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.2] - 2025-01-16
+## [2.0.0] - 2025-12-30
 
 ### Bug Fixes
 
@@ -16,7 +16,6 @@
   ```ruby
   target 'NotificationService' do
     use_frameworks!
-    use_modular_headers!
 
     pod 'open_cdp_push_extension',
         :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'

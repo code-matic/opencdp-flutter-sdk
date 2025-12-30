@@ -377,12 +377,16 @@ Select your NotificationService extension target and repeat the exact same steps
 
 ##### Step 4.3: Add Code to the Extension
 
-In the new NotificationService folder in Xcode, open NotificationService.swift and replace its contents with this code. This version allows the SDK to potentially modify the notification before it's displayed.
+In the new NotificationService folder in Xcode, open `NotificationService.swift` and replace its contents with the code below. Use the version matching your SDK.
+
+---
+
+###### For SDK v2.0.0 and later
 
 ```swift
 // In NotificationService/NotificationService.swift
 import UserNotifications
-import OpenCdpPushExtension  // Import the push extension helper (no Flutter dependency)
+import OpenCdpPushExtension  // v2.0.0+ import
 
 class NotificationService: UNNotificationServiceExtension {
 
@@ -399,8 +403,6 @@ class NotificationService: UNNotificationServiceExtension {
         // !!! IMPORTANT: Paste your App Group ID here !!!
         let appGroup = "group.com.yourcompany.yourapp"
 
-        // Pass the request to the OpenCDP SDK Handler.
-        // The SDK can now optionally modify the content before displaying.
         OpenCdpPushExtensionHelper.didReceiveNotificationExtensionRequest(
             request,
             appGroup: appGroup
@@ -410,7 +412,46 @@ class NotificationService: UNNotificationServiceExtension {
     }
 
     override func serviceExtensionTimeWillExpire() {
-        // Called if the SDK's processing takes too long.
+        if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
+            contentHandler(bestAttemptContent)
+        }
+    }
+}
+```
+
+---
+
+###### For SDK v1.x (pre-2.0.0)
+
+```swift
+// In NotificationService/NotificationService.swift
+import UserNotifications
+import open_cdp_flutter_sdk  // v1.x import
+
+class NotificationService: UNNotificationServiceExtension {
+
+    var contentHandler: ((UNNotificationContent) -> Void)?
+    var bestAttemptContent: UNMutableNotificationContent?
+
+    override func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+        self.contentHandler = contentHandler
+        self.bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
+
+        // !!! IMPORTANT: Paste your App Group ID here !!!
+        let appGroup = "group.com.yourcompany.yourapp"
+
+        OpenCdpPushExtensionHelper.didReceiveNotificationExtensionRequest(
+            request,
+            appGroup: appGroup
+        ) { modifiedContent in
+            contentHandler(modifiedContent)
+        }
+    }
+
+    override func serviceExtensionTimeWillExpire() {
         if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
             contentHandler(bestAttemptContent)
         }
@@ -421,9 +462,13 @@ class NotificationService: UNNotificationServiceExtension {
 
 ##### Step 4.4: Configure the Podfile
 
-Open the Podfile in your ios directory.
+Open the `Podfile` in your `ios` directory and configure it based on your SDK version.
 
-Modify your Podfile to match the structure below. **Important**: The `NotificationService` target must use the separate `open_cdp_push_extension` pod (not the main Flutter plugin), as notification service extensions cannot link against Flutter.
+---
+
+###### For SDK v2.0.0 and later
+
+The notification service extension uses a dedicated `open_cdp_push_extension` pod that doesn't depend on Flutter. This prevents linker errors in extension targets.
 
 ```ruby
 # In ios/Podfile
@@ -434,7 +479,6 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
   
-  # Flutter automatically adds plugin pods (including open_cdp_flutter_sdk)
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
   target 'RunnerTests' do
@@ -446,8 +490,7 @@ target 'NotificationService' do
   use_frameworks!
   use_modular_headers!
 
-  # IMPORTANT: Use the extension-only pod (no Flutter dependency).
-  # Do NOT add 'open_cdp_flutter_sdk' here - it will cause linker errors.
+  # Use the extension-only pod (no Flutter dependency)
   pod 'open_cdp_push_extension',
       :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
 end
@@ -459,6 +502,55 @@ post_install do |installer|
 end
 ```
 
+**In your `NotificationService.swift`, use:**
+```swift
+import OpenCdpPushExtension
+```
+
+---
+
+###### For SDK v1.x (pre-2.0.0)
+
+If you're using an older version of the SDK, configure the notification extension to use the main plugin pod:
+
+```ruby
+# In ios/Podfile
+
+# ... (existing content like platform and project setup) ...
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+  
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+target 'NotificationService' do
+  use_frameworks!
+  use_modular_headers!
+
+  pod 'open_cdp_flutter_sdk',
+      :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+end
+```
+
+**In your `NotificationService.swift`, use:**
+```swift
+import open_cdp_flutter_sdk
+```
+
+---
+
 After updating the Podfile, run:
 
 ```bash
@@ -467,6 +559,59 @@ rm -rf Pods Podfile.lock
 pod install
 cd ..
 ```
+
+##### Common Issues
+
+###### "Cycle Inside... building could produce unreliable results"
+
+This build error can occur when using Xcode 15 or later. It's caused by a default configuration change in Xcode that affects projects with cross-platform dependencies like Flutter.
+
+**To resolve this issue:**
+
+1. Open your `.xcworkspace` file in Xcode (not the `.xcodeproj`).
+2. Select your app target in the project navigator.
+3. Navigate to the **Build Phases** tab.
+4. Look for a phase named **"Embed Foundation Extensions"** or **"Embed App Extensions"**.
+5. Drag this build phase and reposition it **above** the **"Run Script"** phase.
+6. Rebuild your app.
+
+The build should now complete successfully.
+
+###### "Undefined symbol" linker errors after upgrading to v2.0.0
+
+If you're upgrading from an earlier version and encounter linker errors related to undefined symbols, you need to update your notification service extension configuration.
+
+**To resolve this issue:**
+
+1. **Update your `Podfile`** — The notification service extension now uses a separate pod:
+   ```ruby
+   target 'NotificationService' do
+     use_frameworks!
+     use_modular_headers!
+
+     pod 'open_cdp_push_extension',
+         :path => '.symlinks/plugins/open_cdp_flutter_sdk/ios'
+   end
+   ```
+
+2. **Update your `NotificationService.swift` import:**
+   ```swift
+   // Before (v1.x):
+   import open_cdp_flutter_sdk
+   
+   // After (v2.0.0+):
+   import OpenCdpPushExtension
+   ```
+
+3. **Clean and reinstall pods:**
+   ```bash
+   cd ios
+   rm -rf Pods Podfile.lock
+   pod install
+   cd ..
+   ```
+
+See the [CHANGELOG.md](CHANGELOG.md) for full details on breaking changes.
 
 ---
 

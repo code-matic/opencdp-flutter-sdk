@@ -31,3 +31,4 @@ TODO.md
 .flutter-plugins-dependencies
 build/
 open_cdp_p_n_integration.md
+.gradle/
