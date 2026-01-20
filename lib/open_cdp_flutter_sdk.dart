@@ -2,30 +2,37 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-
-import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
+import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
 import 'package:open_cdp_flutter_sdk/src/integrations/customer_io_integration.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
-import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
-import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 
 export 'src/models/config.dart';
 export 'src/models/validation_exception.dart';
 export 'src/utils/http_client.dart' show CDPException;
 
 /// Main SDK class for Open CDP
+///
+/// This class provides the primary interface for interacting with the Open CDP SDK.
+/// It uses a singleton pattern, so you should access it via [OpenCDPSDK.instance].
+///
+/// Before using any other methods, you must call [initialize] with a valid [OpenCDPConfig].
 class OpenCDPSDK {
   static OpenCDPSDK? _instance;
   static OpenCDPSDKImplementation? _implementation;
   static CDPScreenTracker? _screenTracker;
   static CDPLifecycleTracker? _lifecycleTracker;
 
-  /// Get the singleton instance of the SDK
+  /// Get the singleton instance of the SDK.
+  ///
+  /// Returns a dummy instance if the SDK has not been initialized to prevent crashes,
+  /// but logs an error to the console.
   static OpenCDPSDK get instance {
     if (_instance == null) {
       // Log error but return dummy instance to prevent crashes
@@ -36,10 +43,13 @@ class OpenCDPSDK {
     return _instance!;
   }
 
-  /// Get the current user ID
+  /// Get the current user ID if one has been set via [identify].
   String? get userId => _implementation?.userId;
 
-  /// Get the screen tracker if auto tracking is enabled
+  /// Get the screen tracker instance if auto-tracking is enabled.
+  ///
+  /// This can be added to your [MaterialApp.navigatorObservers] to automatically
+  /// track screen views.
   CDPScreenTracker? get screenTracker => _screenTracker;
 
   /// Reset the SDK instance (for testing purposes)
@@ -61,15 +71,13 @@ class OpenCDPSDK {
     debugPrint('[CDP] SDK reset for testing');
   }
 
-  /// Initialize the SDK with configuration
+  /// Initialize the SDK with the provided configuration.
   ///
-  /// **REQUIRED**: This method must be called before using any SDK functionality.
-  /// The SDK will not work properly if this method is not called.
+  /// **REQUIRED**: This method must be called before using any other SDK functionality.
   ///
-  /// shouldReinitialize: If true, allows re-initialization of the SDK
-  /// this is useful for testing purposes and also if you need to change config at runtime
-  ///
-  /// [httpClient] is for testing only and should not be used in production.
+  /// [config] - The configuration object containing API keys and other settings.
+  /// [shouldReinitialize] - If true, allows re-initialization of the SDK (useful for testing/runtime config changes).
+  /// [httpClient] - Optional HTTP client for testing purposes.
   static Future<void> initialize({
     required OpenCDPConfig config,
     bool shouldReinitialize = false,
@@ -170,15 +178,15 @@ class OpenCDPSDK {
   /// Private constructor
   OpenCDPSDK._();
 
-  /// Identify a user with optional traits
+  /// Identify a user with a unique identifier and optional properties.
+  ///
+  /// This links all future events to this user until [clearIdentity] is called.
   ///
   /// **Important:** The [identifier] must NOT be an email address.
   ///
-  /// [identifier] - Unique user identifier (used for CDP API and native storage)
-  /// [properties] - Optional user properties/traits
-  /// [customerIoId] - Optional Customer.io-specific identifier.
-  ///   Use this when you need to identify users with an email address in Customer.io
-  ///   while maintaining a non-email identifier for CDP operations.
+  /// [identifier] - Unique user identifier (used for CDP API and native storage).
+  /// [properties] - Optional map of user traits (e.g., name, plan).
+  /// [customerIoId] - Optional Customer.io-specific identifier for dual-write scenarios.
   ///
   /// Example with Customer.io dual-write:
   /// ```dart
@@ -205,7 +213,10 @@ class OpenCDPSDK {
     );
   }
 
-  /// Track an event with optional properties
+  /// Track a custom event.
+  ///
+  /// [eventName] - The name of the event (e.g., 'purchased_item').
+  /// [properties] - Optional map of event properties (e.g., price, item_name).
   Future<void> track({
     required String eventName,
     Map<String, dynamic> properties = const {},
@@ -235,13 +246,12 @@ class OpenCDPSDK {
   //   );
   // }
 
-  /// Register a device token for push notifications
+  /// Register a device token for push notifications.
   ///
-  /// [fcmToken] is the Firebase Cloud Messaging token
-  /// [apnToken] is the Apple Push Notification token
+  /// [fcmToken] - The Firebase Cloud Messaging token (Android).
+  /// [apnToken] - The Apple Push Notification token (iOS).
   ///
-  /// This method is used to register a device token for push notifications
-  ///
+  /// This must be called to enable push notification tracking.
   Future<void> registerDeviceToken({
     String? fcmToken,
     String? apnToken,
@@ -257,7 +267,13 @@ class OpenCDPSDK {
     );
   }
 
-  /// Track a lifecycle event
+  /// Track a lifecycle event manually.
+  ///
+  /// **Note**: If [OpenCDPConfig.trackApplicationLifecycleEvents] is true,
+  /// standard lifecycle events are tracked automatically.
+  ///
+  /// [eventName] - The name of the lifecycle event.
+  /// [properties] - Optional properties for the event.
   Future<void> trackLifecycleEvent({
     required String eventName,
     Map<String, dynamic> properties = const {},
@@ -273,7 +289,13 @@ class OpenCDPSDK {
     );
   }
 
-  /// Track a screen view
+  /// Track a screen view manually.
+  ///
+  /// **Note**: If [OpenCDPConfig.autoTrackScreens] is true and [screenTracker]
+  /// is added to Navigator observers, screen views are tracked automatically.
+  ///
+  /// [title] - The name of the screen.
+  /// [properties] - Optional properties for the screen view.
   Future<void> trackScreenView({
     required String title,
     Map<String, dynamic> properties = const {},
@@ -289,7 +311,11 @@ class OpenCDPSDK {
     );
   }
 
-  /// Handles a delivered push notification when app is in foreground
+  /// Handles a delivered push notification when app is in foreground.
+  ///
+  /// Call this method from your firebase_messaging `onMessage` handler.
+  ///
+  /// [data] - The data payload from the remote message.
   static Future<void> handleForegroundPushDelivery(
       Map<String, dynamic> data) async {
     final deliveryMessageId = data['delivery_message_id'] as String?;
@@ -310,7 +336,11 @@ class OpenCDPSDK {
     );
   }
 
-  /// Handles a delivered push notification when app is in background
+  /// Handles a delivered push notification when app is in background.
+  ///
+  /// Call this method from your firebase_messaging background handler.
+  ///
+  /// [data] - The data payload from the remote message.
   static Future<void> handleBackgroundPushDelivery(
       Map<String, dynamic> data) async {
     final deliveryMessageId = data['delivery_message_id'] as String?;
@@ -348,7 +378,11 @@ class OpenCDPSDK {
     );
   }
 
-  /// Handles when the user opens a push notification
+  /// Handles when the user opens a push notification.
+  ///
+  /// Call this method when a notification is tapped.
+  ///
+  /// [data] - The data payload from the remote message.
   static Future<void> handlePushNotificationOpen(
       Map<String, dynamic> data) async {
     final deliveryMessageId = data['delivery_message_id'] as String?;
@@ -369,13 +403,13 @@ class OpenCDPSDK {
     );
   }
 
-  /// Clear the current identity and flush all pending requests
+  /// Clear the current user identity and reset SDK state.
   ///
   /// This method:
-  /// - Clears any stored user identity
-  /// - Flushes all pending requests in the queue
-  /// - Clears persistent storage
-  /// - Returns immediately without making any network requests
+  /// - Flushes any pending requests in the queue.
+  /// - Clears the stored user ID.
+  /// - Clears persistent storage related to identity.
+  /// - Resets the SDK to an anonymous state.
   Future<void> clearIdentity() async {
     if (_implementation == null) {
       debugPrint(
@@ -385,7 +419,9 @@ class OpenCDPSDK {
     await _implementation!.clearIdentity();
   }
 
-  /// Dispose the SDK instance
+  /// Dispose the SDK instance and cleanup resources.
+  ///
+  /// This should be called when the SDK is no longer needed or when the app is terminating.
   void dispose() {
     if (_implementation != null) {
       _implementation!.dispose();
