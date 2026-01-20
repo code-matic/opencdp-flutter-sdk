@@ -29,6 +29,16 @@
             "type": "dart",
             "program": "example/lib/main.dart",
             "flutterMode": "release"
-        }
+        },
+ {
+  "name": "Android SDK Example (Native)",
+  "request": "launch",
+  "type": "android",
+  //"mainActivity": "com.opencdp.example.InitializationActivity",
+  "appSrcRoot": "/Users/mac/CodeMatic/sdk-porting-agent/cdpandroidsdk/app/src/main",
+  "apkFile": "/Users/mac/CodeMatic/sdk-porting-agent/cdpandroidsdk/app/build/outputs/apk/debug/app-debug.apk"
+}
+
+
     ]
 }
