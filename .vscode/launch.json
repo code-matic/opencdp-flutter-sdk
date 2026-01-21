@@ -9,11 +9,11 @@
             "request": "launch",
             "type": "dart",
             "program": "/Users/mac/CodeMatic/opencdp-flutter-sdk/example/lib/main.dart",
-             "args": [
-              "-v",
-              "development",
-              "--target",
-              "/Users/mac/CodeMatic/opencdp-flutter-sdk/example/lib/main.dart",
+            "args": [
+                "-v",
+                "development",
+                "--target",
+                "/Users/mac/CodeMatic/opencdp-flutter-sdk/example/lib/main.dart",
             ]
         },
         {
@@ -30,15 +30,12 @@
             "program": "example/lib/main.dart",
             "flutterMode": "release"
         },
- {
-  "name": "Android SDK Example (Native)",
-  "request": "launch",
-  "type": "android",
-  //"mainActivity": "com.opencdp.example.InitializationActivity",
-  "appSrcRoot": "/Users/mac/CodeMatic/sdk-porting-agent/cdpandroidsdk/app/src/main",
-  "apkFile": "/Users/mac/CodeMatic/sdk-porting-agent/cdpandroidsdk/app/build/outputs/apk/debug/app-debug.apk"
-}
-
-
+        {
+            "name": "Android SDK Example (Native)",
+            "request": "launch",
+            "type": "android",
+            //"mainActivity": "com.opencdp.example.InitializationActivity",
+            "apkFile": "/Users/mac/CodeMatic/sdk-porting-agent/cdpandroidsdk/app/build/outputs/apk/debug/app-debug.apk"
+        }
     ]
 }
