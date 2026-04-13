@@ -497,7 +497,8 @@ class OpenCDPSDKImplementation {
       String deliverySendContextId,
       bool isBackground,
       {String? appGroup,
-      String? apiKeyOverride}) async {
+      String? apiKeyOverride,
+      String? actionId}) async {
     try {
       // Determine the API key based on context
       String? apiKey;
@@ -545,6 +546,7 @@ class OpenCDPSDKImplementation {
           personId: personId,
           isBackground: true,
           appGroup: appGroup,
+          actionId: actionId,
         );
       } else {
         await PushNotificationTracker.sendMetric(
@@ -555,6 +557,7 @@ class OpenCDPSDKImplementation {
           deliverySendContextId: deliverySendContextId,
           personId: personId,
           isBackground: false,
+          actionId: actionId,
         );
       }
     } catch (e, st) {
@@ -563,20 +566,26 @@ class OpenCDPSDKImplementation {
   }
 
   Future<void> trackPushNotificationMetric(
-      MetricEvent event,
-      String deliveryMessageId,
-      bool isBackground,
-      String deliverySendContext,
-      String deliverySendContextId) async {
+    MetricEvent event,
+    String deliveryMessageId,
+    bool isBackground,
+    String deliverySendContext,
+    String deliverySendContextId, {
+    String? actionId,
+  }) async {
     try {
       // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
-          config.cdpApiKey, event, deliveryMessageId,
-          isBackground: isBackground,
-          appGroup: config.appGroup,
-          deliverySendContext: deliverySendContext,
-          personId: _userId,
-          deliverySendContextId: deliverySendContextId);
+        config.cdpApiKey,
+        event,
+        deliveryMessageId,
+        isBackground: isBackground,
+        appGroup: config.appGroup,
+        deliverySendContext: deliverySendContext,
+        personId: _userId,
+        deliverySendContextId: deliverySendContextId,
+        actionId: actionId,
+      );
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }

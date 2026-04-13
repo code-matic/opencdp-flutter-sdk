@@ -35,7 +35,7 @@ class PushNotificationTracker {
     _httpClient = null;
   }
 
-  /// Sends a push notification metric (delivered/opened) to the CDP backend.
+  /// Sends a push notification metric (delivered / opened / action_clicked / …) to the CDP backend.
   /// Includes retry logic with exponential backoff for better reliability.
   ///
   /// This method is designed to work in background contexts where the main
@@ -49,6 +49,7 @@ class PushNotificationTracker {
     String deliverySendContextId = "",
     bool isBackground = false,
     String? appGroup,
+    String? actionId,
   }) async {
     // If personId is not provided and we're in background mode, try to get from native storage
     String? userId = personId;
@@ -79,7 +80,7 @@ class PushNotificationTracker {
     // Get current timestamp in ISO8601 format with UTC timezone
     final timestamp = DateTime.now().toUtc().toIso8601String();
 
-    final body = {
+    final body = <String, dynamic>{
       'message_id': deliveryMessageId,
       'person_id': userId,
       'send_context': deliverySendContext,
@@ -87,6 +88,14 @@ class PushNotificationTracker {
       'status': _mapEventToStatus(event),
       'ts': timestamp,
     };
+    final trimmedAction = actionId?.trim();
+    if (trimmedAction != null && trimmedAction.isNotEmpty) {
+      body['action_id'] = trimmedAction;
+    } else if (event == MetricEvent.actionClicked) {
+      debugPrint(
+        '[CDP] Warning: push metric status is action_clicked but action_id is empty.',
+      );
+    }
     debugPrint('[CDP] Sending push metric: ${jsonEncode(body)}...');
 
     int retryCount = 0;
@@ -154,6 +163,7 @@ class PushNotificationTracker {
     String deliverySendContextId = "",
     bool isBackground = false,
     String? appGroup,
+    String? actionId,
   }) {
     // Don't await - just fire the request and move on
     // Important for background tasks with limited execution time
@@ -166,6 +176,7 @@ class PushNotificationTracker {
       deliverySendContextId: deliverySendContextId,
       isBackground: isBackground,
       appGroup: appGroup,
+      actionId: actionId,
     );
   }
 
@@ -176,6 +187,8 @@ class PushNotificationTracker {
         return 'delivered';
       case MetricEvent.opened:
         return 'opened';
+      case MetricEvent.actionClicked:
+        return 'action_clicked';
       case MetricEvent.converted:
         return 'converted';
       case MetricEvent.failed:

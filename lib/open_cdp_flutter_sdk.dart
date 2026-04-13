@@ -15,8 +15,23 @@ import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 
 export 'src/models/config.dart';
+export 'src/models/metric_event.dart';
 export 'src/models/validation_exception.dart';
 export 'src/utils/http_client.dart' show CDPException;
+export 'src/utils/push_notification_payload.dart';
+
+String? _effectivePushActionId(
+  Map<String, dynamic> data,
+  String? tappedActionId,
+) {
+  final fromArg = tappedActionId?.trim();
+  if (fromArg != null && fromArg.isNotEmpty) return fromArg;
+  for (final key in ['action_id', 'action_clicked']) {
+    final raw = data[key];
+    if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+  }
+  return null;
+}
 
 /// Main SDK class for Open CDP
 class OpenCDPSDK {
@@ -292,6 +307,11 @@ class OpenCDPSDK {
   /// Handles a delivered push notification when app is in foreground
   static Future<void> handleForegroundPushDelivery(
       Map<String, dynamic> data) async {
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track foreground push delivery - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
     final deliveryMessageId = data['delivery_message_id'] as String?;
     if (deliveryMessageId == null || deliveryMessageId.isEmpty) {
       debugPrint(
@@ -348,9 +368,24 @@ class OpenCDPSDK {
     );
   }
 
-  /// Handles when the user opens a push notification
+  /// Handles when the user opens a push notification (body tap) or taps an
+  /// action button (push v2).
+  ///
+  /// Pass [action_clicked] with the tapped button's `action_id` when the user
+  /// tapped a notification action. You can also set `action_id` or
+  /// `action_clicked` on [data] (string values). If any of these is non-empty,
+  /// the SDK reports `status: action_clicked` with `action_id` on the delivery
+  /// endpoint.
   static Future<void> handlePushNotificationOpen(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data, {
+    // ignore: non_constant_identifier_names — named argument aligns with delivery payload keys
+    String? action_clicked,
+  }) async {
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track push open - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
     final deliveryMessageId = data['delivery_message_id'] as String?;
     if (deliveryMessageId == null || deliveryMessageId.isEmpty) {
       debugPrint('[CDP] No delivery_message_id found in opened push payload.');
@@ -360,12 +395,16 @@ class OpenCDPSDK {
     final deliverySendContextId = data['delivery_send_context_id'] ?? "";
     final deliverySendContext = data['delivery_send_context'] ?? "";
 
+    final resolvedActionId = _effectivePushActionId(data, action_clicked);
+    final isActionClick = resolvedActionId != null;
+
     await _implementation!.trackPushNotificationMetric(
-      MetricEvent.opened,
+      isActionClick ? MetricEvent.actionClicked : MetricEvent.opened,
       deliveryMessageId,
       false,
-      deliverySendContext,
-      deliverySendContextId,
+      '$deliverySendContext',
+      '$deliverySendContextId',
+      actionId: isActionClick ? resolvedActionId : null,
     );
   }
 
