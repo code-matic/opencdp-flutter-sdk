@@ -12,6 +12,10 @@ A Flutter SDK for integrating with the OpenCDP platform. Track user events, scre
 - Customer.io integration
 - Device attributes tracking
 
+## Additional Guides
+
+- [Actionable Push Notifications (Manual Mode)](docs/push-actionable-notifications.md)
+
 ## Screen Tracking
 
 The SDK provides automatic screen tracking through a `NavigatorObserver`. To enable automatic screen tracking:
@@ -241,6 +245,10 @@ await OpenCDPSDK.instance.registerDeviceToken(
 
 If you want notification tracking enabled, follow these steps:
 
+**Data gateway URL:** Push delivery events (`/v1/message/delivery/push`) use the same **base URL** as the rest of the Open CDP API. Configure an optional `cdpEndpoint` on `OpenCDPConfig` the same way you would for `identify` / `track`; the resolved value (see `OpenCDPConfig.baseUrl`) is what the SDK uses for all push metric HTTP calls. After a successful `OpenCDPSDK.initialize`, that URL is also written to **native storage** (Android: `SharedPreferences`, iOS: your **App Group**), so `handleBackgroundPushDelivery` in a FCM background isolate and the iOS **Notification Service Extension** can call the right host even when the Flutter engine is not running. The default is `https://api.opencdp.io/gateway/data-gateway` when `cdpEndpoint` is unset.
+
+**Android, actionable notifications:** For pushes with **action buttons**, the CDP server sends a **data-focused** FCM message on Android (no FCM `notification` block) so the system does not auto-post a **generic** tray message that would lack your buttons. The app is responsible for showing a `Notification` with `NotificationCompat.Action` (e.g. via `flutter_local_notifications`); use `OpenCDPPushPayload.parseActions` to read `label` / `link` while your **action ids** match the category / intents you register. The **iOS** path uses `aps` + category `CDP_ACTIONS`—see the manual registration section below.
+
 ### OpenCDP SDK: Flutter Setup Guide
 
 This guide provides step-by-step instructions to integrate the OpenCDP SDK into your Flutter app for real-time push notification tracking on iOS and Android.
@@ -274,7 +282,7 @@ This is all the Dart code required to track push notification events.
 
 ##### Step 2.1: Initialize Services
 
-In your lib/main.dart file, initialize Firebase and the OpenCdpSdk. For iOS, you must provide the unique App Group ID that you will create in the iOS setup steps.
+In your lib/main.dart file, initialize Firebase and the `OpenCDPSDK`. For iOS, you must provide the unique App Group ID that you will create in the iOS setup steps.
 
 ```dart
 // lib/main.dart
@@ -287,9 +295,12 @@ Future<void> main() async {
   await Firebase.initializeApp();
 
   // Initialize the OpenCDP SDK
-  await OpenCdpSdk.initialize(
-    apiKey: "YOUR_API_KEY_HERE",
-    iOSAppGroup: "group.com.yourcompany.yourapp" // The unique App Group you will create for iOS
+  await OpenCDPSDK.initialize(
+    config: OpenCDPConfig(
+      cdpApiKey: "YOUR_API_KEY_HERE",
+      iOSAppGroup: "group.com.yourcompany.yourapp", // App Group for iOS
+      // Optional: cdpEndpoint: "https://your-tenant.data-gateway.cdp/...", // same base as identify/track
+    ),
   );
   
   // Set up push listeners after initialization
@@ -317,7 +328,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   
   // Let the SDK handle the background delivery event
-  OpenCdpSdk.handleBackgroundPushDelivery(message.data);
+  OpenCDPSDK.handleBackgroundPushDelivery(message.data);
 }
 
 class PushService {
@@ -327,27 +338,39 @@ class PushService {
 
     // 2. Handles "delivered" events when the app is in the foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      OpenCdpSdk.handleForegroundPushDelivery(message.data);
+      OpenCDPSDK.handleForegroundPushDelivery(message.data);
     });
 
     // 3. Handles "opened" events if the app is opened from a terminated state
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
-        OpenCdpSdk.handlePushNotificationOpen(message.data);
+        OpenCDPSDK.handlePushNotificationOpen(message.data);
       }
     });
 
     // 4. Handles "opened" events if the app is opened from a background state
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      OpenCdpSdk.handlePushNotificationOpen(message.data);
+      OpenCDPSDK.handlePushNotificationOpen(message.data);
     });
   }
 }
 ```
 
+#### 2.3 Notification action buttons (manual registration)
+
+If you use **action buttons** in CDP (`data.actions` with `action_id` / `label`), use the dedicated guide:
+
+- [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md)
+
+It includes:
+- manual iOS category registration (`CDP_ACTIONS`) with copy/paste Swift
+- Android background/terminated rendering with local notifications
+- Flutter tap callback wiring for body and action taps
+- payload smoke test + troubleshooting checklist
+
 #### 3. Android Setup
 
-No additional native configuration is required for Android. The Dart code you added is sufficient for full tracking.
+No additional **native** configuration is required for **delivery and open tracking only**; the Dart handlers above are enough. If you add **action buttons** as in [2.3](#23-notification-action-buttons-manual-registration), see [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md) for local-notification and intent wiring.
 
 #### 4. iOS Setup
 
@@ -559,6 +582,12 @@ rm -rf Pods Podfile.lock
 pod install
 cd ..
 ```
+
+##### Step 4.5: Action Buttons End-to-End (copy/paste)
+
+Moved to dedicated guide:
+
+- [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md)
 
 ##### Common Issues
 

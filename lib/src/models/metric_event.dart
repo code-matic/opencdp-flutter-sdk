@@ -6,7 +6,7 @@ enum MetricEvent {
   /// Notification was opened by the user
   opened,
 
-  /// User tapped a notification action button (reports `action_clicked` + optional `action_id`)
+  /// User tapped a notification action button (reports `status: clicked` + `props.action_id`)
   actionClicked,
 
   /// Notification was converted (user took action)

@@ -498,6 +498,7 @@ class OpenCDPSDKImplementation {
       bool isBackground,
       {String? appGroup,
       String? apiKeyOverride,
+      String? baseUrlOverride,
       String? actionId}) async {
     try {
       // Determine the API key based on context
@@ -523,6 +524,19 @@ class OpenCDPSDKImplementation {
         return;
       }
 
+      String? resolvedBase = baseUrlOverride;
+      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
+        if (isBackground) {
+          resolvedBase = await NativeBridge.getBaseUrlFromNative(
+            appGroup: appGroup,
+          );
+        }
+      }
+      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
+        resolvedBase = CDPEndpoints.baseUrl;
+      }
+      final String baseUrl = resolvedBase;
+
       // Get the user ID
       String? personId;
       if (isBackground) {
@@ -539,6 +553,7 @@ class OpenCDPSDKImplementation {
       if (isBackground) {
         PushNotificationTracker.sendMetricAndForget(
           apiKey,
+          baseUrl,
           event,
           deliveryMessageId,
           deliverySendContext: deliverySendContext,
@@ -551,6 +566,7 @@ class OpenCDPSDKImplementation {
       } else {
         await PushNotificationTracker.sendMetric(
           apiKey,
+          baseUrl,
           event,
           deliveryMessageId,
           deliverySendContext: deliverySendContext,
@@ -577,6 +593,7 @@ class OpenCDPSDKImplementation {
       // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
         config.cdpApiKey,
+        config.baseUrl,
         event,
         deliveryMessageId,
         isBackground: isBackground,
@@ -632,6 +649,10 @@ class OpenCDPSDKImplementation {
       // Clear from native storage for background push notification handling
       // Works for both iOS and Android with the updated method
       await NativeBridge.clearUserIdFromNative(
+        appGroup: config.appGroup,
+      );
+
+      await NativeBridge.clearBaseUrlFromNative(
         appGroup: config.appGroup,
       );
 

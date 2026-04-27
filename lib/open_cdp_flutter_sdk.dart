@@ -151,11 +151,12 @@ class OpenCDPSDK {
       debugPrint('[CDP] Error resetting Customer.io integration: $e');
     }
 
-    // 3. Clear native API key storage if needed
+    // 3. Clear native API key and base URL storage if needed
     if (!kIsWeb) {
       try {
         final appGroup = config.iOSAppGroup ?? '';
         await NativeBridge.clearApiKeyFromNative(appGroup: appGroup);
+        await NativeBridge.clearBaseUrlFromNative(appGroup: appGroup);
       } catch (e) {
         debugPrint('[CDP] Error clearing native API key: $e');
       }
@@ -364,7 +365,25 @@ class OpenCDPSDK {
       deliverySendContextId,
       true, // This is a background event
       apiKeyOverride: apiKey,
+      baseUrlOverride: _implementation?.config.baseUrl,
       appGroup: appGroup,
+    );
+  }
+
+  /// Android-only helper to render a notification with action buttons using
+  /// native `NotificationCompat` APIs from push `data` payload.
+  ///
+  /// Useful in `FirebaseMessaging.onBackgroundMessage` when actionable pushes
+  /// are sent as data-focused messages and must be displayed by the app.
+  static Future<bool> showAndroidActionableNotification(
+    Map<String, dynamic> data, {
+    String channelName = 'CDP Notifications',
+    String channelDescription = 'Push notifications from CDP',
+  }) async {
+    return NativeBridge.showAndroidActionableNotification(
+      data: data,
+      channelName: channelName,
+      channelDescription: channelDescription,
     );
   }
 
@@ -374,8 +393,8 @@ class OpenCDPSDK {
   /// Pass [action_clicked] with the tapped button's `action_id` when the user
   /// tapped a notification action. You can also set `action_id` or
   /// `action_clicked` on [data] (string values). If any of these is non-empty,
-  /// the SDK reports `status: action_clicked` with `action_id` on the delivery
-  /// endpoint.
+  /// the SDK reports `status: clicked` with `props: { "action_id": "..." }` on
+  /// the delivery endpoint.
   static Future<void> handlePushNotificationOpen(
     Map<String, dynamic> data, {
     // ignore: non_constant_identifier_names — named argument aligns with delivery payload keys

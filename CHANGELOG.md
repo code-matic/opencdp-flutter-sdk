@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+## [2.1.0] - 2026-04-27
+
+### Added
+
+* **Android actionable push helper**
+  * Added `OpenCDPSDK.showAndroidActionableNotification(...)` to display push notifications with action buttons from payload data.
+  * Supports up to 3 actions from `data.actions` and handles body/action taps.
+
+* **New setup guide for actionable push**
+  * Added `docs/push-actionable-notifications.md` with copy-paste setup for Android and iOS manual mode.
+
+### Improved
+
+* **Push delivery endpoint now follows your SDK base URL**
+  * Push tracking now respects `OpenCDPConfig.baseUrl` / `cdpEndpoint` (same behavior as other SDK events).
+  * Works in foreground, background, and iOS notification extension flows.
+
 ## [2.0.0] - 2025-12-30
 
 ### Bug Fixes

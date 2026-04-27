@@ -15,9 +15,10 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
 
     companion object {
-        private const val PREFS_NAME = "open_cdp_sdk_prefs"
-        private const val API_KEY_KEY = "opencdpsdk_api_key"
-        private const val USER_ID_KEY = "opencdpsdk_user_id"
+        private const val PREFS_NAME = OpenCdpNotificationContracts.PREFS_NAME
+        private const val API_KEY_KEY = OpenCdpNotificationContracts.API_KEY_KEY
+        private const val USER_ID_KEY = OpenCdpNotificationContracts.USER_ID_KEY
+        private const val BASE_URL_KEY = OpenCdpNotificationContracts.BASE_URL_KEY
     }
 
     override fun onAttachedToEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
@@ -79,6 +80,48 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
                 result.success(null)
             }
 
+            "opencdpsdk_save_base_url" -> {
+                val baseUrl = call.argument<String>("baseUrl")
+                if (baseUrl != null) {
+                    saveBaseUrlToSharedPreferences(baseUrl)
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGS", "baseUrl was null", null)
+                }
+            }
+
+            "opencdpsdk_get_base_url" -> {
+                val baseUrl = getBaseUrlFromSharedPreferences()
+                if (baseUrl != null) {
+                    result.success(baseUrl)
+                } else {
+                    result.error("NOT_FOUND", "Base URL not found", null)
+                }
+            }
+
+            "opencdpsdk_clear_base_url" -> {
+                clearBaseUrlFromSharedPreferences()
+                result.success(null)
+            }
+
+            "opencdpsdk_show_actionable_notification" -> {
+                val rawData = call.argument<Map<String, Any?>>("data")
+                if (rawData == null) {
+                    result.error("INVALID_ARGS", "data was null", null)
+                    return
+                }
+                val channelName = call.argument<String>("channelName") ?: "CDP Notifications"
+                val channelDescription = call.argument<String>("channelDescription")
+                    ?: "Push notifications from CDP"
+                val shown = OpenCdpNotificationRenderer.showActionableNotification(
+                    context = context,
+                    data = rawData,
+                    channelName = channelName,
+                    channelDescription = channelDescription
+                )
+                result.success(shown)
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -137,6 +180,30 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             remove(USER_ID_KEY)
+            apply()
+        }
+    }
+
+    private fun saveBaseUrlToSharedPreferences(baseUrl: String) {
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putString(BASE_URL_KEY, baseUrl)
+            apply()
+        }
+    }
+
+    private fun getBaseUrlFromSharedPreferences(): String? {
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPreferences.getString(BASE_URL_KEY, null)
+    }
+
+    private fun clearBaseUrlFromSharedPreferences() {
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            remove(BASE_URL_KEY)
             apply()
         }
     }

@@ -9,9 +9,16 @@ import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
 /// Handles sending push notification tracking metrics to the CDP backend.
 /// This is designed to be lightweight and usable in background contexts.
 class PushNotificationTracker {
-  // URL for push notification metrics
-  static const _url =
-      '${CDPEndpoints.baseUrl}${CDPEndpoints.notificationMetrics}';
+  /// Resolves the delivery URL using the same [baseUrl] as [OpenCDPConfig.baseUrl]
+  /// (default gateway or [OpenCDPConfig.cdpEndpoint] when set).
+  static String deliveryPushUrl(String baseUrl) {
+    final t = baseUrl.trim();
+    if (t.isEmpty) {
+      return '${CDPEndpoints.baseUrl}${CDPEndpoints.notificationMetrics}';
+    }
+    final root = t.endsWith('/') ? t.substring(0, t.length - 1) : t;
+    return '$root${CDPEndpoints.notificationMetrics}';
+  }
 
   // Maximum number of retry attempts
   static const _maxRetries = 3;
@@ -35,13 +42,19 @@ class PushNotificationTracker {
     _httpClient = null;
   }
 
-  /// Sends a push notification metric (delivered / opened / action_clicked / …) to the CDP backend.
+  /// Sends a push notification metric to the data-gateway `message/delivery/push` API.
+  ///
+  /// [MetricEvent.actionClicked] maps to `status: "clicked"` with
+  /// `props: { "action_id": "<id>" }` (not a top-level `action_id` field).
   /// Includes retry logic with exponential backoff for better reliability.
   ///
   /// This method is designed to work in background contexts where the main
   /// SDK may not be initialized.
+  ///
+  /// [baseUrl] must match [OpenCDPConfig.baseUrl] (i.e. default or [OpenCDPConfig.cdpEndpoint]).
   static Future<bool> sendMetric(
     String apiKey,
+    String baseUrl,
     MetricEvent event,
     String deliveryMessageId, {
     String? personId,
@@ -88,13 +101,15 @@ class PushNotificationTracker {
       'status': _mapEventToStatus(event),
       'ts': timestamp,
     };
-    final trimmedAction = actionId?.trim();
-    if (trimmedAction != null && trimmedAction.isNotEmpty) {
-      body['action_id'] = trimmedAction;
-    } else if (event == MetricEvent.actionClicked) {
-      debugPrint(
-        '[CDP] Warning: push metric status is action_clicked but action_id is empty.',
-      );
+    if (event == MetricEvent.actionClicked) {
+      final trimmedAction = actionId?.trim();
+      if (trimmedAction != null && trimmedAction.isNotEmpty) {
+        body['props'] = <String, dynamic>{'action_id': trimmedAction};
+      } else {
+        debugPrint(
+          '[CDP] Warning: push metric status is clicked but action_id is empty in props.',
+        );
+      }
     }
     debugPrint('[CDP] Sending push metric: ${jsonEncode(body)}...');
 
@@ -109,7 +124,7 @@ class PushNotificationTracker {
             '[CDP] Sending push metric $retryCount: ${jsonEncode(body)}...');
 
         final response = await client.post(
-          Uri.parse(_url),
+          Uri.parse(deliveryPushUrl(baseUrl)),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': apiKey,
@@ -156,6 +171,7 @@ class PushNotificationTracker {
   /// On Android, appGroup is not needed
   static void sendMetricAndForget(
     String apiKey,
+    String baseUrl,
     MetricEvent event,
     String deliveryMessageId, {
     String? personId,
@@ -169,6 +185,7 @@ class PushNotificationTracker {
     // Important for background tasks with limited execution time
     sendMetric(
       apiKey,
+      baseUrl,
       event,
       deliveryMessageId,
       personId: personId,
@@ -188,7 +205,7 @@ class PushNotificationTracker {
       case MetricEvent.opened:
         return 'opened';
       case MetricEvent.actionClicked:
-        return 'action_clicked';
+        return 'clicked';
       case MetricEvent.converted:
         return 'converted';
       case MetricEvent.failed:

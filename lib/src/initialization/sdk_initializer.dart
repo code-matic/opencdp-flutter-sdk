@@ -28,6 +28,10 @@ class SDKInitializer {
           apiKey: config.cdpApiKey,
           appGroup: config.iOSAppGroup, // On Android, this argument is ignored
         );
+        await NativeBridge.saveBaseUrlToNative(
+          baseUrl: config.baseUrl,
+          appGroup: config.iOSAppGroup,
+        );
 
         // Warn if on iOS and the app group is missing
         if (Platform.isIOS && config.iOSAppGroup == null) {

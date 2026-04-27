@@ -45,7 +45,8 @@ public class OpenCdpPushExtensionHelper {
             deliverySendContext: deliverySendContext,
             deliverySendContextId: deliverySendContextId,
             status: "delivered",
-            apiKey: apiKey
+            apiKey: apiKey,
+            appGroup: appGroup
         ) {
             // Modify content here if needed
             // bestAttemptContent.title = "New Title"
@@ -69,6 +70,13 @@ public class OpenCdpPushExtensionHelper {
         return nil
     }
 
+    private static func readBaseUrlFromSharedStorage(appGroup: String) -> String? {
+        if let userDefaults = UserDefaults(suiteName: appGroup) {
+            return userDefaults.string(forKey: "opencdpsdk_base_url")
+        }
+        return nil
+    }
+
     private static func reportPushStatus(
         deliveryMessageId: String,
         personId: String,
@@ -76,9 +84,15 @@ public class OpenCdpPushExtensionHelper {
         deliverySendContextId: String,
         status: String,
         apiKey: String,
+        appGroup: String,
         completion: @escaping () -> Void
     ) {
-        guard let url = URL(string: "https://api.opencdp.io/gateway/data-gateway/v1/message/delivery/push") else {
+        let path = "/v1/message/delivery/push"
+        let base = readBaseUrlFromSharedStorage(appGroup: appGroup)
+            ?? "https://api.opencdp.io/gateway/data-gateway"
+        let root = base.hasSuffix("/") ? String(base.dropLast()) : base
+        let full = "\(root)\(path)"
+        guard let url = URL(string: full) else {
             completion()
             return
         }

@@ -116,6 +116,57 @@ class NativeBridge {
     }
   }
 
+  /// Save the resolved data-gateway base URL (see [OpenCDPConfig.baseUrl]) for
+  /// background push delivery requests (same host as identify/track).
+  static Future<void> saveBaseUrlToNative({
+    required String baseUrl,
+    String? appGroup,
+  }) async {
+    try {
+      final Map<String, dynamic> args = {'baseUrl': baseUrl};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      await _channel.invokeMethod('opencdpsdk_save_base_url', args);
+      debugPrint('[CDP] Base URL saved to native storage for push delivery');
+    } on PlatformException catch (e) {
+      debugPrint('[CDP] Failed to save base URL to native: ${e.message}');
+    }
+  }
+
+  static Future<String?> getBaseUrlFromNative({
+    String? appGroup,
+  }) async {
+    try {
+      final Map<String, dynamic> args = {};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      return await _channel.invokeMethod<String>(
+        'opencdpsdk_get_base_url',
+        args,
+      );
+    } on PlatformException catch (e) {
+      debugPrint('[CDP] Failed to get base URL from native: ${e.message}');
+      return null;
+    }
+  }
+
+  static Future<void> clearBaseUrlFromNative({
+    String? appGroup,
+  }) async {
+    try {
+      final Map<String, dynamic> args = {};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      await _channel.invokeMethod('opencdpsdk_clear_base_url', args);
+      debugPrint('[CDP] Base URL cleared from native storage');
+    } on PlatformException catch (e) {
+      debugPrint('[CDP] Failed to clear base URL from native: ${e.message}');
+    }
+  }
+
   /// Clear user ID from native shared storage
   /// On iOS, requires an app group
   /// On Android, the app group is not used
@@ -138,4 +189,31 @@ class NativeBridge {
 
   /// Helper function for string length safety
   static int min(int a, int b) => a < b ? a : b;
+
+  /// Render an actionable Android notification from push `data`.
+  ///
+  /// Returns `true` when the native side attempts to display the notification.
+  /// This is a no-op on iOS/web.
+  static Future<bool> showAndroidActionableNotification({
+    required Map<String, dynamic> data,
+    String channelName = 'CDP Notifications',
+    String channelDescription = 'Push notifications from CDP',
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'opencdpsdk_show_actionable_notification',
+        {
+          'data': data,
+          'channelName': channelName,
+          'channelDescription': channelDescription,
+        },
+      );
+      return result ?? false;
+    } on PlatformException catch (e) {
+      debugPrint(
+        '[CDP] Failed to show native Android actionable notification: ${e.message}',
+      );
+      return false;
+    }
+  }
 }
