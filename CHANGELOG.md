@@ -11,7 +11,7 @@
   * Supports up to 3 actions from `data.actions` and handles body/action taps.
 
 * **New setup guide for actionable push**
-  * Added `docs/push-actionable-notifications.md` with copy-paste setup for Android and iOS manual mode.
+  * Added [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode) with copy-paste setup for Android and iOS manual mode.
 
 ### Improved
 

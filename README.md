@@ -14,7 +14,7 @@ A Flutter SDK for integrating with the OpenCDP platform. Track user events, scre
 
 ## Additional Guides
 
-- [Actionable Push Notifications (Manual Mode)](docs/push-actionable-notifications.md)
+- [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode)
 
 ## Screen Tracking
 
@@ -359,7 +359,7 @@ If you use **action buttons** in CDP (`data.actions` with `action_id` / `label`)
 
 **Android note:** For actionable pushes, the backend sends a data-focused FCM message (no top-level `notification` block). Preferred path is `OpenCDPSDK.showAndroidActionableNotification(...)` inside your background handler.
 
-- [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md)
+- [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode)
 
 It includes:
 - manual iOS category registration (`CDP_ACTIONS`) with copy/paste Swift
@@ -369,7 +369,7 @@ It includes:
 
 #### 3. Android Setup
 
-No additional **native** configuration is required for **delivery and open tracking only**; the Dart handlers above are enough. If you add **action buttons** as in [2.3](#23-notification-action-buttons-manual-registration), see [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md) for SDK-native Android rendering and iOS manual registration.
+No additional **native** configuration is required for **delivery and open tracking only**; the Dart handlers above are enough. If you add **action buttons** as in [2.3](#23-notification-action-buttons-manual-registration), see [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode) for SDK-native Android rendering and iOS manual registration.
 
 #### 4. iOS Setup
 
@@ -586,7 +586,7 @@ cd ..
 
 Moved to dedicated guide:
 
-- [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md)
+- [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode)
 
 ##### Common Issues
 
