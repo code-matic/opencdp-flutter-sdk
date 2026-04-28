@@ -245,9 +245,6 @@ await OpenCDPSDK.instance.registerDeviceToken(
 
 If you want notification tracking enabled, follow these steps:
 
-**Data gateway URL:** Push delivery events (`/v1/message/delivery/push`) use the same **base URL** as the rest of the Open CDP API. Configure an optional `cdpEndpoint` on `OpenCDPConfig` the same way you would for `identify` / `track`; the resolved value (see `OpenCDPConfig.baseUrl`) is what the SDK uses for all push metric HTTP calls. After a successful `OpenCDPSDK.initialize`, that URL is also written to **native storage** (Android: `SharedPreferences`, iOS: your **App Group**), so `handleBackgroundPushDelivery` in a FCM background isolate and the iOS **Notification Service Extension** can call the right host even when the Flutter engine is not running. The default is `https://api.opencdp.io/gateway/data-gateway` when `cdpEndpoint` is unset.
-
-**Android, actionable notifications:** For pushes with **action buttons**, the CDP server sends a **data-focused** FCM message on Android (no FCM `notification` block) so the system does not auto-post a **generic** tray message that would lack your buttons. The app is responsible for showing a `Notification` with `NotificationCompat.Action` (e.g. via `flutter_local_notifications`); use `OpenCDPPushPayload.parseActions` to read `label` / `link` while your **action ids** match the category / intents you register. The **iOS** path uses `aps` + category `CDP_ACTIONS`—see the manual registration section below.
 
 ### OpenCDP SDK: Flutter Setup Guide
 
@@ -360,17 +357,19 @@ class PushService {
 
 If you use **action buttons** in CDP (`data.actions` with `action_id` / `label`), use the dedicated guide:
 
+**Android note:** For actionable pushes, the backend sends a data-focused FCM message (no top-level `notification` block). Preferred path is `OpenCDPSDK.showAndroidActionableNotification(...)` inside your background handler.
+
 - [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md)
 
 It includes:
 - manual iOS category registration (`CDP_ACTIONS`) with copy/paste Swift
-- Android background/terminated rendering with local notifications
+- SDK-native Android background/terminated rendering
 - Flutter tap callback wiring for body and action taps
 - payload smoke test + troubleshooting checklist
 
 #### 3. Android Setup
 
-No additional **native** configuration is required for **delivery and open tracking only**; the Dart handlers above are enough. If you add **action buttons** as in [2.3](#23-notification-action-buttons-manual-registration), see [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md) for local-notification and intent wiring.
+No additional **native** configuration is required for **delivery and open tracking only**; the Dart handlers above are enough. If you add **action buttons** as in [2.3](#23-notification-action-buttons-manual-registration), see [`docs/push-actionable-notifications.md`](docs/push-actionable-notifications.md) for SDK-native Android rendering and iOS manual registration.
 
 #### 4. iOS Setup
 
