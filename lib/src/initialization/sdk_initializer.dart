@@ -74,4 +74,27 @@ class SDKInitializer {
     WidgetsBinding.instance.addObserver(lifecycleTracker);
     return lifecycleTracker;
   }
+
+  /// Initialize the in-app message manager.
+  ///
+  /// Always returns an instance so the SDK can expose `OpenCDPSDK.instance.inApp`
+  /// even when polling is disabled — host apps can still call sync/track methods
+  /// manually. Polling only starts when [OpenCDPConfig.enableInAppMessages] is
+  /// true.
+  static CDPInAppManager initializeInAppManager({
+    required OpenCDPConfig config,
+    required OpenCDPSDKImplementation implementation,
+  }) {
+    return CDPInAppManager.create(
+      implementation: implementation,
+      config: config,
+      managerConfig: InAppManagerConfig(
+        enabled: config.enableInAppMessages,
+        pollInterval: config.inAppPollInterval,
+        syncLimit: config.inAppSyncLimit,
+        platformOverride: config.inAppPlatformOverride,
+        appVersionOverride: config.inAppAppVersionOverride,
+      ),
+    );
+  }
 }

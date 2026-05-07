@@ -184,6 +184,25 @@ class OpenCDPConfig {
   /// Screen view tracking configuration
   final ScreenView screenViewUse;
 
+  /// Whether the SDK should automatically poll the backend for in-app messages.
+  /// When `true`, a [CDPInAppManager] is created and started during initialize.
+  final bool enableInAppMessages;
+
+  /// How often to poll the in-app sync endpoint when [enableInAppMessages] is true.
+  /// Defaults to 30 seconds.
+  final Duration inAppPollInterval;
+
+  /// Maximum messages requested per sync (1..50). Defaults to 10.
+  final int inAppSyncLimit;
+
+  /// Optional override for the platform value sent to the backend.
+  /// Defaults to `ios`/`android`/`web` based on the runtime.
+  final String? inAppPlatformOverride;
+
+  /// Optional override for the app version string sent to the backend.
+  /// If omitted, the SDK leaves it blank.
+  final String? inAppAppVersionOverride;
+
   /// Whether to throw errors back to the caller for handling.
   ///
   /// When `true`:
@@ -227,6 +246,11 @@ class OpenCDPConfig {
     this.autoTrackScreens = false,
     this.trackApplicationLifecycleEvents = true,
     this.screenViewUse = ScreenView.all,
+    this.enableInAppMessages = false,
+    this.inAppPollInterval = const Duration(seconds: 30),
+    this.inAppSyncLimit = 10,
+    this.inAppPlatformOverride,
+    this.inAppAppVersionOverride,
     this.throwErrorsBack = false,
   });
 
@@ -244,6 +268,11 @@ class OpenCDPConfig {
       'throwErrorsBack': throwErrorsBack,
       'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
       'screenViewUse': screenViewUse.toString().split('.').last,
+      'enableInAppMessages': enableInAppMessages,
+      'inAppPollIntervalSeconds': inAppPollInterval.inSeconds,
+      'inAppSyncLimit': inAppSyncLimit,
+      'inAppPlatformOverride': inAppPlatformOverride,
+      'inAppAppVersionOverride': inAppAppVersionOverride,
     };
   }
 }

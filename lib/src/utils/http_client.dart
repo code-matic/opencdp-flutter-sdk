@@ -258,6 +258,50 @@ class CDPHttpClient {
     }
   }
 
+  /// Makes a GET request to the CDP API.
+  ///
+  /// [endpoint] is the API endpoint (e.g. '/v1/in-app/messages/sync').
+  /// [query] adds query parameters to the URL.
+  Future<Map<String, dynamic>> get(
+    String endpoint, {
+    Map<String, dynamic>? query,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint')
+          .replace(queryParameters: query?.map((key, value) => MapEntry(key, '$value')));
+      final response = await _client.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': apiKey,
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (debug) {
+          debugPrint(
+              '[CDP] Failed GET request to $endpoint. Status: ${response.statusCode}, Body: ${response.body}');
+        }
+        throw CDPException(
+          'API request failed: ${response.body}',
+          response.statusCode,
+        );
+      }
+
+      if (debug) {
+        debugPrint('[CDP] Successfully sent GET request to $endpoint.');
+        debugPrint('[CDP] Response: ${response.body}');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      if (debug) {
+        debugPrint('[CDP] Error making GET request to $endpoint: $e');
+      }
+      throw CDPException('Error making GET request to $endpoint: $e');
+    }
+  }
+
   /// Processes pending requests from the queue with exponential backoff.
   Future<void> _processPendingRequests() async {
     // Use a lock to prevent multiple concurrent processing runs.

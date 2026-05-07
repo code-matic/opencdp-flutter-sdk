@@ -5,6 +5,7 @@ import 'package:customer_io/customer_io.dart' as cio;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
+import 'package:open_cdp_flutter_sdk/src/models/in_app_message.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/hash_generator.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -391,6 +392,118 @@ class OpenCDPSDKImplementation {
       },
       type: EventType.screenView,
     );
+  }
+
+  Future<List<InAppMessage>> syncInAppMessages({
+    required String screen,
+    required String sessionId,
+    required String platform,
+    required String appVersion,
+    int limit = 10,
+    String? personId,
+  }) async {
+    try {
+      if (!_ensureInitialized()) {
+        return [];
+      }
+      final response = await httpClient.get(
+        CDPEndpoints.inAppSync,
+        query: {
+          'person_id': personId ?? _currentIdentifier,
+          'screen': screen,
+          'session_id': sessionId,
+          'platform': platform,
+          'app_version': appVersion,
+          'limit': limit,
+        },
+      );
+
+      final data = (response['data'] as Map<String, dynamic>?) ?? {};
+      final rawMessages = (data['messages'] as List?) ?? [];
+      return rawMessages
+          .map((raw) => InAppMessage.fromJson((raw as Map).cast<String, dynamic>()))
+          .toList();
+    } catch (e) {
+      _handleError('Error syncing in-app messages', e);
+      return [];
+    }
+  }
+
+  Future<void> trackInAppImpression({
+    required String deliveryId,
+    required String sessionId,
+    required String screen,
+    required String platform,
+    required String appVersion,
+    String? personId,
+  }) async {
+    await _trackInAppInteraction(
+      endpoint: CDPEndpoints.inAppImpression(deliveryId),
+      body: {
+        'person_id': personId ?? _currentIdentifier,
+        'session_id': sessionId,
+        'screen': screen,
+        'platform': platform,
+        'app_version': appVersion,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      },
+      operation: 'impression',
+    );
+  }
+
+  Future<void> trackInAppClick({
+    required String deliveryId,
+    required String actionId,
+    required String sessionId,
+    required String screen,
+    String? personId,
+  }) async {
+    await _trackInAppInteraction(
+      endpoint: CDPEndpoints.inAppClick(deliveryId),
+      body: {
+        'person_id': personId ?? _currentIdentifier,
+        'session_id': sessionId,
+        'screen': screen,
+        'action_id': actionId,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      },
+      operation: 'click',
+    );
+  }
+
+  Future<void> trackInAppDismiss({
+    required String deliveryId,
+    required String reason,
+    required String sessionId,
+    required String screen,
+    String? personId,
+  }) async {
+    await _trackInAppInteraction(
+      endpoint: CDPEndpoints.inAppDismiss(deliveryId),
+      body: {
+        'person_id': personId ?? _currentIdentifier,
+        'session_id': sessionId,
+        'screen': screen,
+        'reason': reason,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      },
+      operation: 'dismiss',
+    );
+  }
+
+  Future<void> _trackInAppInteraction({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required String operation,
+  }) async {
+    try {
+      if (!_ensureInitialized()) {
+        return;
+      }
+      await httpClient.post(endpoint, body, identifier: body['person_id'] as String?);
+    } catch (e) {
+      _handleError('Error tracking in-app $operation', e);
+    }
   }
 
   /// Implementation of lifecycle event tracking

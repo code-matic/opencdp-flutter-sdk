@@ -19,4 +19,15 @@ class CDPEndpoints {
 
   /// push notification metrics
   static const String notificationMetrics = '$version/message/delivery/push';
+
+  /// In-app message sync
+  static const String inAppSync = '$version/in-app/messages/sync';
+
+  /// In-app interactions
+  static String inAppImpression(String deliveryId) =>
+      '$version/in-app/messages/$deliveryId/impression';
+  static String inAppClick(String deliveryId) =>
+      '$version/in-app/messages/$deliveryId/click';
+  static String inAppDismiss(String deliveryId) =>
+      '$version/in-app/messages/$deliveryId/dismiss';
 }

@@ -19,6 +19,11 @@ class CDPScreenTracker extends NavigatorObserver {
   /// Storage for screen views that occurred before user identification
   final List<Map<String, dynamic>> _anonymousScreenViews = [];
 
+  /// Optional callback fired whenever the active screen changes. Used by the
+  /// SDK to keep the in-app message manager's screen filter in sync with
+  /// navigation events.
+  void Function(String screen)? onScreenChange;
+
   /// Creates a new screen tracker.
   ///
   /// [sdk] is the OpenCDPSDK instance used to send tracking events.
@@ -68,6 +73,16 @@ class CDPScreenTracker extends NavigatorObserver {
       'route': name,
       'timestamp': DateTime.now().toIso8601String(),
     };
+
+    // Notify subscribers (e.g. in-app manager) that the screen changed so they
+    // can refresh their context regardless of identification status.
+    try {
+      onScreenChange?.call(name);
+    } catch (e) {
+      if (debug) {
+        debugPrint('[CDP] Screen change callback error: $e');
+      }
+    }
 
     if (sdk.userId != null) {
       // Track for identified user

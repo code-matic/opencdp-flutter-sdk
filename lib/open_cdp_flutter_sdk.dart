@@ -5,16 +5,20 @@ import 'package:flutter/widgets.dart';
 
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
+import 'package:open_cdp_flutter_sdk/src/in_app/in_app_manager.dart';
 import 'package:open_cdp_flutter_sdk/src/initialization/sdk_initializer.dart';
 import 'package:open_cdp_flutter_sdk/src/integrations/customer_io_integration.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
+import 'package:open_cdp_flutter_sdk/src/models/in_app_message.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 
+export 'src/in_app/in_app_manager.dart';
 export 'src/models/config.dart';
+export 'src/models/in_app_message.dart';
 export 'src/models/metric_event.dart';
 export 'src/models/validation_exception.dart';
 export 'src/utils/http_client.dart' show CDPException;
@@ -39,6 +43,7 @@ class OpenCDPSDK {
   static OpenCDPSDKImplementation? _implementation;
   static CDPScreenTracker? _screenTracker;
   static CDPLifecycleTracker? _lifecycleTracker;
+  static CDPInAppManager? _inAppManager;
 
   /// Get the singleton instance of the SDK
   static OpenCDPSDK get instance {
@@ -56,6 +61,10 @@ class OpenCDPSDK {
 
   /// Get the screen tracker if auto tracking is enabled
   CDPScreenTracker? get screenTracker => _screenTracker;
+
+  /// Access to the in-app message manager. Always available after `initialize`,
+  /// but only auto-polls when `OpenCDPConfig.enableInAppMessages` is true.
+  CDPInAppManager? get inApp => _inAppManager;
 
   /// Reset the SDK instance (for testing purposes)
   @visibleForTesting
@@ -127,6 +136,19 @@ class OpenCDPSDK {
           config: config,
           sdk: _instance!,
         );
+
+        // In-app manager is always created so manual sync/track APIs work; it
+        // only auto-polls when enableInAppMessages is true.
+        _inAppManager = SDKInitializer.initializeInAppManager(
+          config: config,
+          implementation: _implementation!,
+        );
+
+        // Bridge auto screen tracking → in-app screen filter so backend page
+        // rules apply automatically as the user navigates.
+        _screenTracker?.onScreenChange = (screen) {
+          _inAppManager?.setCurrentScreen(screen);
+        };
       }
     } catch (e) {
       if (config.debug) {
@@ -169,16 +191,24 @@ class OpenCDPSDK {
       debugPrint('[CDP] Error disposing push notification tracker: $e');
     }
 
-    // 5. Dispose the current instance (this will release HTTP client resources)
+    // 5. Dispose the in-app manager (cancels polling, closes streams)
+    try {
+      _inAppManager?.dispose();
+    } catch (e) {
+      debugPrint('[CDP] Error disposing in-app manager: $e');
+    }
+
+    // 6. Dispose the current instance (this will release HTTP client resources)
     if (_instance != null) {
       _instance!.dispose();
     }
 
-    // 6. Set instance variables to null
+    // 7. Set instance variables to null
     _instance = null;
     _implementation = null;
     _screenTracker = null;
     _lifecycleTracker = null;
+    _inAppManager = null;
 
     debugPrint('[CDP] Full SDK cleanup completed for reinitialization');
   }
@@ -302,6 +332,98 @@ class OpenCDPSDK {
     await _implementation!.trackScreenView(
       title: title,
       properties: properties,
+    );
+  }
+
+  /// Sync in-app messages for the current person and context.
+  Future<List<InAppMessage>> syncInAppMessages({
+    required String screen,
+    required String sessionId,
+    required String platform,
+    required String appVersion,
+    int limit = 10,
+    String? personId,
+  }) async {
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot sync in-app messages - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return [];
+    }
+    return _implementation!.syncInAppMessages(
+      screen: screen,
+      sessionId: sessionId,
+      platform: platform,
+      appVersion: appVersion,
+      limit: limit,
+      personId: personId,
+    );
+  }
+
+  /// Track in-app message impression.
+  Future<void> trackInAppImpression({
+    required String deliveryId,
+    required String sessionId,
+    required String screen,
+    required String platform,
+    required String appVersion,
+    String? personId,
+  }) async {
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track in-app impression - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.trackInAppImpression(
+      deliveryId: deliveryId,
+      sessionId: sessionId,
+      screen: screen,
+      platform: platform,
+      appVersion: appVersion,
+      personId: personId,
+    );
+  }
+
+  /// Track in-app message click.
+  Future<void> trackInAppClick({
+    required String deliveryId,
+    required String actionId,
+    required String sessionId,
+    required String screen,
+    String? personId,
+  }) async {
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track in-app click - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.trackInAppClick(
+      deliveryId: deliveryId,
+      actionId: actionId,
+      sessionId: sessionId,
+      screen: screen,
+      personId: personId,
+    );
+  }
+
+  /// Track in-app message dismiss.
+  Future<void> trackInAppDismiss({
+    required String deliveryId,
+    required String reason,
+    required String sessionId,
+    required String screen,
+    String? personId,
+  }) async {
+    if (_implementation == null) {
+      debugPrint(
+          '[CDP] ERROR: Cannot track in-app dismiss - SDK not initialized. Call OpenCDPSDK.initialize() first.');
+      return;
+    }
+    await _implementation!.trackInAppDismiss(
+      deliveryId: deliveryId,
+      reason: reason,
+      sessionId: sessionId,
+      screen: screen,
+      personId: personId,
     );
   }
 
@@ -459,6 +581,10 @@ class OpenCDPSDK {
     // Clean up screen tracker
     _screenTracker?.dispose();
     _screenTracker = null;
+
+    // Stop in-app polling and release stream
+    _inAppManager?.dispose();
+    _inAppManager = null;
   }
 
   /// For testing: inject a mock/test HTTP client into the implementation
