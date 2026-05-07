@@ -33,7 +33,7 @@ internal object OpenCdpNotificationRenderer {
         ensureChannel(context, channelId, channelName, channelDescription)
 
         val openIntent = Intent(context, OpenCdpNotificationActionReceiver::class.java).apply {
-            action = OpenCdpNotificationContracts.ACTION_OPEN
+            setAction(OpenCdpNotificationContracts.ACTION_OPEN)
             putExtra(OpenCdpNotificationContracts.EXTRA_PAYLOAD_JSON, payloadJson)
             putExtra(OpenCdpNotificationContracts.EXTRA_NOTIFICATION_ID, notificationId)
         }
@@ -58,12 +58,12 @@ internal object OpenCdpNotificationRenderer {
             .setAutoCancel(true)
             .setContentIntent(openPendingIntent)
 
-        parseActions(data["actions"]).take(3).forEachIndexed { index, action ->
+        parseActions(data["actions"]).take(3).forEachIndexed { index, actionItem ->
             val clickIntent = Intent(context, OpenCdpNotificationActionReceiver::class.java).apply {
-                action = OpenCdpNotificationContracts.ACTION_CLICK
+                setAction(OpenCdpNotificationContracts.ACTION_CLICK)
                 putExtra(OpenCdpNotificationContracts.EXTRA_PAYLOAD_JSON, payloadJson)
-                putExtra(OpenCdpNotificationContracts.EXTRA_ACTION_ID, action.actionId)
-                putExtra(OpenCdpNotificationContracts.EXTRA_ACTION_LINK, action.link)
+                putExtra(OpenCdpNotificationContracts.EXTRA_ACTION_ID, actionItem.actionId)
+                putExtra(OpenCdpNotificationContracts.EXTRA_ACTION_LINK, actionItem.link)
                 putExtra(OpenCdpNotificationContracts.EXTRA_NOTIFICATION_ID, notificationId)
             }
             val clickPendingIntent = PendingIntent.getBroadcast(
@@ -72,7 +72,7 @@ internal object OpenCdpNotificationRenderer {
                 clickIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            builder.addAction(0, action.label, clickPendingIntent)
+            builder.addAction(0, actionItem.label, clickPendingIntent)
         }
 
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
