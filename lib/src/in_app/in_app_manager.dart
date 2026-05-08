@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/sdk_implementation.dart';
@@ -70,7 +69,6 @@ class InAppManagerConfig {
 /// Internal record kept per delivery to enforce client-side persistence rules.
 class _DeliveryState {
   int impressionsTotal = 0;
-  int impressionsCurrentSession = 0;
   DateTime? lastShownAt;
   bool dismissed = false;
 }
@@ -90,7 +88,6 @@ class CDPInAppManager {
 
   Timer? _pollTimer;
   String _currentScreen = 'unknown';
-  String _sessionId;
   bool _disposed = false;
   bool _syncInFlight = false;
 
@@ -98,7 +95,6 @@ class CDPInAppManager {
     this._implementation,
     this._config,
     this.managerConfig,
-    this._sessionId,
   );
 
   factory CDPInAppManager.create({
@@ -110,7 +106,6 @@ class CDPInAppManager {
       implementation,
       config,
       managerConfig,
-      _generateSessionId(),
     );
     if (managerConfig.enabled) {
       manager._startPolling();
@@ -123,9 +118,6 @@ class CDPInAppManager {
   /// Each delivery is emitted at most once per app process. The host should
   /// render the message and then call [trackImpression] once it is on screen.
   Stream<InAppMessage> get messageStream => _messageStreamController.stream;
-
-  /// Current session ID generated for in-app eligibility/correlation.
-  String get sessionId => _sessionId;
 
   /// Current logical screen name used for page-rule filtering on the backend
   /// and for impression/click tracking.
@@ -158,17 +150,14 @@ class CDPInAppManager {
     }
   }
 
-  /// Reset the in-app session (e.g. when a user logs in or the app comes back
-  /// to foreground). Per-session counters are reset and a new session id is
-  /// generated.
+  /// Reset locally tracked in-app state. Call when the active user changes
+  /// (login/logout) so previously dispatched deliveries can be re-evaluated
+  /// for the new identity.
   void resetSession() {
-    _sessionId = _generateSessionId();
-    for (final state in _deliveryState.values) {
-      state.impressionsCurrentSession = 0;
-    }
+    _deliveryState.clear();
     _dispatchedDeliveryIds.clear();
     if (_config.debug) {
-      debugPrint('[CDP] In-app session reset: $_sessionId');
+      debugPrint('[CDP] In-app local state reset');
     }
   }
 
@@ -179,9 +168,8 @@ class CDPInAppManager {
     try {
       final messages = await _implementation.syncInAppMessages(
         screen: _currentScreen,
-        sessionId: _sessionId,
         platform: managerConfig.platformOverride ?? _resolvePlatform(),
-        appVersion: managerConfig.appVersionOverride ?? '',
+        appVersion: managerConfig.appVersionOverride,
         limit: managerConfig.syncLimit.clamp(1, 50),
       );
 
@@ -209,15 +197,13 @@ class CDPInAppManager {
       _DeliveryState.new,
     );
     state.impressionsTotal += 1;
-    state.impressionsCurrentSession += 1;
     state.lastShownAt = DateTime.now().toUtc();
 
     await _implementation.trackInAppImpression(
       deliveryId: message.deliveryId,
-      sessionId: _sessionId,
       screen: _currentScreen,
       platform: managerConfig.platformOverride ?? _resolvePlatform(),
-      appVersion: managerConfig.appVersionOverride ?? '',
+      appVersion: managerConfig.appVersionOverride,
     );
   }
 
@@ -231,7 +217,6 @@ class CDPInAppManager {
     await _implementation.trackInAppClick(
       deliveryId: message.deliveryId,
       actionId: actionId,
-      sessionId: _sessionId,
       screen: _currentScreen,
     );
   }
@@ -252,7 +237,6 @@ class CDPInAppManager {
     await _implementation.trackInAppDismiss(
       deliveryId: message.deliveryId,
       reason: reason.rawValue,
-      sessionId: _sessionId,
       screen: _currentScreen,
     );
   }
@@ -291,7 +275,7 @@ class CDPInAppManager {
   /// Filter, sort and slice incoming messages using priority and persistence
   /// counters maintained locally. The backend already applies tenant/screen
   /// filtering — this is a final client-side guard so we don't re-show a
-  /// dismissed or rate-limited message in a single session.
+  /// dismissed or rate-limited message.
   List<InAppMessage> _arbitrate(List<InAppMessage> messages) {
     final now = DateTime.now().toUtc();
     final eligible = messages.where((message) {
@@ -303,11 +287,6 @@ class CDPInAppManager {
       if (persistence != null) {
         final maxTotal = persistence.maxImpressionsTotal;
         if (maxTotal != null && state.impressionsTotal >= maxTotal) {
-          return false;
-        }
-        final maxSession = persistence.maxImpressionsPerSession;
-        if (maxSession != null &&
-            state.impressionsCurrentSession >= maxSession) {
           return false;
         }
         final minInterval = persistence.minIntervalSeconds;
@@ -336,12 +315,5 @@ class CDPInAppManager {
       // Platform may throw on unsupported runtime.
     }
     return 'unknown';
-  }
-
-  static String _generateSessionId() {
-    final random = Random();
-    final ts = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final rand = random.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
-    return 'iass_${ts.toRadixString(16)}_$rand';
   }
 }

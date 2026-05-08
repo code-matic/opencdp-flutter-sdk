@@ -396,9 +396,8 @@ class OpenCDPSDKImplementation {
 
   Future<List<InAppMessage>> syncInAppMessages({
     required String screen,
-    required String sessionId,
     required String platform,
-    required String appVersion,
+    String? appVersion,
     int limit = 10,
     String? personId,
   }) async {
@@ -411,9 +410,10 @@ class OpenCDPSDKImplementation {
         query: {
           'person_id': personId ?? _currentIdentifier,
           'screen': screen,
-          'session_id': sessionId,
           'platform': platform,
-          'app_version': appVersion,
+          // Only include app_version when we actually have one. The backend
+          // schema rejects empty strings on optional fields.
+          if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
           'limit': limit,
         },
       );
@@ -431,20 +431,18 @@ class OpenCDPSDKImplementation {
 
   Future<void> trackInAppImpression({
     required String deliveryId,
-    required String sessionId,
     required String screen,
     required String platform,
-    required String appVersion,
+    String? appVersion,
     String? personId,
   }) async {
     await _trackInAppInteraction(
       endpoint: CDPEndpoints.inAppImpression(deliveryId),
       body: {
         'person_id': personId ?? _currentIdentifier,
-        'session_id': sessionId,
         'screen': screen,
         'platform': platform,
-        'app_version': appVersion,
+        if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
         'ts': DateTime.now().toUtc().toIso8601String(),
       },
       operation: 'impression',
@@ -454,7 +452,6 @@ class OpenCDPSDKImplementation {
   Future<void> trackInAppClick({
     required String deliveryId,
     required String actionId,
-    required String sessionId,
     required String screen,
     String? personId,
   }) async {
@@ -462,7 +459,6 @@ class OpenCDPSDKImplementation {
       endpoint: CDPEndpoints.inAppClick(deliveryId),
       body: {
         'person_id': personId ?? _currentIdentifier,
-        'session_id': sessionId,
         'screen': screen,
         'action_id': actionId,
         'ts': DateTime.now().toUtc().toIso8601String(),
@@ -474,7 +470,6 @@ class OpenCDPSDKImplementation {
   Future<void> trackInAppDismiss({
     required String deliveryId,
     required String reason,
-    required String sessionId,
     required String screen,
     String? personId,
   }) async {
@@ -482,7 +477,6 @@ class OpenCDPSDKImplementation {
       endpoint: CDPEndpoints.inAppDismiss(deliveryId),
       body: {
         'person_id': personId ?? _currentIdentifier,
-        'session_id': sessionId,
         'screen': screen,
         'reason': reason,
         'ts': DateTime.now().toUtc().toIso8601String(),

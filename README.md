@@ -353,7 +353,6 @@ you want messages — useful for "inbox" style screens:
 ```dart
 final messages = await OpenCDPSDK.instance.syncInAppMessages(
   screen: 'inbox',
-  sessionId: OpenCDPSDK.instance.inApp?.sessionId ?? 'no-session',
   platform: 'ios',
   appVersion: '1.0.0',
 );

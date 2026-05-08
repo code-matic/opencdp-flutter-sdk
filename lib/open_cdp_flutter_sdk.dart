@@ -338,9 +338,8 @@ class OpenCDPSDK {
   /// Sync in-app messages for the current person and context.
   Future<List<InAppMessage>> syncInAppMessages({
     required String screen,
-    required String sessionId,
     required String platform,
-    required String appVersion,
+    String? appVersion,
     int limit = 10,
     String? personId,
   }) async {
@@ -351,7 +350,6 @@ class OpenCDPSDK {
     }
     return _implementation!.syncInAppMessages(
       screen: screen,
-      sessionId: sessionId,
       platform: platform,
       appVersion: appVersion,
       limit: limit,
@@ -362,10 +360,9 @@ class OpenCDPSDK {
   /// Track in-app message impression.
   Future<void> trackInAppImpression({
     required String deliveryId,
-    required String sessionId,
     required String screen,
     required String platform,
-    required String appVersion,
+    String? appVersion,
     String? personId,
   }) async {
     if (_implementation == null) {
@@ -375,7 +372,6 @@ class OpenCDPSDK {
     }
     await _implementation!.trackInAppImpression(
       deliveryId: deliveryId,
-      sessionId: sessionId,
       screen: screen,
       platform: platform,
       appVersion: appVersion,
@@ -387,7 +383,6 @@ class OpenCDPSDK {
   Future<void> trackInAppClick({
     required String deliveryId,
     required String actionId,
-    required String sessionId,
     required String screen,
     String? personId,
   }) async {
@@ -399,7 +394,6 @@ class OpenCDPSDK {
     await _implementation!.trackInAppClick(
       deliveryId: deliveryId,
       actionId: actionId,
-      sessionId: sessionId,
       screen: screen,
       personId: personId,
     );
@@ -409,7 +403,6 @@ class OpenCDPSDK {
   Future<void> trackInAppDismiss({
     required String deliveryId,
     required String reason,
-    required String sessionId,
     required String screen,
     String? personId,
   }) async {
@@ -421,7 +414,6 @@ class OpenCDPSDK {
     await _implementation!.trackInAppDismiss(
       deliveryId: deliveryId,
       reason: reason,
-      sessionId: sessionId,
       screen: screen,
       personId: personId,
     );

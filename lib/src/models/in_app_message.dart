@@ -87,13 +87,11 @@ class InAppPersistence {
   /// 'one_time' or 'persistent_until_dismissed'.
   final String mode;
   final int? maxImpressionsTotal;
-  final int? maxImpressionsPerSession;
   final int? minIntervalSeconds;
 
   const InAppPersistence({
     required this.mode,
     this.maxImpressionsTotal,
-    this.maxImpressionsPerSession,
     this.minIntervalSeconds,
   });
 
@@ -101,8 +99,6 @@ class InAppPersistence {
     return InAppPersistence(
       mode: (json['mode'] as String?) ?? 'one_time',
       maxImpressionsTotal: (json['max_impressions_total'] as num?)?.toInt(),
-      maxImpressionsPerSession:
-          (json['max_impressions_per_session'] as num?)?.toInt(),
       minIntervalSeconds: (json['min_interval_seconds'] as num?)?.toInt(),
     );
   }
