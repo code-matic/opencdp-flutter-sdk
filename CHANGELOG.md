@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-05-08
+
+### Fixed
+
+* **Android build hotfix for actionable notifications**
+  * Fixed a Kotlin compile issue in `OpenCdpNotificationRenderer` caused by `action` name shadowing in the banner action loop.
+  * Updated intent action assignment to avoid lambda/property ambiguity (`setAction(...)`), restoring Android build compatibility.
+
 ## [3.0.0] - 2026-04-27
 
 ### Added
