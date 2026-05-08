@@ -67,7 +67,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
         properties: const {
           'source': 'in_app_test_app',
           'first_name': 'Yereka',
-          'last_name': 'InAppTestUser'
+          'last_name': 'InAppTestUser',
+          'email': 'yereka+inapptestuser@codematic.io'
         },
       );
 

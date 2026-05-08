@@ -37,7 +37,8 @@ class _InAppHostState extends State<InAppHost> {
     super.initState();
     final manager = OpenCDPSDK.instance.inApp;
     if (manager == null) {
-      debugPrint('[CDPTest] In-app manager is null — initialize the SDK first.');
+      debugPrint(
+          '[CDPTest] In-app manager is null — initialize the SDK first.');
       return;
     }
     _subscription = manager.messageStream.listen(_handleMessage);
@@ -60,7 +61,8 @@ class _InAppHostState extends State<InAppHost> {
         widget.onInlineMessage?.call(message);
         break;
       case InAppRenderType.unknown:
-        debugPrint('[CDPTest] Skipping unknown render type for ${message.deliveryId}');
+        debugPrint(
+            '[CDPTest] Skipping unknown render type for ${message.deliveryId}');
         break;
     }
   }
@@ -85,7 +87,8 @@ class _InAppHostState extends State<InAppHost> {
     }
   }
 
-  Future<void> _showBanner(CDPInAppManager manager, InAppMessage message) async {
+  Future<void> _showBanner(
+      CDPInAppManager manager, InAppMessage message) async {
     _dismissBanner(track: false);
 
     // Resolve the overlay before any awaits so we don't hit
@@ -94,22 +97,28 @@ class _InAppHostState extends State<InAppHost> {
     unawaited(manager.trackImpression(message));
 
     final entry = OverlayEntry(
-      builder: (_) => SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: InAppBanner(
-            message: message,
-            onPrimaryCta: (cta) async {
-              await manager.trackClick(message: message, actionId: cta.id);
-              _dismissBanner(track: false);
-            },
-            onClose: () async {
-              await manager.trackDismiss(
-                message: message,
-                reason: InAppDismissReason.userClose,
-              );
-              _dismissBanner(track: false);
-            },
+      builder: (_) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          bottom: false,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: InAppBanner(
+              message: message,
+              onPrimaryCta: (cta) async {
+                await manager.trackClick(message: message, actionId: cta.id);
+                _dismissBanner(track: false);
+              },
+              onClose: () async {
+                await manager.trackDismiss(
+                  message: message,
+                  reason: InAppDismissReason.userClose,
+                );
+                _dismissBanner(track: false);
+              },
+            ),
           ),
         ),
       ),

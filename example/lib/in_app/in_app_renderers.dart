@@ -67,7 +67,8 @@ class InAppModalDialog extends StatelessWidget {
                 children: [
                   for (final cta in message.ctas)
                     FilledButton.tonal(
-                      onPressed: () => Navigator.of(context).pop<String?>(cta.id),
+                      onPressed: () =>
+                          Navigator.of(context).pop<String?>(cta.id),
                       child: Text(cta.label),
                     ),
                   TextButton(
@@ -229,7 +230,8 @@ class InAppCard extends StatelessWidget {
             if (message.body != null && message.body!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(message.body!, style: const TextStyle(fontSize: 13)),
+                child:
+                    Text(message.body!, style: const TextStyle(fontSize: 13)),
               ),
             if (primary != null)
               Align(
