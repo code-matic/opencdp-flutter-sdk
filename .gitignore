@@ -32,3 +32,5 @@ TODO.md
 build/
 open_cdp_p_n_integration.md
 .gradle/
+example/android/
+example/ios/
