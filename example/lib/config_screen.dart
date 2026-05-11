@@ -25,7 +25,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
   final _apiKeyController =
       TextEditingController(text: 'apikey_1758285755732_0ehl3sye');
   final _personIdController =
-      TextEditingController(text: 'in-app-message-test-user');
+      TextEditingController(text: 'in-app-message-test-user2');
   final _pollSecondsController = TextEditingController(text: '15');
 
   bool _busy = false;
@@ -64,11 +64,12 @@ class _ConfigScreenState extends State<ConfigScreen> {
       // Identify the test user so backend can scope deliveries by person.
       await OpenCDPSDK.instance.identify(
         identifier: personId,
+        // identifier: '0d53e4e73313dd90c53bbe72b7b12abb',
         properties: const {
-          'source': 'in_app_test_app',
-          'first_name': 'Yereka',
-          'last_name': 'InAppTestUser',
-          'email': 'yereka+inapptestuser@codematic.io'
+          'source': 'in_app_test_app_tw',
+          'first_name': 'Yereka2',
+          'last_name': 'InAppTestUser2',
+          'email': 'yereka+inapptestuser2@codematic.io'
         },
       );
 

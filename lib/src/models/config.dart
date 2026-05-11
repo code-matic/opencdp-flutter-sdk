@@ -184,13 +184,50 @@ class OpenCDPConfig {
   /// Screen view tracking configuration
   final ScreenView screenViewUse;
 
-  /// Whether the SDK should automatically poll the backend for in-app messages.
+  /// Whether the SDK should automatically fetch in-app messages.
   /// When `true`, a [CDPInAppManager] is created and started during initialize.
+  /// The manager prefers a server-pushed SSE stream and only polls when the
+  /// stream is unavailable (see [enableInAppRealtime]).
   final bool enableInAppMessages;
 
-  /// How often to poll the in-app sync endpoint when [enableInAppMessages] is true.
-  /// Defaults to 30 seconds.
+  /// Whether the SDK should open a Server-Sent Events stream to the backend
+  /// for low-latency in-app delivery. Only takes effect when
+  /// [enableInAppMessages] is also true.
+  ///
+  /// When `true` (default) the manager:
+  ///   - opens the stream on start and after each identity change,
+  ///   - reconnects with exponential backoff on drops, and
+  ///   - downgrades the periodic poll to [inAppSafetyNetPollInterval] while
+  ///     the stream is healthy.
+  ///
+  /// When `false` the manager falls back to the legacy polling path on
+  /// [inAppPollInterval] only.
+  final bool enableInAppRealtime;
+
+  /// Polling cadence used when realtime is disabled or while the realtime
+  /// stream is currently disconnected. Defaults to 30 seconds.
+  ///
+  /// While the realtime stream is healthy, polling is fully disabled — the
+  /// stale-connection watchdog (see [inAppRealtimeStaleTimeout]) is what
+  /// protects against silent stream failure, not periodic polling.
   final Duration inAppPollInterval;
+
+  /// Maximum quiet period (no bytes — neither events nor heartbeats) tolerated
+  /// on a "connected" SSE stream before the SDK assumes the stream is dead,
+  /// tears it down, and reconnects. Defaults to 60 seconds.
+  ///
+  /// The backend sends a comment-frame heartbeat every 20 seconds, so 60s
+  /// (≈3× heartbeat) leaves room for one transient hiccup before forcing
+  /// a reconnect. The reconnect path runs an immediate catch-up `/sync`,
+  /// so any deliveries that arrived during the silent window are still
+  /// rendered without periodic polling.
+  final Duration inAppRealtimeStaleTimeout;
+
+  /// Upper bound on exponential-backoff reconnect attempts for the realtime
+  /// stream. Defaults to 30 seconds (pairs well with full-jitter so peak
+  /// reconnects after a backend restart stay under a minute even with many
+  /// concurrent clients).
+  final Duration inAppRealtimeMaxBackoff;
 
   /// Maximum messages requested per sync (1..50). Defaults to 10.
   final int inAppSyncLimit;
@@ -247,7 +284,10 @@ class OpenCDPConfig {
     this.trackApplicationLifecycleEvents = true,
     this.screenViewUse = ScreenView.all,
     this.enableInAppMessages = false,
+    this.enableInAppRealtime = true,
     this.inAppPollInterval = const Duration(seconds: 30),
+    this.inAppRealtimeStaleTimeout = const Duration(seconds: 60),
+    this.inAppRealtimeMaxBackoff = const Duration(seconds: 30),
     this.inAppSyncLimit = 10,
     this.inAppPlatformOverride,
     this.inAppAppVersionOverride,
@@ -269,7 +309,10 @@ class OpenCDPConfig {
       'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
       'screenViewUse': screenViewUse.toString().split('.').last,
       'enableInAppMessages': enableInAppMessages,
+      'enableInAppRealtime': enableInAppRealtime,
       'inAppPollIntervalSeconds': inAppPollInterval.inSeconds,
+      'inAppRealtimeStaleTimeoutSeconds': inAppRealtimeStaleTimeout.inSeconds,
+      'inAppRealtimeMaxBackoffMs': inAppRealtimeMaxBackoff.inMilliseconds,
       'inAppSyncLimit': inAppSyncLimit,
       'inAppPlatformOverride': inAppPlatformOverride,
       'inAppAppVersionOverride': inAppAppVersionOverride,

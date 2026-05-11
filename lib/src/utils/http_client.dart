@@ -106,6 +106,11 @@ class CDPHttpClient {
   /// The underlying `http` client used for making requests.
   final http.Client _client;
 
+  /// Underlying `http.Client`, exposed so siblings (e.g. the realtime SSE
+  /// client) can issue long-lived streaming requests with the same
+  /// connection settings while preserving the queue/retry semantics here.
+  http.Client get rawClient => _client;
+
   /// The base URL for the CDP API (e.g., 'https://api.customer.io').
   final String baseUrl;
 
@@ -126,6 +131,14 @@ class CDPHttpClient {
 
   /// The maximum number of retries for a single request before it is discarded.
   static const int _maxRetries = 5;
+
+  /// Hard ceiling on a single HTTP exchange. Without this, a slow/hung
+  /// upstream (proxy queue, edge rate limiter holding the request, idle
+  /// load balancer) can keep one request open indefinitely while the
+  /// in-app manager's `_syncInFlight` flag silently coalesces every
+  /// subsequent sync — exactly the failure mode we observed when an
+  /// upstream rate limiter held a sync GET for 45s before returning 429.
+  static const Duration _requestTimeout = Duration(seconds: 30);
 
   /// Private constructor. Use the `CDPHttpClient.create()` factory to instantiate.
   CDPHttpClient._({
@@ -209,14 +222,16 @@ class CDPHttpClient {
     String? identifier,
   }) async {
     try {
-      final response = await _client.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': apiKey,
-        },
-        body: jsonEncode(body),
-      );
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': apiKey,
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_requestTimeout);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         // Queue the failed request and throw an exception.
@@ -269,13 +284,15 @@ class CDPHttpClient {
     try {
       final uri = Uri.parse('$baseUrl$endpoint')
           .replace(queryParameters: query?.map((key, value) => MapEntry(key, '$value')));
-      final response = await _client.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': apiKey,
-        },
-      );
+      final response = await _client
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': apiKey,
+            },
+          )
+          .timeout(_requestTimeout);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (debug) {

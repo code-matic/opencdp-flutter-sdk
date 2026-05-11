@@ -23,6 +23,13 @@ class OpenCDPSDKImplementation {
   final OpenCDPConfig config;
   @visibleForTesting
   CDPHttpClient httpClient;
+
+  /// SDK-internal accessor for the configured HTTP client. Mirrors
+  /// [httpClient] but without the `@visibleForTesting` annotation so
+  /// internal collaborators (e.g. the in-app realtime SSE client) can
+  /// reuse the connection pool and Authorization header without tripping
+  /// the test-only lint.
+  CDPHttpClient get cdpHttpClient => httpClient;
   late SharedPreferences prefs;
   static String? _userId;
   static String? _deviceId;

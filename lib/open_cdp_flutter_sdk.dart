@@ -249,6 +249,10 @@ class OpenCDPSDK {
       properties: properties,
       customerIoId: customerIoId,
     );
+    // Realtime in-app: rebind the SSE stream to the new identity so the
+    // server pushes for the right `person_id`. No-op when in-app messaging
+    // or realtime is disabled in config.
+    await _inAppManager?.setActiveIdentity(_implementation!.userId);
   }
 
   /// Track an event with optional properties
@@ -554,6 +558,10 @@ class OpenCDPSDK {
           '[CDP] ERROR: Cannot clear identity - SDK not initialized. Call OpenCDPSDK.initialize() first.');
       return;
     }
+    // Tear down the realtime stream first so we don't keep an authenticated
+    // SSE connection open under the previous identity while the server-side
+    // identity is changing out from under us.
+    await _inAppManager?.setActiveIdentity(null);
     await _implementation!.clearIdentity();
   }
 

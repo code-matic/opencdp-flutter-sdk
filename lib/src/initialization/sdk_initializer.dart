@@ -90,7 +90,10 @@ class SDKInitializer {
       config: config,
       managerConfig: InAppManagerConfig(
         enabled: config.enableInAppMessages,
+        enableRealtime: config.enableInAppRealtime,
         pollInterval: config.inAppPollInterval,
+        realtimeStaleTimeout: config.inAppRealtimeStaleTimeout,
+        realtimeMaxBackoff: config.inAppRealtimeMaxBackoff,
         syncLimit: config.inAppSyncLimit,
         platformOverride: config.inAppPlatformOverride,
         appVersionOverride: config.inAppAppVersionOverride,

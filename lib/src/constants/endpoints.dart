@@ -23,6 +23,11 @@ class CDPEndpoints {
   /// In-app message sync
   static const String inAppSync = '$version/in-app/messages/sync';
 
+  /// In-app realtime SSE stream. The server pushes lightweight `sync`
+  /// events; the SDK reacts by hitting [inAppSync] to fetch eligible
+  /// messages — eligibility lives server-side in one place.
+  static const String inAppStream = '$version/in-app/messages/stream';
+
   /// In-app interactions
   static String inAppImpression(String deliveryId) =>
       '$version/in-app/messages/$deliveryId/impression';
