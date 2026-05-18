@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+* **In-app messaging (OpenCDP / Conviso)**
+  * Deliver campaigns from the OpenCDP Data Gateway in your Flutter app. The SDK fetches and delivers messages; **you render the UI** (modal, banner, inline, inbox card) with your own widgets.
+  * Turn on with `OpenCDPConfig(enableInAppMessages: true)`. Use `enableInAppRealtime: true` (default) for low-latency delivery over Server-Sent Events, with polling as a fallback when the stream is down.
+  * **`CDPInAppManager`** — subscribe to `messageStream` to show messages as they arrive; optional polling interval, sync limit, and platform/app-version overrides.
+  * **Manual sync** — `OpenCDPSDK.syncInAppMessages()` for inbox-style screens or on-demand refresh (optional `screen`, `platform`, `tzOffsetMinutes` for quiet hours).
+  * **Interaction tracking** — `trackInAppImpression`, `trackInAppClick`, and `trackInAppDismiss` (or the matching methods on `CDPInAppManager`).
+  * **Screen-aware delivery** — works with `autoTrackScreens` so page rules on the backend match the current route.
+  * Setup guide: [Flutter in-app messaging](https://docs.conviso.ai/integrations/flutter/features/in-app-messaging). Example UI: `example/lib/in_app/` in this repository.
+
 ## [3.0.1] - 2026-05-08
 
 ### Fixed

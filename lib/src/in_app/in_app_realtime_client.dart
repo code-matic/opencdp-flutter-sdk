@@ -242,22 +242,16 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
         // surface the actual cause here instead of a generic "disconnected".
         disconnectReason = _lastDisconnectReason;
         _lastDisconnectReason = 'unknown';
-        if (_debug) {
-          debugPrint(
-            '[CDP] In-app realtime disconnected reason=$disconnectReason',
-          );
-        }
         _emitState(
           connected: false,
           reason: InAppRealtimeStateReason.disconnected,
         );
-      } catch (e, st) {
+      } catch (e) {
         disconnectReason = 'exception:${e.runtimeType}';
         if (_debug) {
           debugPrint(
             '[CDP] In-app realtime error reason=$disconnectReason msg=$e',
           );
-          debugPrint(st.toString());
         }
         _emitState(
           connected: false,
@@ -272,20 +266,12 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
       // recovery window. Clearing it after consumption ensures the next
       // failure goes back through normal backoff.
       Duration delay;
-      String delaySource;
       final hint = _serverRequestedDelay;
       if (hint != null) {
         delay = hint > maxBackoff ? maxBackoff : hint;
-        delaySource = 'retry-after';
         _serverRequestedDelay = null;
       } else {
         delay = _nextBackoff();
-        delaySource = 'backoff';
-      }
-      if (_debug) {
-        debugPrint(
-          '[CDP] In-app realtime retrying attempt=${_retryAttempt + 1} delayMs=${delay.inMilliseconds} source=$delaySource prevReason=$disconnectReason',
-        );
       }
       _emitState(
         connected: false,
@@ -344,14 +330,8 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
       // is responsible for backoff/recovery; throwing would just bubble
       // through unawaited futures and confuse Dart's error reporter.
       final status = response.statusCode;
-      String bodySnippet = '';
       try {
-        // Capture a small snippet of the error body so 401/404/redirect/
-        // proxy-strip are immediately distinguishable in logs.
-        final raw = await response.stream
-            .transform(utf8.decoder)
-            .join();
-        bodySnippet = raw.substring(0, raw.length > 200 ? 200 : raw.length);
+        await response.stream.drain<void>();
       } catch (_) {/* ignore drain failures */}
 
       // Tell the run loop which path closed us so its disconnect log
@@ -373,7 +353,7 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
 
       if (_debug) {
         debugPrint(
-          '[CDP] In-app realtime non-2xx status=$status body="$bodySnippet" nextDelayHint=${_serverRequestedDelay?.inMilliseconds ?? '-'}',
+          '[CDP] In-app realtime non-2xx status=$status nextDelayHint=${_serverRequestedDelay?.inMilliseconds ?? '-'}',
         );
       }
       return;
@@ -403,9 +383,6 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
             connected: true,
             reason: InAppRealtimeStateReason.connected,
           );
-          if (_debug) {
-            debugPrint('[CDP] In-app realtime connected');
-          }
         }
         for (final event in parser.addChunk(chunk)) {
           _lastEventId = parser.lastEventId;
@@ -496,11 +473,6 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
       }
       final deliveryId = data['delivery_id'] as String?;
       final sourceType = data['source_type'] as String?;
-      if (_debug) {
-        debugPrint(
-          '[CDP] In-app realtime event=sync deliveryId=${deliveryId ?? '-'} source=${sourceType ?? '-'} ts=${ts?.toIso8601String() ?? '-'}',
-        );
-      }
       _eventController.add(InAppRealtimeSyncRequested(
         deliveryId: deliveryId,
         sourceType: sourceType,
@@ -510,11 +482,6 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
     }
     // Unknown event names are intentionally ignored — keeps us forward
     // compatible with future backend additions without an SDK update.
-    if (_debug) {
-      debugPrint(
-        '[CDP] In-app realtime event=$name (ignored, no handler)',
-      );
-    }
   }
 
   Future<void> _teardownActiveResponse() async {

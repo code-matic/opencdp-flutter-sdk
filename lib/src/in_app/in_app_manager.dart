@@ -93,6 +93,23 @@ class _DeliveryState {
   bool dismissed = false;
 }
 
+/// Public-shape mirror of the private `_DeliveryState` used so pure
+/// arbitration filtering can be tested without standing up the full manager.
+/// Marked `@visibleForTesting` because the production code never constructs
+/// these directly — they're built from `_deliveryState` inside `_arbitrate`.
+@visibleForTesting
+class InAppArbitrationState {
+  final bool dismissed;
+  final int impressionsTotal;
+  final DateTime? lastShownAt;
+
+  const InAppArbitrationState({
+    this.dismissed = false,
+    this.impressionsTotal = 0,
+    this.lastShownAt,
+  });
+}
+
 /// Manages fetching, arbitration, display dispatch and tracking for in-app
 /// messages. Designed to be initialized once per SDK instance.
 class CDPInAppManager {
@@ -207,9 +224,6 @@ class CDPInAppManager {
   void resetSession() {
     _deliveryState.clear();
     _dispatchedDeliveryIds.clear();
-    if (_config.debug) {
-      debugPrint('[CDP] In-app local state reset');
-    }
   }
 
   /// Inform the manager about the currently identified user. Triggers a
@@ -245,11 +259,8 @@ class CDPInAppManager {
 
   /// Force an immediate sync.
   ///
-  /// [reason] is purely diagnostic — every call site tags itself (`initial`,
-  /// `screen_change`, `realtime_event`, `realtime_connected`, `poll`,
-  /// `manual`) so the SDK log makes it obvious which path delivered a given
-  /// message. This was added because users couldn't tell whether a message
-  /// arrived via SSE push or via reconnect catch-up.
+  /// [reason] is diagnostic metadata used to coalesce competing sync triggers
+  /// without surfacing noisy internal traces to host apps.
   ///
   /// Concurrency model — queue of one:
   ///
@@ -265,22 +276,12 @@ class CDPInAppManager {
   /// SSE stream but no way to ever fetch the queued message.
   Future<void> syncNow({String reason = 'manual'}) async {
     if (_disposed || !managerConfig.enabled) {
-      if (_config.debug) {
-        debugPrint(
-          '[CDP] In-app syncNow skipped reason=$reason disposed=$_disposed enabled=${managerConfig.enabled}',
-        );
-      }
       return;
     }
 
     if (_syncInFlight) {
       _pendingSyncReason =
           _pickHigherPriorityReason(_pendingSyncReason, reason);
-      if (_config.debug) {
-        debugPrint(
-          '[CDP] In-app syncNow queued reason=$reason -> pending=$_pendingSyncReason',
-        );
-      }
       return;
     }
 
@@ -296,11 +297,6 @@ class CDPInAppManager {
         if (next == null) break;
         _pendingSyncReason = null;
         currentReason = next;
-        if (_config.debug) {
-          debugPrint(
-            '[CDP] In-app syncNow draining pending reason=$currentReason',
-          );
-        }
       }
     } finally {
       _syncInFlight = false;
@@ -310,33 +306,20 @@ class CDPInAppManager {
   /// Run a single sync cycle. Never throws — failures are logged so the
   /// queue-drain loop in [syncNow] can continue to the next pending reason.
   Future<void> _runSync(String reason) async {
-    final startedAt = DateTime.now();
-    if (_config.debug) {
-      debugPrint(
-        '[CDP] In-app syncNow start reason=$reason screen=$_currentScreen',
-      );
-    }
     try {
       final messages = await _implementation.syncInAppMessages(
         screen: _currentScreen,
         platform: managerConfig.platformOverride ?? _resolvePlatform(),
         appVersion: managerConfig.appVersionOverride,
+        tzOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
         limit: managerConfig.syncLimit.clamp(1, 50),
       );
 
       final eligible = _arbitrate(messages);
-      var dispatched = 0;
       for (final message in eligible) {
         if (_dispatchedDeliveryIds.contains(message.deliveryId)) continue;
         _dispatchedDeliveryIds.add(message.deliveryId);
         _emit(message);
-        dispatched += 1;
-      }
-      if (_config.debug) {
-        final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
-        debugPrint(
-          '[CDP] In-app syncNow done reason=$reason fetched=${messages.length} eligible=${eligible.length} dispatched=$dispatched elapsedMs=$elapsedMs',
-        );
       }
     } catch (e) {
       if (_config.debug) {
@@ -541,11 +524,6 @@ class CDPInAppManager {
   void _handleRealtimeState(InAppRealtimeState state) {
     final wasConnected = _realtimeConnected;
     _realtimeConnected = state.connected;
-    if (_config.debug) {
-      debugPrint(
-        '[CDP] In-app realtime state connected=${state.connected} reason=${state.reason.name} attempt=${state.retryAttempt} nextRetryMs=${state.nextRetryIn?.inMilliseconds ?? 0}',
-      );
-    }
     if (state.connected && !wasConnected) {
       // SSE just came up → no need for periodic polling; cancel the timer
       // to drive idle traffic to zero. Run an immediate catch-up sync so
@@ -576,15 +554,46 @@ class CDPInAppManager {
     }
   }
 
-  /// Filter, sort and slice incoming messages using priority and persistence
-  /// counters maintained locally. The backend already applies tenant/screen
-  /// filtering — this is a final client-side guard so we don't re-show a
-  /// dismissed or rate-limited message.
+  /// Filter incoming messages using local persistence and dismiss state and
+  /// expiry. The backend is the **source of truth for arbitration order**
+  /// (see `cdp/docs/in-app-messaging-architecture.md` §7.1: server returns
+  /// `priority DESC, eligible_at ASC, delivery_id ASC` and the SDK MUST
+  /// render in that order). This method preserves the server's order — it
+  /// does NOT re-sort by priority or any other field. The only client-side
+  /// responsibility is dropping deliveries we can't show right now: expired,
+  /// locally dismissed, or rate-limited by the per-message persistence
+  /// rules. Slot constraints (one modal at a time, etc.) are an
+  /// adopter-level concern enforced as a top-down walk over the returned
+  /// list by the host app.
   List<InAppMessage> _arbitrate(List<InAppMessage> messages) {
-    final now = DateTime.now().toUtc();
-    final eligible = messages.where((message) {
+    final state = <String, InAppArbitrationState>{};
+    for (final entry in _deliveryState.entries) {
+      state[entry.key] = InAppArbitrationState(
+        dismissed: entry.value.dismissed,
+        impressionsTotal: entry.value.impressionsTotal,
+        lastShownAt: entry.value.lastShownAt,
+      );
+    }
+    return filterEligibleForTesting(
+      messages,
+      state,
+      now: DateTime.now().toUtc(),
+    );
+  }
+
+  /// Pure arbitration filter exposed for unit tests. Mirrors the production
+  /// behavior of `_arbitrate` exactly, including the contract that the
+  /// server's order is preserved (no client-side `.sort(...)`).
+  @visibleForTesting
+  static List<InAppMessage> filterEligibleForTesting(
+    List<InAppMessage> messages,
+    Map<String, InAppArbitrationState> stateByDeliveryId, {
+    DateTime? now,
+  }) {
+    final clock = now ?? DateTime.now().toUtc();
+    return messages.where((message) {
       if (message.isExpired) return false;
-      final state = _deliveryState[message.deliveryId];
+      final state = stateByDeliveryId[message.deliveryId];
       if (state == null) return true;
       if (state.dismissed) return false;
       final persistence = message.persistence;
@@ -596,15 +605,12 @@ class CDPInAppManager {
         final minInterval = persistence.minIntervalSeconds;
         final lastShownAt = state.lastShownAt;
         if (minInterval != null && lastShownAt != null) {
-          final delta = now.difference(lastShownAt).inSeconds;
+          final delta = clock.difference(lastShownAt).inSeconds;
           if (delta < minInterval) return false;
         }
       }
       return true;
     }).toList();
-
-    eligible.sort((a, b) => b.priority.compareTo(a.priority));
-    return eligible;
   }
 
   String _resolvePlatform() {

@@ -26,8 +26,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
       TextEditingController(text: 'apikey_1758285755732_0ehl3sye');
   final _personIdController =
       TextEditingController(text: 'in-app-message-test-user2');
-  final _pollSecondsController = TextEditingController(text: '15');
-
+  final _firstNameController = TextEditingController(text: 'Goodness');
+  final _lastNameController = TextEditingController(text: 'Richards');
+  final _emailController = TextEditingController(
+    text: 'richards+inappmessage@codematic.io',
+  );
   bool _busy = false;
 
   @override
@@ -35,7 +38,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _endpointController.dispose();
     _apiKeyController.dispose();
     _personIdController.dispose();
-    _pollSecondsController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -44,7 +49,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
     setState(() => _busy = true);
 
     final personId = _personIdController.text.trim();
-    final pollSeconds = int.tryParse(_pollSecondsController.text.trim()) ?? 15;
 
     try {
       await OpenCDPSDK.initialize(
@@ -56,7 +60,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
           trackApplicationLifecycleEvents: true,
           autoTrackDeviceAttributes: false,
           enableInAppMessages: true,
-          inAppPollInterval: Duration(seconds: pollSeconds),
+          enableInAppRealtime: true, // SSE; polling only if the stream drops
           inAppSyncLimit: 10,
         ),
       );
@@ -64,12 +68,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
       // Identify the test user so backend can scope deliveries by person.
       await OpenCDPSDK.instance.identify(
         identifier: personId,
-        // identifier: '0d53e4e73313dd90c53bbe72b7b12abb',
-        properties: const {
+        properties: {
           'source': 'in_app_test_app_tw',
-          'first_name': 'Yereka2',
-          'last_name': 'InAppTestUser2',
-          'email': 'yereka+inapptestuser2@codematic.io'
+          'first_name': _firstNameController.text.trim(),
+          'last_name': _lastNameController.text.trim(),
+          'email': _emailController.text.trim(),
         },
       );
 
@@ -102,8 +105,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Point this app at any data-gateway and identify a test user. '
-                  'In-app messages queued for that user will start arriving '
-                  'after the next poll.',
+                  'In-app messages are delivered over a realtime (SSE) stream; '
+                  'the SDK syncs when the server signals a new delivery.',
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -142,16 +145,39 @@ class _ConfigScreenState extends State<ConfigScreen> {
                     return null;
                   },
                 ),
+                const SizedBox(height: 20),
+                const Text(
+                  'User profile (identify properties)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _firstNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'First name',
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  controller: _pollSecondsController,
+                  controller: _lastNameController,
                   decoration: const InputDecoration(
-                    labelText: 'Poll interval (seconds)',
+                    labelText: 'Last name',
                   ),
-                  keyboardType: TextInputType.number,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
                   validator: (value) {
-                    final n = int.tryParse((value ?? '').trim());
-                    if (n == null || n < 5) return 'Must be ≥ 5';
+                    final v = value?.trim() ?? '';
+                    if (v.isEmpty) return 'Required';
+                    if (!v.contains('@')) return 'Enter a valid email';
                     return null;
                   },
                 ),

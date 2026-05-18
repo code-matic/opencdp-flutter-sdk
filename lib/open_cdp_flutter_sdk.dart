@@ -37,6 +37,39 @@ String? _effectivePushActionId(
   return null;
 }
 
+/// Mask an API key for log output. Keeps the last 6 characters so adopters
+/// can still distinguish keys when debugging, but never echoes the full
+/// value to logcat/console (which would leak the credential to anyone with
+/// device-log access on a non-release build, and to anyone scraping logs
+/// in test/staging environments where `debug: true` is the default).
+String _maskApiKeyForLog(String value) {
+  if (value.isEmpty) return value;
+  if (value.length <= 6) return '***';
+  return '***${value.substring(value.length - 6)}';
+}
+
+/// Build a copy of [OpenCDPConfig.toMap] with credential fields redacted.
+/// Today the CDP `cdpApiKey` and the nested Customer.io `apiKey` are both
+/// raw API keys; everything else in the map is non-sensitive configuration
+/// (endpoints, feature flags, durations) and is safe to log verbatim.
+Map<String, dynamic> _redactConfigForLogging(Map<String, dynamic> raw) {
+  final masked = Map<String, dynamic>.from(raw);
+  final cdpKey = masked['cdpApiKey'];
+  if (cdpKey is String) {
+    masked['cdpApiKey'] = _maskApiKeyForLog(cdpKey);
+  }
+  final cio = masked['customerIo'];
+  if (cio is Map) {
+    final maskedCio = Map<String, dynamic>.from(cio.cast<String, dynamic>());
+    final cioKey = maskedCio['apiKey'];
+    if (cioKey is String) {
+      maskedCio['apiKey'] = _maskApiKeyForLog(cioKey);
+    }
+    masked['customerIo'] = maskedCio;
+  }
+  return masked;
+}
+
 /// Main SDK class for Open CDP
 class OpenCDPSDK {
   static OpenCDPSDK? _instance;
@@ -112,7 +145,7 @@ class OpenCDPSDK {
         }
 
         debugPrint('[CDP] Initializing SDK...');
-        debugPrint('[CDP] Config: ${config.toMap()}');
+        debugPrint('[CDP] Config: ${_redactConfigForLogging(config.toMap())}');
 
         // Reset implementation's static variables if reinitializing
         if (shouldReinitialize) {
@@ -346,6 +379,7 @@ class OpenCDPSDK {
     String? appVersion,
     int limit = 10,
     String? personId,
+    int? tzOffsetMinutes,
   }) async {
     if (_implementation == null) {
       debugPrint(
@@ -358,6 +392,7 @@ class OpenCDPSDK {
       appVersion: appVersion,
       limit: limit,
       personId: personId,
+      tzOffsetMinutes: tzOffsetMinutes,
     );
   }
 

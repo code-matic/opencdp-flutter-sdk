@@ -407,6 +407,7 @@ class OpenCDPSDKImplementation {
     String? appVersion,
     int limit = 10,
     String? personId,
+    int? tzOffsetMinutes,
   }) async {
     try {
       if (!_ensureInitialized()) {
@@ -421,6 +422,10 @@ class OpenCDPSDKImplementation {
           // Only include app_version when we actually have one. The backend
           // schema rejects empty strings on optional fields.
           if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
+          // Device local offset lets the backend honor
+          // quiet_hours.timezone_mode=user_local without needing a platform
+          // timezone plugin or relying on ambiguous abbreviations like "WAT".
+          if (tzOffsetMinutes != null) 'tz_offset_minutes': tzOffsetMinutes,
           'limit': limit,
         },
       );
