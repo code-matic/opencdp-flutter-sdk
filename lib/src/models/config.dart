@@ -184,49 +184,24 @@ class OpenCDPConfig {
   /// Screen view tracking configuration
   final ScreenView screenViewUse;
 
-  /// Whether the SDK should automatically fetch in-app messages.
-  /// When `true`, a [CDPInAppManager] is created and started during initialize.
-  /// The manager prefers a server-pushed SSE stream and only polls when the
-  /// stream is unavailable (see [enableInAppRealtime]).
+  /// Whether the SDK should automatically deliver in-app messages on
+  /// [CDPInAppManager.messageStream]. When `true`, the manager starts after
+  /// [initialize] and binds to the user after [OpenCDPSDK.identify].
   final bool enableInAppMessages;
 
-  /// Whether the SDK should open a Server-Sent Events stream to the backend
-  /// for low-latency in-app delivery. Only takes effect when
-  /// [enableInAppMessages] is also true.
-  ///
-  /// When `true` (default) the manager:
-  ///   - opens the stream on start and after each identity change,
-  ///   - reconnects with exponential backoff on drops, and
-  ///   - downgrades the periodic poll to [inAppSafetyNetPollInterval] while
-  ///     the stream is healthy.
-  ///
-  /// When `false` the manager falls back to the legacy polling path on
-  /// [inAppPollInterval] only.
+  /// Whether to use low-latency automatic in-app delivery. Only takes effect
+  /// when [enableInAppMessages] is also `true`. Defaults to `true`.
   final bool enableInAppRealtime;
 
-  /// Polling cadence used when realtime is disabled or while the realtime
-  /// stream is currently disconnected. Defaults to 30 seconds.
-  ///
-  /// While the realtime stream is healthy, polling is fully disabled — the
-  /// stale-connection watchdog (see [inAppRealtimeStaleTimeout]) is what
-  /// protects against silent stream failure, not periodic polling.
+  /// Interval between background message checks when [enableInAppRealtime] is
+  /// `false`, or while automatic delivery is recovering. Defaults to 30 seconds.
   final Duration inAppPollInterval;
 
-  /// Maximum quiet period (no bytes — neither events nor heartbeats) tolerated
-  /// on a "connected" SSE stream before the SDK assumes the stream is dead,
-  /// tears it down, and reconnects. Defaults to 60 seconds.
-  ///
-  /// The backend sends a comment-frame heartbeat every 20 seconds, so 60s
-  /// (≈3× heartbeat) leaves room for one transient hiccup before forcing
-  /// a reconnect. The reconnect path runs an immediate catch-up `/sync`,
-  /// so any deliveries that arrived during the silent window are still
-  /// rendered without periodic polling.
+  /// How long to wait without new data before retrying automatic delivery.
+  /// Defaults to 60 seconds.
   final Duration inAppRealtimeStaleTimeout;
 
-  /// Upper bound on exponential-backoff reconnect attempts for the realtime
-  /// stream. Defaults to 30 seconds (pairs well with full-jitter so peak
-  /// reconnects after a backend restart stay under a minute even with many
-  /// concurrent clients).
+  /// Maximum delay between automatic delivery retries. Defaults to 30 seconds.
   final Duration inAppRealtimeMaxBackoff;
 
   /// Maximum messages requested per sync (1..50). Defaults to 10.

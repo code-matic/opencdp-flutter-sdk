@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Push the initial screen into the manager so it's part of the next poll.
+    // Push the initial screen into the manager for the next sync / page rules.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       OpenCDPSDK.instance.inApp?.setCurrentScreen(_currentScreen);
     });

@@ -95,8 +95,8 @@ class OpenCDPSDK {
   /// Get the screen tracker if auto tracking is enabled
   CDPScreenTracker? get screenTracker => _screenTracker;
 
-  /// Access to the in-app message manager. Always available after `initialize`,
-  /// but only auto-polls when `OpenCDPConfig.enableInAppMessages` is true.
+  /// Access to the in-app message manager. Always available after `initialize`.
+  /// Automatic delivery runs only when `OpenCDPConfig.enableInAppMessages` is true.
   CDPInAppManager? get inApp => _inAppManager;
 
   /// Reset the SDK instance (for testing purposes)

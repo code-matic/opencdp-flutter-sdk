@@ -243,32 +243,52 @@ await OpenCDPSDK.instance.registerDeviceToken(
 
 ## In-App Messages
 
-The SDK ships with a polling-based in-app delivery manager (`CDPInAppManager`)
-that fetches messages from the OpenCDP backend, applies client-side
-arbitration (priority, persistence, expiry), and notifies your app whenever a
-new message is ready to be rendered. The SDK does **not** render any UI itself
-— host apps own the look and feel using their existing design system.
+The SDK ships with an in-app delivery manager (`CDPInAppManager`) that fetches
+messages from the OpenCDP Data Gateway and notifies your app on
+`messageStream` when something is ready to render.
 
-### 1. Enable in-app polling
+The SDK filters client-side for expiry, local dismiss state, and persistence
+limits — it **does not** re-sort by priority (the server order is canonical).
+The SDK does **not** render UI — you build modals, banners, inline cards, etc.
+
+See also [doc/in_app_messaging.md](doc/in_app_messaging.md) for a concise reference.
+
+### 1. Enable in-app messaging
 
 ```dart
 await OpenCDPSDK.initialize(
   config: OpenCDPConfig(
     cdpApiKey: 'YOUR_API_KEY_HERE',
-    autoTrackScreens: true, // recommended: keeps the in-app screen filter in sync
+    autoTrackScreens: true, // recommended: page rules follow navigation
     enableInAppMessages: true,
-    inAppPollInterval: const Duration(seconds: 30),
     inAppSyncLimit: 10,
     // optional overrides:
     inAppPlatformOverride: null,    // defaults to 'ios' / 'android' / 'web'
-    inAppAppVersionOverride: null,  // string sent to backend, default ''
+    inAppAppVersionOverride: null,
   ),
+);
+
+await OpenCDPSDK.instance.identify(
+  identifier: 'user_123',
+  properties: {'email': 'user@example.com'},
 );
 ```
 
-When `enableInAppMessages: true`, the SDK starts polling shortly after
-`initialize` completes. When `false` (the default), the manager is still
-created so you can drive sync/tracking manually.
+When `enableInAppMessages: true`, messages are delivered on `messageStream`
+after you `identify` the user. When `false` (the default), fetch and track
+manually with `syncInAppMessages` and `trackInApp*` — useful for inbox UIs.
+
+If you use `autoTrackScreens`, add the tracker to your navigator:
+
+```dart
+MaterialApp(
+  navigatorObservers: [
+    if (OpenCDPSDK.instance.screenTracker != null)
+      OpenCDPSDK.instance.screenTracker!,
+  ],
+  // ...
+);
+```
 
 ### 2. Listen for messages and render them
 
@@ -343,19 +363,30 @@ OpenCDPSDK.instance.inApp?.setCurrentScreen('home');
 OpenCDPSDK.instance.inApp?.resetSession();
 ```
 
-You can also force a sync with `OpenCDPSDK.instance.inApp?.syncNow()`.
+You can also refresh now with `OpenCDPSDK.instance.inApp?.syncNow()`.
 
-### 4. Manual mode without polling
+### 4. Manual mode (no auto delivery)
 
-Set `enableInAppMessages: false` (the default) and call the SDK directly when
-you want messages — useful for "inbox" style screens:
+Set `enableInAppMessages: false` (the default) and fetch messages when you
+need them — useful for inbox-style screens. This bypasses `messageStream` and
+manager dispatch state; pass `screen` / `platform` to the track APIs yourself:
 
 ```dart
 final messages = await OpenCDPSDK.instance.syncInAppMessages(
   screen: 'inbox',
   platform: 'ios',
   appVersion: '1.0.0',
+  tzOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
 );
+
+for (final msg in messages) {
+  await OpenCDPSDK.instance.trackInAppImpression(
+    deliveryId: msg.deliveryId,
+    screen: 'inbox',
+    platform: 'ios',
+  );
+  // render msg, then trackInAppClick / trackInAppDismiss as needed
+}
 ```
 
 ---

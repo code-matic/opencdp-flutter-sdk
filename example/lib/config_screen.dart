@@ -60,7 +60,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
           trackApplicationLifecycleEvents: true,
           autoTrackDeviceAttributes: false,
           enableInAppMessages: true,
-          enableInAppRealtime: true, // SSE; polling only if the stream drops
+          enableInAppRealtime: true,
           inAppSyncLimit: 10,
         ),
       );
@@ -105,8 +105,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Point this app at any data-gateway and identify a test user. '
-                  'In-app messages are delivered over a realtime (SSE) stream; '
-                  'the SDK syncs when the server signals a new delivery.',
+                  'In-app messages are delivered automatically after you '
+                  'identify a test user.',
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

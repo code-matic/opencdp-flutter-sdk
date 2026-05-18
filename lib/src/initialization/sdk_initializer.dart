@@ -78,9 +78,9 @@ class SDKInitializer {
   /// Initialize the in-app message manager.
   ///
   /// Always returns an instance so the SDK can expose `OpenCDPSDK.instance.inApp`
-  /// even when polling is disabled — host apps can still call sync/track methods
-  /// manually. Polling only starts when [OpenCDPConfig.enableInAppMessages] is
-  /// true.
+  /// even when automatic delivery is disabled — host apps can still call
+  /// sync/track methods manually. Auto delivery only starts when
+  /// [OpenCDPConfig.enableInAppMessages] is true.
   static CDPInAppManager initializeInAppManager({
     required OpenCDPConfig config,
     required OpenCDPSDKImplementation implementation,
