@@ -732,6 +732,56 @@ class OpenCDPSDKImplementation {
     }
   }
 
+  static const _debugDeadHost = 'https://127.0.0.1:1';
+
+  Map<String, dynamic> _debugTrackBody(String eventName) => {
+        'identifier': _currentIdentifier,
+        'eventName': eventName,
+        'properties': const {'source': 'sdk_debug'},
+      };
+
+  /// Debug-only: POST track via a dead host then real gateway hosts.
+  Future<void> debugTestHostFailover() async {
+    if (!config.debug || !_ensureInitialized()) return;
+    try {
+      await httpClient.postWithBaseUrls(
+        [_debugDeadHost, ...config.allBaseUrls],
+        CDPEndpoints.track,
+        _debugTrackBody('failover_debug_test'),
+        identifier: _currentIdentifier,
+        queueOnFailure: false,
+      );
+      debugPrint('[CDP] debugTestHostFailover completed');
+    } catch (e) {
+      debugPrint('[CDP] debugTestHostFailover failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Debug-only: force a POST onto unreachable hosts so it is queued.
+  Future<void> debugTestQueueRetry() async {
+    if (!config.debug || !_ensureInitialized()) return;
+    try {
+      await httpClient.postWithBaseUrls(
+        [_debugDeadHost, 'https://127.0.0.1:2'],
+        CDPEndpoints.track,
+        _debugTrackBody('queue_debug_test'),
+        identifier: _currentIdentifier,
+      );
+    } on CDPException catch (e) {
+      debugPrint('[CDP] debugTestQueueRetry expected failure: $e');
+    }
+  }
+
+  /// Debug-only: successful track that drains the persisted POST queue.
+  Future<void> debugDrainQueue() async {
+    if (!config.debug || !_ensureInitialized()) return;
+    await trackEvent(
+      eventName: 'failover_queue_recovery',
+      properties: const {'source': 'sdk_debug'},
+    );
+  }
+
   /// Dispose the SDK instance
   void dispose() {
     // Dispose HTTP client resources

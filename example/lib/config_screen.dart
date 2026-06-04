@@ -56,6 +56,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
           cdpApiKey: _apiKeyController.text.trim(),
           cdpEndpoint: _endpointController.text.trim(),
           debug: true,
+          cdpRequestTimeout: const Duration(seconds: 5),
           autoTrackScreens: false, // we drive the screen manually below
           trackApplicationLifecycleEvents: true,
           autoTrackDeviceAttributes: false,

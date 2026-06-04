@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
@@ -25,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _currentIndex = 0;
   final List<InAppMessage> _inlineMessages = [];
+  String? _lastDebugResult;
 
   String get _currentScreen => _screens[_currentIndex];
   bool get _isEventsTab => _currentScreen == 'events';
@@ -88,6 +90,39 @@ class _HomeScreenState extends State<HomeScreen> {
     _trackInlineImpression(message);
   }
 
+  void _showDebugSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _debugTestHostFailover() async {
+    try {
+      await OpenCDPSDK.instance.debugTestHostFailover();
+      setState(() => _lastDebugResult = 'Host failover: success (see console)');
+      _showDebugSnack('Host failover OK — check Debug Console for per-host logs');
+    } catch (e) {
+      setState(() => _lastDebugResult = 'Host failover failed: $e');
+      _showDebugSnack('Host failover failed — see console');
+    }
+  }
+
+  Future<void> _debugTestQueueRetry() async {
+    await OpenCDPSDK.instance.debugTestQueueRetry();
+    setState(
+      () => _lastDebugResult =
+          'Queue retry: POST queued (tap Recover queue next)',
+    );
+    _showDebugSnack('POST queued — watch console, then tap Recover queue');
+  }
+
+  Future<void> _debugDrainQueue() async {
+    await OpenCDPSDK.instance.debugDrainQueue();
+    setState(() => _lastDebugResult = 'Queue drain: recovery track sent');
+    _showDebugSnack('Recovery track sent — queue drain logs in console');
+  }
+
   @override
   Widget build(BuildContext context) {
     return InAppHost(
@@ -124,7 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _StatusPanel(personId: widget.personId, screen: _currentScreen),
+          _StatusPanel(
+            personId: widget.personId,
+            screen: _currentScreen,
+            debugResult: _lastDebugResult,
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -145,6 +184,32 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+          if (kDebugMode) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Debug: retry / failover',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: _debugTestHostFailover,
+                  child: const Text('Test host failover'),
+                ),
+                FilledButton.tonal(
+                  onPressed: _debugTestQueueRetry,
+                  child: const Text('Test queue retry'),
+                ),
+                FilledButton.tonal(
+                  onPressed: _debugDrainQueue,
+                  child: const Text('Recover queue'),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             'Inline / inbox messages',
@@ -186,10 +251,15 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _StatusPanel extends StatelessWidget {
-  const _StatusPanel({required this.personId, required this.screen});
+  const _StatusPanel({
+    required this.personId,
+    required this.screen,
+    this.debugResult,
+  });
 
   final String personId;
   final String screen;
+  final String? debugResult;
 
   @override
   Widget build(BuildContext context) {
@@ -203,6 +273,7 @@ class _StatusPanel extends StatelessWidget {
           children: [
             _row('Person id', personId),
             _row('Current screen', screen),
+            if (debugResult != null) _row('Last debug', debugResult!),
           ],
         ),
       ),

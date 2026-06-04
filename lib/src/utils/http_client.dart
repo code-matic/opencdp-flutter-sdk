@@ -210,17 +210,19 @@ class CDPHttpClient {
         'Authorization': apiKey,
       };
 
-  /// Tries [baseUrls] in order for a POST until one returns 2xx.
+  /// Tries [hosts] (or [baseUrls] when omitted) in order for a POST until one
+  /// returns 2xx.
   @visibleForTesting
   Future<CdpHttpFailoverResult> postWithFailover(
     String endpoint,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, {
+    List<String>? hosts,
+  }) async {
     http.Response? lastResponse;
     Object? lastError;
     String? lastBase;
 
-    for (final root in baseUrls) {
+    for (final root in hosts ?? baseUrls) {
       lastBase = root;
       try {
         final response = await _client
@@ -396,6 +398,26 @@ class CDPHttpClient {
     throw CDPException('Error making $verb request: ${result.error}');
   }
 
+  /// POST using a temporary host list (does not mutate [baseUrls]).
+  ///
+  /// When [queueOnFailure] is true (default), failed requests are queued like
+  /// [post]. Set to false for debug probes that should not pollute the queue.
+  Future<Map<String, dynamic>> postWithBaseUrls(
+    List<String> hosts,
+    String endpoint,
+    Map<String, dynamic> body, {
+    String? identifier,
+    bool queueOnFailure = true,
+  }) async {
+    return _executePost(
+      endpoint,
+      body,
+      identifier: identifier,
+      hosts: hosts,
+      queueOnFailure: queueOnFailure,
+    );
+  }
+
   /// Makes a POST request to the CDP API.
   ///
   /// Tries primary then backup hosts. On failure across all hosts, queues for
@@ -405,23 +427,43 @@ class CDPHttpClient {
     Map<String, dynamic> body, {
     String? identifier,
   }) async {
+    return _executePost(
+      endpoint,
+      body,
+      identifier: identifier,
+    );
+  }
+
+  Future<Map<String, dynamic>> _executePost(
+    String endpoint,
+    Map<String, dynamic> body, {
+    String? identifier,
+    List<String>? hosts,
+    bool queueOnFailure = true,
+  }) async {
     try {
-      final result = await postWithFailover(endpoint, body);
+      final result = await postWithFailover(
+        endpoint,
+        body,
+        hosts: hosts,
+      );
 
       if (!result.succeeded) {
-        final failedRequest = QueuedRequest(
-          endpoint: endpoint,
-          body: body,
-          identifier: identifier,
-        );
-        _requestQueue.addRequest(failedRequest);
-        await _saveQueue();
-
-        if (debug) {
-          final status = result.response?.statusCode;
-          debugPrint(
-            '[CDP] Failed POST $endpoint on all hosts (last status: $status). Queued for retry.',
+        if (queueOnFailure) {
+          final failedRequest = QueuedRequest(
+            endpoint: endpoint,
+            body: body,
+            identifier: identifier,
           );
+          _requestQueue.addRequest(failedRequest);
+          await _saveQueue();
+
+          if (debug) {
+            final status = result.response?.statusCode;
+            debugPrint(
+              '[CDP] Failed POST $endpoint on all hosts (last status: $status). Queued for retry.',
+            );
+          }
         }
         _throwFromFailoverResult(result, 'POST to $endpoint');
       }
