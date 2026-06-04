@@ -19,6 +19,11 @@ class CDPScreenTracker extends NavigatorObserver {
   /// Storage for screen views that occurred before user identification
   final List<Map<String, dynamic>> _anonymousScreenViews = [];
 
+  /// Optional callback fired whenever the active screen changes. Used by the
+  /// SDK to keep the in-app message manager's screen filter in sync with
+  /// navigation events.
+  void Function(String screen)? onScreenChange;
+
   /// Creates a new screen tracker.
   ///
   /// [sdk] is the OpenCDPSDK instance used to send tracking events.
@@ -69,6 +74,16 @@ class CDPScreenTracker extends NavigatorObserver {
       'timestamp': DateTime.now().toIso8601String(),
     };
 
+    // Notify subscribers (e.g. in-app manager) that the screen changed so they
+    // can refresh their context regardless of identification status.
+    try {
+      onScreenChange?.call(name);
+    } catch (e) {
+      if (debug) {
+        debugPrint('[CDP] Screen change callback error: $e');
+      }
+    }
+
     if (sdk.userId != null) {
       // Track for identified user
       sdk.trackScreenView(
@@ -114,5 +129,22 @@ class CDPScreenTracker extends NavigatorObserver {
 
     // Clear the anonymous screen views after associating them
     _anonymousScreenViews.clear();
+  }
+
+  /// Cleans up resources and data used by the screen tracker.
+  ///
+  /// This is called when the SDK is being disposed or reinitialized.
+  void dispose() {
+    // Clear any stored anonymous screen views
+    _anonymousScreenViews.clear();
+
+    // Note: Navigator observers are typically removed by setting
+    // navigatorObservers: [] in MaterialApp/CupertinoApp
+    // or by calling Navigator.of(context).widget.observers.remove(this)
+    // which cannot be done here automatically
+
+    if (debug) {
+      debugPrint('[CDP] Screen tracker disposed');
+    }
   }
 }

@@ -3,6 +3,11 @@ import 'dart:io';
 
 import 'package:customer_io/customer_io.dart' as cio;
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
+import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
+import 'package:open_cdp_flutter_sdk/src/models/in_app_message.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/hash_generator.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -10,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/event_type.dart';
+import 'package:open_cdp_flutter_sdk/src/models/validation_exception.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 /// Private implementation of the OpenCDP SDK
@@ -17,6 +23,13 @@ class OpenCDPSDKImplementation {
   final OpenCDPConfig config;
   @visibleForTesting
   CDPHttpClient httpClient;
+
+  /// SDK-internal accessor for the configured HTTP client. Mirrors
+  /// [httpClient] but without the `@visibleForTesting` annotation so
+  /// internal collaborators (e.g. the in-app realtime SSE client) can
+  /// reuse the connection pool and Authorization header without tripping
+  /// the test-only lint.
+  CDPHttpClient get cdpHttpClient => httpClient;
   late SharedPreferences prefs;
   static String? _userId;
   static String? _deviceId;
@@ -35,12 +48,12 @@ class OpenCDPSDKImplementation {
     required OpenCDPConfig config,
     CDPHttpClient? httpClient,
   }) async {
-    final client = httpClient ??
-        CDPHttpClient(
+    final CDPHttpClient client = httpClient ??
+        (await CDPHttpClient.create(
           baseUrl: config.baseUrl,
           apiKey: config.cdpApiKey,
           debug: config.debug,
-        );
+        ));
 
     _packageInfo = await PackageInfo.fromPlatform();
 
@@ -110,8 +123,27 @@ class OpenCDPSDKImplementation {
   /// Validate identifier
   bool _validateIdentifier(String identifier) {
     if (identifier.trim().isEmpty) {
+      const errorMessage = 'Identifier cannot be empty';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'identifier');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Identifier cannot be empty');
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    // Check if identifier is an email address
+    final emailRegex = RegExp(
+      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+      caseSensitive: false,
+    );
+    if (emailRegex.hasMatch(identifier.trim())) {
+      const errorMessage = 'Identifier cannot be an email address';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'identifier');
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
@@ -121,18 +153,86 @@ class OpenCDPSDKImplementation {
   /// Validate event name
   bool _validateEventName(String eventName) {
     if (eventName.trim().isEmpty) {
+      const errorMessage = 'Event name cannot be empty';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'eventName');
+      }
       if (config.debug) {
-        debugPrint('[CDP] Event name cannot be empty');
+        debugPrint('[CDP] $errorMessage');
       }
       return false;
     }
     return true;
   }
 
+  /// Validate customerIoId
+  bool _validateCustomerIoId(String? customerIoId) {
+    if (customerIoId == null) return true; // Optional, so null is valid
+
+    if (customerIoId.trim().isEmpty) {
+      const errorMessage = 'customerIoId cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, 'customerIoId');
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// Validate push token (FCM or APN)
+  bool _validatePushToken(String? token, String tokenType) {
+    if (token == null) return true; // Optional, so null is valid
+
+    if (token.trim().isEmpty) {
+      final errorMessage = '$tokenType cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, tokenType);
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// Standard error handling for SDK public methods
+  void _handleError(String operation, dynamic error) {
+    if (config.throwErrorsBack &&
+        (error is CDPValidationException || error is CDPException)) {
+      throw error;
+    }
+
+    if (config.debug) {
+      debugPrint('[CDP] $operation: $error');
+    }
+  }
+
+  /// Error handling for nested integrations (like Customer.io)
+  /// Never rethrows - nested integrations should never block the main flow
+  void _handleNestedError(String operation, dynamic error) {
+    if (config.debug) {
+      debugPrint('[CDP] $operation: $error');
+    }
+  }
+
   /// Implementation of user identification
+  ///
+  /// Identifies a user in the CDP and optionally in Customer.io.
+  ///
+  /// [identifier] - Unique user identifier (must NOT be an email address)
+  /// [properties] - Optional user properties/traits
+  /// [customerIoId] - Optional Customer.io-specific identifier for dual-write.
+  ///   If provided, this ID is used for Customer.io while [identifier] is used
+  ///   for CDP API calls and native storage. Useful for clients using email as
+  ///   their Customer.io ID while maintaining a non-email identifier for CDP.
   Future<void> identifyUser({
     required String identifier,
     Map<String, dynamic> properties = const {},
+    String? customerIoId,
   }) async {
     try {
       if (!_ensureInitialized()) {
@@ -141,8 +241,11 @@ class OpenCDPSDKImplementation {
       if (!_validateIdentifier(identifier)) {
         return;
       }
+      if (!_validateCustomerIoId(customerIoId)) {
+        return;
+      }
       final normalizedProps = properties;
-      final response = await httpClient.post(
+      await httpClient.post(
         CDPEndpoints.identify,
         {
           'identifier': identifier,
@@ -151,33 +254,37 @@ class OpenCDPSDKImplementation {
         identifier: identifier,
       );
 
-      if (response == null) {
-        if (config.debug) {
-          debugPrint('[CDP] Failed to identify user: request returned null');
-        }
-        return;
-      }
+      // The response can't be null, so no need to check for null here.
 
       _userId = identifier;
       await prefs.setString('user_id', identifier);
 
+      // Store in native storage for push notification handling in background
+      // For iOS, we pass the app group
+      // For Android, app group is not required
+      await NativeBridge.saveUserIdToNative(
+        userId: identifier,
+        appGroup: config.appGroup,
+      );
+
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
-        cio.CustomerIO.instance.identify(
-          userId: identifier,
-          traits: normalizedProps,
-        );
-      }
-
-      // Track device attributes if enabled
-      if (config.autoTrackDeviceAttributes) {
-        // await registerDevice(fcmToken: 'noAPNStoken', apnToken: 'noAPNStoken');
+        try {
+          // Use customer_io_id if provided and not empty, otherwise fall back to identifier
+          final cioUserId =
+              (customerIoId != null && customerIoId.trim().isNotEmpty)
+                  ? customerIoId
+                  : _currentIdentifier;
+          cio.CustomerIO.instance.identify(
+            userId: cioUserId,
+            traits: normalizedProps,
+          );
+        } catch (e) {
+          _handleNestedError('Customer.io identify error', e);
+        }
       }
     } catch (e) {
-      // rethrow;
-      if (config.debug) {
-        debugPrint('[CDP] Error identifying user: $e');
-      }
+      _handleError('Error identifying user', e);
     }
   }
 
@@ -196,7 +303,7 @@ class OpenCDPSDKImplementation {
       }
       final normalizedProps = properties;
 
-      final response = await httpClient.post(
+      await httpClient.post(
         CDPEndpoints.track,
         {
           'identifier': _currentIdentifier,
@@ -205,13 +312,6 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
-
-      if (response == null) {
-        if (config.debug) {
-          debugPrint('[CDP] Failed to track event: request returned null');
-        }
-        return;
-      }
 
       // Track in Customer.io if enabled
       if (config.sendToCustomerIo) {
@@ -233,15 +333,11 @@ class OpenCDPSDKImplementation {
               break;
           }
         } catch (e) {
-          if (config.debug) {
-            debugPrint('[CDP] Customer.io track error: $e');
-          }
+          _handleNestedError('Customer.io track error', e);
         }
       }
     } catch (e) {
-      if (config.debug) {
-        debugPrint('[CDP] Error tracking event: $e');
-      }
+      _handleError('Error tracking event', e);
     }
   }
 
@@ -305,6 +401,117 @@ class OpenCDPSDKImplementation {
     );
   }
 
+  Future<List<InAppMessage>> syncInAppMessages({
+    required String screen,
+    required String platform,
+    String? appVersion,
+    int limit = 10,
+    String? personId,
+    int? tzOffsetMinutes,
+  }) async {
+    try {
+      if (!_ensureInitialized()) {
+        return [];
+      }
+      final response = await httpClient.get(
+        CDPEndpoints.inAppSync,
+        query: {
+          'person_id': personId ?? _currentIdentifier,
+          'screen': screen,
+          'platform': platform,
+          // Only include app_version when we actually have one. The backend
+          // schema rejects empty strings on optional fields.
+          if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
+          // Device local offset lets the backend honor
+          // quiet_hours.timezone_mode=user_local without needing a platform
+          // timezone plugin or relying on ambiguous abbreviations like "WAT".
+          if (tzOffsetMinutes != null) 'tz_offset_minutes': tzOffsetMinutes,
+          'limit': limit,
+        },
+      );
+
+      final data = (response['data'] as Map<String, dynamic>?) ?? {};
+      final rawMessages = (data['messages'] as List?) ?? [];
+      return rawMessages
+          .map((raw) => InAppMessage.fromJson((raw as Map).cast<String, dynamic>()))
+          .toList();
+    } catch (e) {
+      _handleError('Error syncing in-app messages', e);
+      return [];
+    }
+  }
+
+  Future<void> trackInAppImpression({
+    required String deliveryId,
+    required String screen,
+    required String platform,
+    String? appVersion,
+    String? personId,
+  }) async {
+    await _trackInAppInteraction(
+      endpoint: CDPEndpoints.inAppImpression(deliveryId),
+      body: {
+        'person_id': personId ?? _currentIdentifier,
+        'screen': screen,
+        'platform': platform,
+        if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      },
+      operation: 'impression',
+    );
+  }
+
+  Future<void> trackInAppClick({
+    required String deliveryId,
+    required String actionId,
+    required String screen,
+    String? personId,
+  }) async {
+    await _trackInAppInteraction(
+      endpoint: CDPEndpoints.inAppClick(deliveryId),
+      body: {
+        'person_id': personId ?? _currentIdentifier,
+        'screen': screen,
+        'action_id': actionId,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      },
+      operation: 'click',
+    );
+  }
+
+  Future<void> trackInAppDismiss({
+    required String deliveryId,
+    required String reason,
+    required String screen,
+    String? personId,
+  }) async {
+    await _trackInAppInteraction(
+      endpoint: CDPEndpoints.inAppDismiss(deliveryId),
+      body: {
+        'person_id': personId ?? _currentIdentifier,
+        'screen': screen,
+        'reason': reason,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      },
+      operation: 'dismiss',
+    );
+  }
+
+  Future<void> _trackInAppInteraction({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required String operation,
+  }) async {
+    try {
+      if (!_ensureInitialized()) {
+        return;
+      }
+      await httpClient.post(endpoint, body, identifier: body['person_id'] as String?);
+    } catch (e) {
+      _handleError('Error tracking in-app $operation', e);
+    }
+  }
+
   /// Implementation of lifecycle event tracking
   Future<void> trackLifecycleEvent({
     required String eventName,
@@ -326,6 +533,12 @@ class OpenCDPSDKImplementation {
       if (!_ensureInitialized()) {
         return;
       }
+      if (!_validatePushToken(fcmToken, 'fcmToken')) {
+        return;
+      }
+      if (!_validatePushToken(apnToken, 'apnToken')) {
+        return;
+      }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
 
@@ -343,7 +556,11 @@ class OpenCDPSDKImplementation {
       if (Platform.isAndroid) {
         final androidInfo = await _deviceInfo.androidInfo;
         platform = 'android';
-        deviceId = androidInfo.id;
+        final getdeviceId =
+            '${androidInfo.model}-${androidInfo.manufacturer}-$_currentIdentifier';
+        //hash to make deviceId unique per user
+        deviceId = generateMd5Hash(getdeviceId);
+
         deviceAttributes.addAll({
           'device_manufacturer': androidInfo.manufacturer,
           'device_model': androidInfo.model,
@@ -352,11 +569,15 @@ class OpenCDPSDKImplementation {
         });
       } else if (Platform.isIOS) {
         final iosInfo = await _deviceInfo.iosInfo;
+
         platform = 'ios';
-        deviceId = iosInfo.identifierForVendor ?? '';
+
+        final getdeviceId =
+            '${iosInfo.modelName}-${'Apple'}-$_currentIdentifier';
+        deviceId = generateMd5Hash(getdeviceId);
         deviceAttributes.addAll({
           'device_manufacturer': 'Apple',
-          'device_model': iosInfo.model,
+          'device_model': iosInfo.modelName,
           'os_version': iosInfo.systemVersion,
           'os_name': iosInfo.systemName,
         });
@@ -365,7 +586,7 @@ class OpenCDPSDKImplementation {
         deviceId = 'web-${DateTime.now().millisecondsSinceEpoch}';
       }
 
-      final response = await httpClient.post(
+      await httpClient.post(
         CDPEndpoints.registerDevice,
         {
           'identifier': _currentIdentifier,
@@ -381,74 +602,141 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
-
-      if (response == null) {
-        if (config.debug) {
-          debugPrint('[CDP] Failed to register device: request returned null');
-        }
-        return;
-      }
     } catch (e) {
-      if (config.debug) {
-        debugPrint('[CDP] Error registering device: $e');
-      }
+      _handleError('Error registering device', e);
     }
   }
 
-  /// Track device attributes automatically
-  // Future<void> _trackDeviceAttributes() async {
-  //   try {
-  //     if (_packageInfo == null) return;
+  /// Implementation of push notification tracking
 
-  //     final deviceAttributes = {
-  //       'app_version': _packageInfo!.version,
-  //       'app_build': _packageInfo!.buildNumber,
-  //       'app_package': _packageInfo!.packageName,
-  //     };
+  static Future<void> trackBackgroundPushNotificationMetric(
+      MetricEvent event,
+      String deliveryMessageId,
+      String deliverySendContext,
+      String deliverySendContextId,
+      bool isBackground,
+      {String? appGroup,
+      String? apiKeyOverride,
+      String? baseUrlOverride,
+      String? actionId}) async {
+    try {
+      // Determine the API key based on context
+      String? apiKey;
+      if (isBackground) {
+        // If provided directly, use the override
+        if (apiKeyOverride != null && apiKeyOverride.isNotEmpty) {
+          apiKey = apiKeyOverride;
+        } else {
+          // For background operations, get API key from native storage
+          // This works for both iOS (with appGroup) and Android
+          apiKey = await NativeBridge.getApiKeyFromNative(
+            appGroup: appGroup, // Optional app group for iOS
+          );
+        }
+      } else {
+        // For non-background, we should be getting the apiKey from the instance that calls this
+        apiKey = apiKeyOverride;
+      }
 
-  //     if (Platform.isAndroid) {
-  //       final androidInfo = await _deviceInfo.androidInfo;
-  //       deviceAttributes.addAll({
-  //         'device_manufacturer': androidInfo.manufacturer,
-  //         'device_model': androidInfo.model,
-  //         'os_version': androidInfo.version.release,
-  //         'os_sdk': androidInfo.version.sdkInt.toString(),
-  //       });
-  //     } else if (Platform.isIOS) {
-  //       final iosInfo = await _deviceInfo.iosInfo;
-  //       deviceAttributes.addAll({
-  //         'device_manufacturer': 'Apple',
-  //         'device_model': iosInfo.model,
-  //         'os_version': iosInfo.systemVersion,
-  //         'os_name': iosInfo.systemName,
-  //       });
-  //     }
+      if (apiKey == null || apiKey.isEmpty) {
+        debugPrint('[CDP] Missing API key for push tracking.');
+        return;
+      }
 
-  //     if (_userId != null) {
-  //       final response = await httpClient.post(
-  //         CDPEndpoints.update,
-  //         {
-  //           'identifier': _currentIdentifierUnsafe,
-  //           'properties': deviceAttributes,
-  //         },
-  //         identifier: _currentIdentifierUnsafe,
-  //       );
+      String? resolvedBase = baseUrlOverride;
+      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
+        if (isBackground) {
+          resolvedBase = await NativeBridge.getBaseUrlFromNative(
+            appGroup: appGroup,
+          );
+        }
+      }
+      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
+        resolvedBase = CDPEndpoints.baseUrl;
+      }
+      final String baseUrl = resolvedBase;
 
-  //       if (response == null && config.debug) {
-  //         debugPrint(
-  //             '[CDP] Failed to track device attributes: request returned null');
-  //       }
-  //     }
-  //   } catch (e) {
-  //     if (config.debug) {
-  //       debugPrint('[CDP] Error tracking device attributes: $e');
-  //     }
-  //   }
-  // }
+      // Get the user ID
+      String? personId;
+      if (isBackground) {
+        // For background operations, get user ID from native storage
+        personId = await NativeBridge.getUserIdFromNative(
+          appGroup: appGroup, // Optional app group for iOS
+        );
+      } else {
+        personId = _userId;
+      }
+
+      // For background operations, fire-and-forget might be more appropriate
+      // to avoid keeping the background task alive unnecessarily
+      if (isBackground) {
+        PushNotificationTracker.sendMetricAndForget(
+          apiKey,
+          baseUrl,
+          event,
+          deliveryMessageId,
+          deliverySendContext: deliverySendContext,
+          deliverySendContextId: deliverySendContextId,
+          personId: personId,
+          isBackground: true,
+          appGroup: appGroup,
+          actionId: actionId,
+        );
+      } else {
+        await PushNotificationTracker.sendMetric(
+          apiKey,
+          baseUrl,
+          event,
+          deliveryMessageId,
+          deliverySendContext: deliverySendContext,
+          deliverySendContextId: deliverySendContextId,
+          personId: personId,
+          isBackground: false,
+          actionId: actionId,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[CDP] Error tracking push metric: $e\n$st');
+    }
+  }
+
+  Future<void> trackPushNotificationMetric(
+    MetricEvent event,
+    String deliveryMessageId,
+    bool isBackground,
+    String deliverySendContext,
+    String deliverySendContextId, {
+    String? actionId,
+  }) async {
+    try {
+      // Use the enhanced tracking with retries
+      await PushNotificationTracker.sendMetric(
+        config.cdpApiKey,
+        config.baseUrl,
+        event,
+        deliveryMessageId,
+        isBackground: isBackground,
+        appGroup: config.appGroup,
+        deliverySendContext: deliverySendContext,
+        personId: _userId,
+        deliverySendContextId: deliverySendContextId,
+        actionId: actionId,
+      );
+    } catch (e, st) {
+      debugPrint('[CDP] Error tracking push metric: $e\n$st');
+    }
+  }
 
   /// Dispose the SDK instance
   void dispose() {
+    // Dispose HTTP client resources
     httpClient.dispose();
+
+    // Reset instance state
+    _isInitialized = false;
+
+    // Note: We don't clear static variables here as that's handled by resetStaticVariables()
+    // which should be called during reinitialization
   }
 
   /// Set a custom HTTP client
@@ -477,14 +765,22 @@ class OpenCDPSDKImplementation {
       _userId = null;
       await prefs.remove('user_id');
 
+      // Clear from native storage for background push notification handling
+      // Works for both iOS and Android with the updated method
+      await NativeBridge.clearUserIdFromNative(
+        appGroup: config.appGroup,
+      );
+
+      await NativeBridge.clearBaseUrlFromNative(
+        appGroup: config.appGroup,
+      );
+
       // Finally clear Customer.io identity if enabled
       if (config.sendToCustomerIo) {
         try {
           cio.CustomerIO.instance.clearIdentify();
         } catch (e) {
-          if (config.debug) {
-            debugPrint('[CDP] Customer.io clear identity error: $e');
-          }
+          _handleNestedError('Customer.io clear identity error', e);
         }
       }
 
@@ -492,9 +788,18 @@ class OpenCDPSDKImplementation {
         debugPrint('[CDP] Identity cleared successfully');
       }
     } catch (e) {
-      if (config.debug) {
-        debugPrint('[CDP] Error clearing identity: $e');
-      }
+      _handleError('Error clearing identity', e);
     }
+  }
+
+  /// Reset all static variables for reinitialization
+  /// This should be called when reinitializing the SDK
+  static void resetStaticVariables() {
+    _userId = null;
+    _deviceId = null;
+    _packageInfo = null;
+
+    // Also clear resources in the PushNotificationTracker
+    PushNotificationTracker.dispose();
   }
 }

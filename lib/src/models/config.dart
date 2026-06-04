@@ -44,7 +44,7 @@ enum ScreenView {
 enum CioLogLevel { none, error, info, debug }
 
 /// Enum to specify the type of metric for tracking
-enum MetricEvent { delivered, opened, converted }
+// enum MetricEvent { delivered, opened, converted }
 
 /// Enum to specify the click behavior of push notification for Android
 enum PushClickBehaviorAndroid {
@@ -156,6 +156,10 @@ class OpenCDPConfig {
   /// CDP API Key
   final String cdpApiKey;
 
+  /// iOS App Group(required for push notification tracking on iOS)
+  /// If not provided, background push tracking may fail for iOS.
+  final String? iOSAppGroup;
+
   /// Optional custom CDP endpoint
   final String? cdpEndpoint;
 
@@ -180,6 +184,55 @@ class OpenCDPConfig {
   /// Screen view tracking configuration
   final ScreenView screenViewUse;
 
+  /// Whether the SDK should automatically deliver in-app messages on
+  /// [CDPInAppManager.messageStream]. When `true`, the manager starts after
+  /// [initialize] and binds to the user after [OpenCDPSDK.identify].
+  final bool enableInAppMessages;
+
+  /// Whether to use low-latency automatic in-app delivery. Only takes effect
+  /// when [enableInAppMessages] is also `true`. Defaults to `true`.
+  final bool enableInAppRealtime;
+
+  /// Interval between background message checks when [enableInAppRealtime] is
+  /// `false`, or while automatic delivery is recovering. Defaults to 30 seconds.
+  final Duration inAppPollInterval;
+
+  /// How long to wait without new data before retrying automatic delivery.
+  /// Defaults to 60 seconds.
+  final Duration inAppRealtimeStaleTimeout;
+
+  /// Maximum delay between automatic delivery retries. Defaults to 30 seconds.
+  final Duration inAppRealtimeMaxBackoff;
+
+  /// Maximum messages requested per sync (1..50). Defaults to 10.
+  final int inAppSyncLimit;
+
+  /// Optional override for the platform value sent to the backend.
+  /// Defaults to `ios`/`android`/`web` based on the runtime.
+  final String? inAppPlatformOverride;
+
+  /// Optional override for the app version string sent to the backend.
+  /// If omitted, the SDK leaves it blank.
+  final String? inAppAppVersionOverride;
+
+  /// Whether to throw errors back to the caller for handling.
+  ///
+  /// When `true`:
+  /// - Validation errors throw [CDPValidationException] (works in both debug and prod)
+  /// - API errors throw [CDPException] (works in both debug and prod)
+  /// - Customer.io errors are rethrown (works in both debug and prod)
+  /// - Users must handle these exceptions in their code
+  ///
+  /// When `false` (default):
+  /// - Errors are only logged when `debug` is `true` (debug mode only)
+  /// - No errors are thrown in production
+  /// - Methods return silently on errors
+  ///
+  /// This allows users to choose between:
+  /// - Strict error handling: `throwErrorsBack: true` - catch and handle all errors
+  /// - Silent error handling: `throwErrorsBack: false` - errors are logged but don't interrupt flow
+  final bool throwErrorsBack;
+
   /// Base URL for API endpoints
   String get baseUrl {
     if (cdpEndpoint != null) {
@@ -188,8 +241,15 @@ class OpenCDPConfig {
     return CDPEndpoints.baseUrl;
   }
 
+  /// App Group ID (used for background push notification tracking)
+  /// Returns iOSAppGroup on iOS, or a default value on Android
+  String? get appGroup {
+    return iOSAppGroup;
+  }
+
   const OpenCDPConfig({
     required this.cdpApiKey,
+    this.iOSAppGroup,
     this.cdpEndpoint,
     this.sendToCustomerIo = false,
     this.customerIo,
@@ -198,6 +258,15 @@ class OpenCDPConfig {
     this.autoTrackScreens = false,
     this.trackApplicationLifecycleEvents = true,
     this.screenViewUse = ScreenView.all,
+    this.enableInAppMessages = false,
+    this.enableInAppRealtime = true,
+    this.inAppPollInterval = const Duration(seconds: 30),
+    this.inAppRealtimeStaleTimeout = const Duration(seconds: 60),
+    this.inAppRealtimeMaxBackoff = const Duration(seconds: 30),
+    this.inAppSyncLimit = 10,
+    this.inAppPlatformOverride,
+    this.inAppAppVersionOverride,
+    this.throwErrorsBack = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -205,13 +274,23 @@ class OpenCDPConfig {
       'cdpApiKey': cdpApiKey,
       'cdpEndpoint': cdpEndpoint,
       'baseUrl': baseUrl,
+      'iOSAppGroup': appGroup,
       'sendToCustomerIo': sendToCustomerIo,
       'customerIo': customerIo?.toMap(),
       'debug': debug,
       'autoTrackDeviceAttributes': autoTrackDeviceAttributes,
       'autoTrackScreens': autoTrackScreens,
+      'throwErrorsBack': throwErrorsBack,
       'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
       'screenViewUse': screenViewUse.toString().split('.').last,
+      'enableInAppMessages': enableInAppMessages,
+      'enableInAppRealtime': enableInAppRealtime,
+      'inAppPollIntervalSeconds': inAppPollInterval.inSeconds,
+      'inAppRealtimeStaleTimeoutSeconds': inAppRealtimeStaleTimeout.inSeconds,
+      'inAppRealtimeMaxBackoffMs': inAppRealtimeMaxBackoff.inMilliseconds,
+      'inAppSyncLimit': inAppSyncLimit,
+      'inAppPlatformOverride': inAppPlatformOverride,
+      'inAppAppVersionOverride': inAppAppVersionOverride,
     };
   }
 }
