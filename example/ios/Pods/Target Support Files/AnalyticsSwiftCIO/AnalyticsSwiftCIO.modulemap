@@ -1,0 +1,6 @@
+framework module CioAnalytics {
+  umbrella header "AnalyticsSwiftCIO-umbrella.h"
+
+  export *
+  module * { export * }
+}

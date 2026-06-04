@@ -1,0 +1,6 @@
+framework module CioInternalCommon {
+  umbrella header "CustomerIOCommon-umbrella.h"
+
+  export *
+  module * { export * }
+}

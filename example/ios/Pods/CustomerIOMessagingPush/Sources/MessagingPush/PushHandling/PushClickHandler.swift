@@ -1,0 +1,57 @@
+import CioInternalCommon
+import Foundation
+import UserNotifications
+
+@available(iOSApplicationExtension, unavailable)
+protocol PushClickHandler: AutoMockable {
+    // Cleanup files on device that were used when the push was displayed. Files are no longer
+    // needed now that the push is no longer shown.
+    func cleanupAfterPushInteractedWith(for push: PushNotification)
+    func trackPushMetrics(for push: PushNotification)
+    func handleDeepLink(for push: PushNotification)
+}
+
+@available(iOSApplicationExtension, unavailable)
+// sourcery: InjectRegisterShared = "PushClickHandler"
+class PushClickHandlerImpl: PushClickHandler {
+    private let deepLinkUtil: DeepLinkUtil
+    private let messagingPush: MessagingPushInstance
+    private let commonLogger: SdkCommonLogger
+    private let pushLogger: PushNotificationLogger
+
+    init(deepLinkUtil: DeepLinkUtil, messagingPush: MessagingPushInstance, pushLogger: PushNotificationLogger, commonLogger: SdkCommonLogger) {
+        self.deepLinkUtil = deepLinkUtil
+        self.messagingPush = messagingPush
+        self.pushLogger = pushLogger
+        self.commonLogger = commonLogger
+    }
+
+    func trackPushMetrics(for push: PushNotification) {
+        guard let cioDelivery = push.cioDelivery else {
+            pushLogger.logClickedPushMessageWithEmptyDeliveryId()
+            return
+        }
+        pushLogger.logTrackingPushMessageOpened(deliveryId: cioDelivery.id)
+        messagingPush.trackMetric(deliveryID: cioDelivery.id, event: .opened, deviceToken: cioDelivery.token)
+    }
+
+    func handleDeepLink(for push: PushNotification) {
+        guard let deepLinkUrl = push.cioDeepLink?.url else {
+            commonLogger.logDeepLinkWasNotHandled()
+            return
+        }
+
+        deepLinkUtil.handleDeepLink(deepLinkUrl)
+    }
+
+    // There are files that are created just for displaying a rich push. After a push is interacted with, those files
+    // are no longer needed.
+    // This function's job is to cleanup after a push is no longer being displayed.
+    func cleanupAfterPushInteractedWith(for push: PushNotification) {
+        push.cioAttachments.forEach { attachment in
+            let localFilePath = attachment.localFileUrl
+
+            try? FileManager.default.removeItem(at: localFilePath)
+        }
+    }
+}

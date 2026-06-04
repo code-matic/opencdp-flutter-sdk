@@ -1,0 +1,6 @@
+framework module CioTrackingMigration {
+  umbrella header "CustomerIOTrackingMigration-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -1,0 +1,13 @@
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CioAnalytics.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CioInternalCommon.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CioDataPipelines.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CioMessagingInApp.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CioMessagingPush.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CioTrackingMigration.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/JSONSafeEncoding.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sovran.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/customer_io.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/device_info_plus.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/open_cdp_flutter_sdk.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/package_info_plus.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/shared_preferences_foundation.framework

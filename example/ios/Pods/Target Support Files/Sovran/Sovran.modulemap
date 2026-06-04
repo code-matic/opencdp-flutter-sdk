@@ -1,0 +1,6 @@
+framework module Sovran {
+  umbrella header "Sovran-umbrella.h"
+
+  export *
+  module * { export * }
+}
