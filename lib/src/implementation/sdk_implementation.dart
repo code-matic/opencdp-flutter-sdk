@@ -16,6 +16,7 @@ import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/event_type.dart';
 import 'package:open_cdp_flutter_sdk/src/models/validation_exception.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/cdp_gateway_urls.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 /// Private implementation of the OpenCDP SDK
@@ -50,8 +51,9 @@ class OpenCDPSDKImplementation {
   }) async {
     final CDPHttpClient client = httpClient ??
         (await CDPHttpClient.create(
-          baseUrl: config.baseUrl,
+          baseUrls: config.allBaseUrls,
           apiKey: config.cdpApiKey,
+          requestTimeout: config.cdpRequestTimeout,
           debug: config.debug,
         ));
 
@@ -654,7 +656,9 @@ class OpenCDPSDKImplementation {
       if (resolvedBase == null || resolvedBase.trim().isEmpty) {
         resolvedBase = CDPEndpoints.baseUrl;
       }
-      final String baseUrl = resolvedBase;
+      final baseUrls = CdpGatewayUrls.resolveAllBaseUrls(
+        primaryOverride: resolvedBase,
+      );
 
       // Get the user ID
       String? personId;
@@ -672,7 +676,7 @@ class OpenCDPSDKImplementation {
       if (isBackground) {
         PushNotificationTracker.sendMetricAndForget(
           apiKey,
-          baseUrl,
+          baseUrls,
           event,
           deliveryMessageId,
           deliverySendContext: deliverySendContext,
@@ -685,7 +689,7 @@ class OpenCDPSDKImplementation {
       } else {
         await PushNotificationTracker.sendMetric(
           apiKey,
-          baseUrl,
+          baseUrls,
           event,
           deliveryMessageId,
           deliverySendContext: deliverySendContext,
@@ -712,7 +716,7 @@ class OpenCDPSDKImplementation {
       // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
         config.cdpApiKey,
-        config.baseUrl,
+        config.allBaseUrls,
         event,
         deliveryMessageId,
         isBackground: isBackground,
@@ -721,6 +725,7 @@ class OpenCDPSDKImplementation {
         personId: _userId,
         deliverySendContextId: deliverySendContextId,
         actionId: actionId,
+        requestTimeout: config.cdpRequestTimeout,
       );
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');

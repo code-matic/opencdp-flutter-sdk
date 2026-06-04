@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_cdp_flutter_sdk/src/utils/cdp_gateway_urls.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Note: The original code depended on `request_queue.dart`. For completeness,
-// plausible implementations of `RequestQueue` and `QueuedRequest` are included here.
 
 /// Represents a single API request that has been queued for a future retry.
 class QueuedRequest {
@@ -100,6 +98,25 @@ class RequestQueue {
   }
 }
 
+/// Result of trying all gateway hosts for one HTTP exchange.
+@visibleForTesting
+class CdpHttpFailoverResult {
+  final http.Response? response;
+  final Object? error;
+  final String? lastBaseUrl;
+
+  const CdpHttpFailoverResult({
+    this.response,
+    this.error,
+    this.lastBaseUrl,
+  });
+
+  bool get succeeded {
+    final r = response;
+    return r != null && r.statusCode >= 200 && r.statusCode < 300;
+  }
+}
+
 /// A robust HTTP client for CDP API calls that handles offline scenarios
 /// by queuing failed requests and retrying them with exponential backoff.
 class CDPHttpClient {
@@ -111,14 +128,20 @@ class CDPHttpClient {
   /// connection settings while preserving the queue/retry semantics here.
   http.Client get rawClient => _client;
 
-  /// The base URL for the CDP API (e.g., 'https://api.customer.io').
-  final String baseUrl;
+  /// Ordered gateway base URLs (primary first, then backups).
+  final List<String> baseUrls;
+
+  /// Primary gateway base URL — first entry in [baseUrls].
+  String get baseUrl => baseUrls.first;
 
   /// The API key used for the 'Authorization' header.
   final String apiKey;
 
   /// If true, detailed logs will be printed to the console.
   final bool debug;
+
+  /// Per-request timeout for gateway POST/GET and stream connect headers.
+  final Duration requestTimeout;
 
   /// The queue for managing failed requests that need to be retried.
   final RequestQueue _requestQueue = RequestQueue();
@@ -132,46 +155,203 @@ class CDPHttpClient {
   /// The maximum number of retries for a single request before it is discarded.
   static const int _maxRetries = 5;
 
-  /// Hard ceiling on a single HTTP exchange. Without this, a slow/hung
-  /// upstream (proxy queue, edge rate limiter holding the request, idle
-  /// load balancer) can keep one request open indefinitely while the
-  /// in-app manager's `_syncInFlight` flag silently coalesces every
-  /// subsequent sync — exactly the failure mode we observed when an
-  /// upstream rate limiter held a sync GET for 45s before returning 429.
-  static const Duration _requestTimeout = Duration(seconds: 30);
+  static const Map<String, String> _jsonHeaders = {
+    'Content-Type': 'application/json',
+  };
 
   /// Private constructor. Use the `CDPHttpClient.create()` factory to instantiate.
   CDPHttpClient._({
-    required this.baseUrl,
+    required this.baseUrls,
     required this.apiKey,
     this.debug = false,
+    required this.requestTimeout,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   /// Creates and initializes a new CDP HTTP client.
   ///
-  /// This factory method handles the asynchronous loading of the persisted
-  /// request queue, ensuring the client is ready for use upon creation.
-  ///
-  /// [baseUrl] is the base URL for the CDP API.
-  /// [apiKey] is the API key used for authentication.
-  /// [debug] enables debug logging if true.
-  /// [client] is an optional HTTP client to use. If not provided, a new one is created.
+  /// Provide either [baseUrls] or [baseUrl] (with optional [fallbackBaseUrls]).
+  /// Every new request tries hosts in order until one returns 2xx.
   static Future<CDPHttpClient> create({
-    required String baseUrl,
     required String apiKey,
+    String? baseUrl,
+    List<String>? baseUrls,
+    List<String>? fallbackBaseUrls,
+    Duration requestTimeout = CdpGatewayUrls.defaultRequestTimeout,
     bool debug = false,
     http.Client? client,
   }) async {
+    final resolvedUrls = baseUrls ??
+        CdpGatewayUrls.resolveAllBaseUrls(
+          primaryOverride: baseUrl,
+          fallbackOverrides: fallbackBaseUrls,
+        );
+    if (resolvedUrls.isEmpty) {
+      throw ArgumentError('At least one CDP base URL is required.');
+    }
+
     final instance = CDPHttpClient._(
-      baseUrl: baseUrl,
+      baseUrls: resolvedUrls,
       apiKey: apiKey,
       debug: debug,
+      requestTimeout: CdpGatewayUrls.clampRequestTimeout(requestTimeout),
       client: client,
     );
-    // Await the loading of the queue before the client is used.
     await instance._loadQueue();
+    if (instance._requestQueue.hasRequests) {
+      // ignore: unawaited_futures
+      instance._processPendingRequests();
+    }
     return instance;
+  }
+
+  Map<String, String> get _authHeaders => {
+        ..._jsonHeaders,
+        'Authorization': apiKey,
+      };
+
+  /// Tries [baseUrls] in order for a POST until one returns 2xx.
+  @visibleForTesting
+  Future<CdpHttpFailoverResult> postWithFailover(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    http.Response? lastResponse;
+    Object? lastError;
+    String? lastBase;
+
+    for (final root in baseUrls) {
+      lastBase = root;
+      try {
+        final response = await _client
+            .post(
+              Uri.parse('$root$endpoint'),
+              headers: _authHeaders,
+              body: jsonEncode(body),
+            )
+            .timeout(requestTimeout);
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return CdpHttpFailoverResult(
+            response: response,
+            lastBaseUrl: root,
+          );
+        }
+        lastResponse = response;
+        if (debug) {
+          debugPrint(
+            '[CDP] POST $endpoint non-2xx on $root (${response.statusCode}), trying next host.',
+          );
+        }
+      } catch (e) {
+        lastError = e;
+        if (debug) {
+          debugPrint('[CDP] POST $endpoint failed on $root: $e');
+        }
+      }
+    }
+
+    return CdpHttpFailoverResult(
+      response: lastResponse,
+      error: lastError,
+      lastBaseUrl: lastBase,
+    );
+  }
+
+  /// Tries [baseUrls] in order for a GET until one returns 2xx.
+  @visibleForTesting
+  Future<CdpHttpFailoverResult> getWithFailover(
+    String endpoint, {
+    Map<String, dynamic>? query,
+  }) async {
+    http.Response? lastResponse;
+    Object? lastError;
+    String? lastBase;
+
+    for (final root in baseUrls) {
+      lastBase = root;
+      try {
+        final uri = Uri.parse('$root$endpoint').replace(
+          queryParameters:
+              query?.map((key, value) => MapEntry(key, '$value')),
+        );
+        final response = await _client
+            .get(uri, headers: _authHeaders)
+            .timeout(requestTimeout);
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return CdpHttpFailoverResult(
+            response: response,
+            lastBaseUrl: root,
+          );
+        }
+        lastResponse = response;
+        if (debug) {
+          debugPrint(
+            '[CDP] GET $endpoint non-2xx on $root (${response.statusCode}), trying next host.',
+          );
+        }
+      } catch (e) {
+        lastError = e;
+        if (debug) {
+          debugPrint('[CDP] GET $endpoint failed on $root: $e');
+        }
+      }
+    }
+
+    return CdpHttpFailoverResult(
+      response: lastResponse,
+      error: lastError,
+      lastBaseUrl: lastBase,
+    );
+  }
+
+  /// Opens a streaming GET, trying [baseUrls] until connect returns 2xx headers.
+  Future<http.StreamedResponse> sendGetStreamWithFailover({
+    required String endpoint,
+    required Map<String, String> headers,
+    Map<String, String>? queryParameters,
+  }) async {
+    http.StreamedResponse? lastResponse;
+    Object? lastError;
+
+    for (final root in baseUrls) {
+      try {
+        final uri = Uri.parse('$root$endpoint').replace(
+          queryParameters: queryParameters,
+        );
+        final request = http.Request('GET', uri);
+        request.headers.addAll(headers);
+
+        final response = await rawClient.send(request).timeout(requestTimeout);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        }
+
+        lastResponse = response;
+        try {
+          await response.stream.drain<void>();
+        } catch (_) {/* ignore drain failures */}
+
+        if (debug) {
+          debugPrint(
+            '[CDP] Stream GET $endpoint non-2xx on $root (${response.statusCode}), trying next host.',
+          );
+        }
+      } catch (e) {
+        lastError = e;
+        if (debug) {
+          debugPrint('[CDP] Stream GET $endpoint failed on $root: $e');
+        }
+      }
+    }
+
+    if (lastResponse != null) {
+      return lastResponse;
+    }
+    throw CDPException(
+      'Error opening stream GET to $endpoint: $lastError',
+    );
   }
 
   /// Loads the request queue from persistent storage.
@@ -205,36 +385,30 @@ class CDPHttpClient {
     }
   }
 
+  void _throwFromFailoverResult(CdpHttpFailoverResult result, String verb) {
+    final response = result.response;
+    if (response != null) {
+      throw CDPException(
+        'API request failed: ${response.body}',
+        response.statusCode,
+      );
+    }
+    throw CDPException('Error making $verb request: ${result.error}');
+  }
+
   /// Makes a POST request to the CDP API.
   ///
-  /// If the request is successful, it returns the decoded JSON response.
-  /// If the request fails due to a network error or a non-200 status code,
-  /// it is added to a persistent queue for a later retry.
-  ///
-  /// [endpoint] is the API endpoint to call (e.g., '/v1/identify').
-  /// [body] is the request body as a map, which will be JSON encoded.
-  /// [identifier] is an optional identifier for the request.
-  ///
-  /// Throws a [CDPException] if the request fails.
+  /// Tries primary then backup hosts. On failure across all hosts, queues for
+  /// later retry and throws [CDPException].
   Future<Map<String, dynamic>> post(
     String endpoint,
     Map<String, dynamic> body, {
     String? identifier,
   }) async {
     try {
-      final response = await _client
-          .post(
-            Uri.parse('$baseUrl$endpoint'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': apiKey,
-            },
-            body: jsonEncode(body),
-          )
-          .timeout(_requestTimeout);
+      final result = await postWithFailover(endpoint, body);
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        // Queue the failed request and throw an exception.
+      if (!result.succeeded) {
         final failedRequest = QueuedRequest(
           endpoint: endpoint,
           body: body,
@@ -244,73 +418,67 @@ class CDPHttpClient {
         await _saveQueue();
 
         if (debug) {
+          final status = result.response?.statusCode;
           debugPrint(
-              '[CDP] Failed request to $endpoint queued for retry. Status: ${response.statusCode}, Body: ${response.body}');
+            '[CDP] Failed POST $endpoint on all hosts (last status: $status). Queued for retry.',
+          );
         }
-        throw CDPException(
-          'API request failed: ${response.body}',
-          response.statusCode,
-        );
+        _throwFromFailoverResult(result, 'POST to $endpoint');
       }
 
+      final response = result.response!;
       if (debug) {
-        debugPrint('[CDP] Successfully sent request to $endpoint.');
+        debugPrint(
+          '[CDP] Successfully sent POST to $endpoint via ${result.lastBaseUrl}.',
+        );
         debugPrint('[CDP] Response: ${response.body}');
       }
 
-      // If the request was successful, try to process any pending requests
-      // in the background. Do not await this.
       // ignore: unawaited_futures
       _processPendingRequests();
 
       return jsonDecode(response.body) as Map<String, dynamic>;
+    } on CDPException {
+      rethrow;
     } catch (e) {
       if (debug) {
-        debugPrint('[CDP] Error making request to $endpoint: $e');
+        debugPrint('[CDP] Error making POST request to $endpoint: $e');
       }
-      // Re-throw any exception as a CDPException to standardize error handling.
       throw CDPException('Error making request to $endpoint: $e');
     }
   }
 
   /// Makes a GET request to the CDP API.
   ///
-  /// [endpoint] is the API endpoint (e.g. '/v1/in-app/messages/sync').
-  /// [query] adds query parameters to the URL.
+  /// Tries primary then backup hosts. Throws [CDPException] if all fail.
   Future<Map<String, dynamic>> get(
     String endpoint, {
     Map<String, dynamic>? query,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl$endpoint')
-          .replace(queryParameters: query?.map((key, value) => MapEntry(key, '$value')));
-      final response = await _client
-          .get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': apiKey,
-            },
-          )
-          .timeout(_requestTimeout);
+      final result = await getWithFailover(endpoint, query: query);
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (!result.succeeded) {
         if (debug) {
+          final status = result.response?.statusCode;
           debugPrint(
-              '[CDP] Failed GET request to $endpoint. Status: ${response.statusCode}, Body: ${response.body}');
+            '[CDP] Failed GET $endpoint on all hosts. Last status: $status',
+          );
         }
-        throw CDPException(
-          'API request failed: ${response.body}',
-          response.statusCode,
-        );
+        _throwFromFailoverResult(result, 'GET to $endpoint');
       }
 
+      final response = result.response!;
       if (debug) {
-        debugPrint('[CDP] Successfully sent GET request to $endpoint.');
+        debugPrint(
+          '[CDP] Successfully sent GET to $endpoint via ${result.lastBaseUrl}.',
+        );
         debugPrint('[CDP] Response: ${response.body}');
       }
 
       return jsonDecode(response.body) as Map<String, dynamic>;
+    } on CDPException {
+      rethrow;
     } catch (e) {
       if (debug) {
         debugPrint('[CDP] Error making GET request to $endpoint: $e');
@@ -321,7 +489,6 @@ class CDPHttpClient {
 
   /// Processes pending requests from the queue with exponential backoff.
   Future<void> _processPendingRequests() async {
-    // Use a lock to prevent multiple concurrent processing runs.
     if (_isProcessingQueue || !_requestQueue.hasRequests) return;
 
     _isProcessingQueue = true;
@@ -334,31 +501,25 @@ class CDPHttpClient {
       final requestsToProcess = List.of(_requestQueue.pendingRequests);
       for (final request in requestsToProcess) {
         try {
-          // Implement exponential backoff: delay = 2^retryCount seconds.
           final delayInSeconds = pow(2, request.retryCount);
           await Future.delayed(Duration(seconds: delayInSeconds.toInt()));
 
-          final response = await _client.post(
-            Uri.parse('$baseUrl${request.endpoint}'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': apiKey,
-            },
-            body: jsonEncode(request.body),
+          final result = await postWithFailover(
+            request.endpoint,
+            request.body,
           );
 
-          if (response.statusCode >= 200 && response.statusCode < 300) {
+          if (result.succeeded) {
             _requestQueue.removeRequest(request);
             if (debug) {
               debugPrint(
-                  '[CDP] Successfully processed queued request to ${request.endpoint}.');
+                '[CDP] Successfully processed queued request to ${request.endpoint} via ${result.lastBaseUrl}.',
+              );
             }
           } else {
-            // If it still fails, increment the retry count for the next attempt.
             request.retryCount++;
           }
         } catch (e) {
-          // If a network error occurs, increment retry count.
           request.retryCount++;
           if (debug) {
             debugPrint(
@@ -366,7 +527,6 @@ class CDPHttpClient {
           }
         }
 
-        // Discard requests that have exceeded the max retry limit.
         if (request.retryCount > _maxRetries) {
           _requestQueue.removeRequest(request);
           if (debug) {
@@ -376,27 +536,19 @@ class CDPHttpClient {
         }
       }
     } finally {
-      // ALWAYS release the lock, even if an error occurs.
       _isProcessingQueue = false;
     }
 
-    // Persist changes to the queue (removed/updated requests).
     await _saveQueue();
   }
 
   /// Clears identity-specific data.
-  ///
-  /// This method attempts to send any pending requests one final time,
-  /// then clears the in-memory queue and removes it from persistent storage.
   Future<void> clearIdentity() async {
     try {
-      // Try one last time to process any pending requests.
       await _processPendingRequests();
 
-      // Clear the in-memory queue.
       _requestQueue.clear();
 
-      // Clear from persistent storage.
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_queueKey);
 
@@ -411,19 +563,10 @@ class CDPHttpClient {
   }
 
   /// Closes the underlying HTTP client.
-  ///
-  /// This should be called when the client is no longer needed to free up resources.
-  /// For reinitialization, this method ensures all resources are properly released.
   void dispose() {
     try {
-      // 1. Cancel any ongoing processing
       _isProcessingQueue = false;
-
-      // 2. Close the HTTP client to release network resources
       _client.close();
-
-      // Note: We don't clear the queue here as that would lose pending requests
-      // If you need to clear the queue, call clearIdentity() before dispose()
 
       if (debug) {
         debugPrint('[CDP] HTTP client disposed');
