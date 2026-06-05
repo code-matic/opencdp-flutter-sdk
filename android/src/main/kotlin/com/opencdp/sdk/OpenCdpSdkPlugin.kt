@@ -19,6 +19,7 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
         private const val API_KEY_KEY = OpenCdpNotificationContracts.API_KEY_KEY
         private const val USER_ID_KEY = OpenCdpNotificationContracts.USER_ID_KEY
         private const val BASE_URL_KEY = OpenCdpNotificationContracts.BASE_URL_KEY
+        private const val BASE_URLS_KEY = OpenCdpNotificationContracts.BASE_URLS_KEY
     }
 
     override fun onAttachedToEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
@@ -101,6 +102,31 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
 
             "opencdpsdk_clear_base_url" -> {
                 clearBaseUrlFromSharedPreferences()
+                result.success(null)
+            }
+
+            "opencdpsdk_save_base_urls" -> {
+                @Suppress("UNCHECKED_CAST")
+                val baseUrls = call.argument<List<String>>("baseUrls")
+                if (baseUrls != null) {
+                    saveBaseUrlsToSharedPreferences(baseUrls)
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGS", "baseUrls was null", null)
+                }
+            }
+
+            "opencdpsdk_get_base_urls" -> {
+                val baseUrls = getBaseUrlsFromSharedPreferences()
+                if (baseUrls != null) {
+                    result.success(baseUrls)
+                } else {
+                    result.error("NOT_FOUND", "Base URLs not found", null)
+                }
+            }
+
+            "opencdpsdk_clear_base_urls" -> {
+                clearBaseUrlsFromSharedPreferences()
                 result.success(null)
             }
 
@@ -204,6 +230,33 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             remove(BASE_URL_KEY)
+            apply()
+        }
+    }
+
+    private fun saveBaseUrlsToSharedPreferences(baseUrls: List<String>) {
+        val json = org.json.JSONArray(baseUrls).toString()
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putString(BASE_URLS_KEY, json)
+            apply()
+        }
+    }
+
+    private fun getBaseUrlsFromSharedPreferences(): List<String>? {
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return OpenCdpPushDeliveryClient.parseBaseUrlsJson(
+            sharedPreferences.getString(BASE_URLS_KEY, null),
+        )
+    }
+
+    private fun clearBaseUrlsFromSharedPreferences() {
+        val sharedPreferences: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            remove(BASE_URLS_KEY)
             apply()
         }
     }

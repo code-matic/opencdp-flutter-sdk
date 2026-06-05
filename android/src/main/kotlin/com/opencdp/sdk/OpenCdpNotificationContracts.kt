@@ -5,8 +5,20 @@ internal object OpenCdpNotificationContracts {
     const val API_KEY_KEY = "opencdpsdk_api_key"
     const val USER_ID_KEY = "opencdpsdk_user_id"
     const val BASE_URL_KEY = "opencdpsdk_base_url"
+    const val BASE_URLS_KEY = "opencdpsdk_base_urls"
 
-    const val DEFAULT_BASE_URL = "https://api.opencdp.io/gateway/data-gateway"
+    /** Last-resort primary when SDK prefs were never written (matches Dart [CDPEndpoints.baseUrl]). */
+    const val DEFAULT_BASE_URL = "https://api.opencdp.com/gateway/data-gateway"
+
+    /** Last-resort fallbacks when SDK prefs were never written. */
+    val DEFAULT_FALLBACK_URLS = listOf(
+        "https://api.opencdp.xyz/gateway/data-gateway",
+        "https://api.opencdp.io/gateway/data-gateway",
+    )
+
+    val DEFAULT_GATEWAY_HOSTS: List<String> =
+        listOf(DEFAULT_BASE_URL) + DEFAULT_FALLBACK_URLS
+
     const val DELIVERY_PATH = "/v1/message/delivery/push"
 
     const val ACTION_OPEN = "com.opencdp.sdk.ACTION_OPEN_NOTIFICATION"
@@ -17,4 +29,3 @@ internal object OpenCdpNotificationContracts {
     const val EXTRA_ACTION_LINK = "opencdp_action_link"
     const val EXTRA_NOTIFICATION_ID = "opencdp_notification_id"
 }
-

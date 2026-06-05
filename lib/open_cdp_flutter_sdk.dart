@@ -212,6 +212,7 @@ class OpenCDPSDK {
         final appGroup = config.iOSAppGroup ?? '';
         await NativeBridge.clearApiKeyFromNative(appGroup: appGroup);
         await NativeBridge.clearBaseUrlFromNative(appGroup: appGroup);
+        await NativeBridge.clearGatewayHostsFromNative(appGroup: appGroup);
       } catch (e) {
         debugPrint('[CDP] Error clearing native API key: $e');
       }

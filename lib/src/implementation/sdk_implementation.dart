@@ -646,19 +646,19 @@ class OpenCDPSDKImplementation {
       }
 
       String? resolvedBase = baseUrlOverride;
-      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
-        if (isBackground) {
-          resolvedBase = await NativeBridge.getBaseUrlFromNative(
-            appGroup: appGroup,
-          );
+      List<String> baseUrls;
+      if (isBackground) {
+        baseUrls = await NativeBridge.resolveGatewayHostsFromNative(
+          appGroup: appGroup,
+        );
+      } else {
+        if (resolvedBase == null || resolvedBase.trim().isEmpty) {
+          resolvedBase = CDPEndpoints.baseUrl;
         }
+        baseUrls = CdpGatewayUrls.resolveAllBaseUrls(
+          primaryOverride: resolvedBase,
+        );
       }
-      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
-        resolvedBase = CDPEndpoints.baseUrl;
-      }
-      final baseUrls = CdpGatewayUrls.resolveAllBaseUrls(
-        primaryOverride: resolvedBase,
-      );
 
       // Get the user ID
       String? personId;
