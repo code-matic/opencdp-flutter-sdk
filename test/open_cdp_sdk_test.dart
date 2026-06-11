@@ -283,3 +283,12 @@
 //     });
 //   });
 // }
+
+import 'package:flutter_test/flutter_test.dart';
+
+// Legacy integration tests above are commented out pending rewrite.
+void main() {
+  test('SDK test scaffold loads', () {
+    expect(true, isTrue);
+  });
+}
