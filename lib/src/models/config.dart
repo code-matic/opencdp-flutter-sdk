@@ -1,4 +1,5 @@
 import '../constants/endpoints.dart';
+import '../utils/cdp_gateway_urls.dart';
 
 // Region enum for CDP API endpoints
 enum Region {
@@ -160,8 +161,16 @@ class OpenCDPConfig {
   /// If not provided, background push tracking may fail for iOS.
   final String? iOSAppGroup;
 
-  /// Optional custom CDP endpoint
+  /// Optional custom CDP endpoint (primary gateway root).
   final String? cdpEndpoint;
+
+  /// Optional backup gateway roots. When omitted, the SDK uses
+  /// [CDPEndpoints.backupBaseUrlXyz] and [CDPEndpoints.backupBaseUrlCom].
+  final List<String>? cdpFallbackEndpoints;
+
+  /// Max time to wait for a single CDP gateway HTTP exchange (POST/GET).
+  /// Clamped to 5s..120s. Defaults to 30 seconds.
+  final Duration cdpRequestTimeout;
 
   /// Whether to send events to Customer.io
   final bool sendToCustomerIo;
@@ -233,13 +242,20 @@ class OpenCDPConfig {
   /// - Silent error handling: `throwErrorsBack: false` - errors are logged but don't interrupt flow
   final bool throwErrorsBack;
 
-  /// Base URL for API endpoints
+  /// Primary gateway base URL for API endpoints.
   String get baseUrl {
-    if (cdpEndpoint != null) {
-      return cdpEndpoint!;
+    if (cdpEndpoint != null && cdpEndpoint!.trim().isNotEmpty) {
+      return CdpGatewayUrls.normalizeBaseUrl(cdpEndpoint!);
     }
     return CDPEndpoints.baseUrl;
   }
+
+  /// Primary plus backup gateway URLs. Every request tries these in order,
+  /// starting at [baseUrl] on each new call.
+  List<String> get allBaseUrls => CdpGatewayUrls.resolveAllBaseUrls(
+        primaryOverride: cdpEndpoint,
+        fallbackOverrides: cdpFallbackEndpoints,
+      );
 
   /// App Group ID (used for background push notification tracking)
   /// Returns iOSAppGroup on iOS, or a default value on Android
@@ -247,10 +263,12 @@ class OpenCDPConfig {
     return iOSAppGroup;
   }
 
-  const OpenCDPConfig({
+  OpenCDPConfig({
     required this.cdpApiKey,
     this.iOSAppGroup,
     this.cdpEndpoint,
+    this.cdpFallbackEndpoints,
+    Duration? cdpRequestTimeout,
     this.sendToCustomerIo = false,
     this.customerIo,
     this.debug = false,
@@ -267,13 +285,18 @@ class OpenCDPConfig {
     this.inAppPlatformOverride,
     this.inAppAppVersionOverride,
     this.throwErrorsBack = false,
-  });
+  }) : cdpRequestTimeout = CdpGatewayUrls.clampRequestTimeout(
+          cdpRequestTimeout ?? CdpGatewayUrls.defaultRequestTimeout,
+        );
 
   Map<String, dynamic> toMap() {
     return {
       'cdpApiKey': cdpApiKey,
       'cdpEndpoint': cdpEndpoint,
+      'cdpFallbackEndpoints': cdpFallbackEndpoints,
+      'cdpRequestTimeoutMs': cdpRequestTimeout.inMilliseconds,
       'baseUrl': baseUrl,
+      'allBaseUrls': allBaseUrls,
       'iOSAppGroup': appGroup,
       'sendToCustomerIo': sendToCustomerIo,
       'customerIo': customerIo?.toMap(),

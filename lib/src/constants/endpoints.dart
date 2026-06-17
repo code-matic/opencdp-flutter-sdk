@@ -1,7 +1,14 @@
 /// API endpoints for the Open CDP SDK
 class CDPEndpoints {
-  /// Base URL for the CDP API
-  static const String baseUrl = 'https://api.opencdp.io/gateway/data-gateway';
+  /// Base URL for the CDP API (primary).
+  static const String baseUrl =    'https://api.opencdp.com/gateway/data-gateway';
+
+  /// Backup gateway hosts used when the primary returns non-2xx or is unreachable.
+  static const String backupBaseUrlXyz =
+      'https://api.opencdp.xyz/gateway/data-gateway';
+
+  static const String backupBaseUrlCom =
+    'https://api.opencdp.io/gateway/data-gateway';
 
   static const String version = '/v1';
 

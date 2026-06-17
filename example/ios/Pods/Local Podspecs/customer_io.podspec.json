@@ -1,0 +1,58 @@
+{
+  "name": "customer_io",
+  "version": "3.0.1",
+  "summary": "An official flutter plugin for Customer.io, an automated messaging platform for tech-savvy marketers.",
+  "homepage": "https://customer.io",
+  "license": {
+    "file": "../LICENSE"
+  },
+  "authors": {
+    "CustomerIO Team": "win@customer.io"
+  },
+  "source": {
+    "path": "."
+  },
+  "source_files": "Classes/**/*",
+  "dependencies": {
+    "Flutter": [
+
+    ],
+    "CustomerIO/DataPipelines": [
+      "4.0.0"
+    ],
+    "CustomerIO/MessagingInApp": [
+      "4.0.0"
+    ]
+  },
+  "platforms": {
+    "ios": "13.0"
+  },
+  "default_subspecs": "nopush",
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES",
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": "i386"
+  },
+  "swift_versions": "5.0",
+  "subspecs": [
+    {
+      "name": "nopush",
+      "dependencies": {
+        "CustomerIO/MessagingPush": [
+          "4.0.0"
+        ]
+      }
+    },
+    {
+      "name": "fcm",
+      "dependencies": {
+        "CustomerIO/MessagingPushFCM": [
+          "4.0.0"
+        ],
+        "CioFirebaseWrapper": [
+          "1.0.0"
+        ]
+      }
+    }
+  ],
+  "swift_version": "5.0"
+}

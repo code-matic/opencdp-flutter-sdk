@@ -1,0 +1,6 @@
+framework module open_cdp_flutter_sdk {
+  umbrella header "open_cdp_flutter_sdk-umbrella.h"
+
+  export *
+  module * { export * }
+}

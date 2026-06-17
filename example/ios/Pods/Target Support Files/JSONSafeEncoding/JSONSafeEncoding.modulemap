@@ -1,0 +1,6 @@
+framework module JSONSafeEncoding {
+  umbrella header "JSONSafeEncoding-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -4,11 +4,7 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import org.json.JSONObject
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.Instant
 
 class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
@@ -56,17 +52,10 @@ class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
             try {
                 val prefs = context.getSharedPreferences(
                     OpenCdpNotificationContracts.PREFS_NAME,
-                    Context.MODE_PRIVATE
+                    Context.MODE_PRIVATE,
                 )
                 val apiKey = prefs.getString(OpenCdpNotificationContracts.API_KEY_KEY, null)
                 if (apiKey.isNullOrBlank()) return@Thread
-
-                val baseUrl = prefs.getString(
-                    OpenCdpNotificationContracts.BASE_URL_KEY,
-                    OpenCdpNotificationContracts.DEFAULT_BASE_URL
-                ) ?: OpenCdpNotificationContracts.DEFAULT_BASE_URL
-                val root = if (baseUrl.endsWith("/")) baseUrl.dropLast(1) else baseUrl
-                val url = "$root${OpenCdpNotificationContracts.DELIVERY_PATH}"
 
                 val deliveryMessageId = payload.optString("delivery_message_id", "").trim()
                 if (deliveryMessageId.isEmpty()) return@Thread
@@ -88,22 +77,11 @@ class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
                     }
                 }
 
-                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 8000
-                    readTimeout = 8000
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Authorization", apiKey)
-                }
-
-                OutputStreamWriter(connection.outputStream).use { it.write(body.toString()) }
-                connection.inputStream?.close()
-                connection.disconnect()
-            } catch (e: Throwable) {
-                Log.w("OpenCDP", "Failed to track notification action/open: ${e.message}")
+                val baseUrls = OpenCdpPushDeliveryClient.resolveGatewayHosts(prefs)
+                OpenCdpPushDeliveryClient.postDeliveryMetric(apiKey, body, baseUrls)
+            } catch (_: Throwable) {
+                // best-effort background tracking
             }
         }.start()
     }
 }
-

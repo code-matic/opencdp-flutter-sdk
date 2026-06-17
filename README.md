@@ -446,7 +446,9 @@ Future<void> main() async {
     config: OpenCDPConfig(
       cdpApiKey: "YOUR_API_KEY_HERE",
       iOSAppGroup: "group.com.yourcompany.yourapp", // App Group for iOS
-      // Optional: cdpEndpoint: "https://your-tenant.data-gateway.cdp/...", // same base as identify/track
+      // Optional: cdpEndpoint: "https://your-tenant.data-gateway.cdp/...", // primary gateway
+      // Optional: cdpFallbackEndpoints: ["https://api.opencdp.xyz/gateway/data-gateway", ...],
+      // Optional: cdpRequestTimeout: Duration(seconds: 45), // default 30s, clamped 5s–120s
     ),
   );
   

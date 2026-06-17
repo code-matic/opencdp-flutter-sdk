@@ -5,12 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 import 'package:open_cdp_flutter_sdk/src/implementation/native_bridge.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/cdp_gateway_urls.dart';
 
 /// Handles sending push notification tracking metrics to the CDP backend.
 /// This is designed to be lightweight and usable in background contexts.
 class PushNotificationTracker {
-  /// Resolves the delivery URL using the same [baseUrl] as [OpenCDPConfig.baseUrl]
-  /// (default gateway or [OpenCDPConfig.cdpEndpoint] when set).
+  /// Resolves the delivery URL for a gateway [baseUrl] root.
   static String deliveryPushUrl(String baseUrl) {
     final t = baseUrl.trim();
     if (t.isEmpty) {
@@ -20,41 +20,64 @@ class PushNotificationTracker {
     return '$root${CDPEndpoints.notificationMetrics}';
   }
 
-  // Maximum number of retry attempts
   static const _maxRetries = 3;
-
-  // Base delay for exponential backoff (in milliseconds)
   static const _baseRetryDelayMs = 1000;
 
-  /// HTTP client for making requests - static to avoid creating multiple instances
-  /// Null by default and created on demand to minimize memory usage in background contexts
   static http.Client? _httpClient;
 
-  /// Get or create the HTTP client
   static http.Client _getClient() {
     _httpClient ??= http.Client();
     return _httpClient!;
   }
 
-  /// Close the HTTP client if it exists
   static void dispose() {
     _httpClient?.close();
     _httpClient = null;
   }
 
+  /// Tries each gateway host in [baseUrls] (primary first) until one returns 2xx.
+  static Future<http.Response?> _postMetricWithFailover(
+    List<String> baseUrls,
+    String apiKey,
+    Map<String, dynamic> body,
+    Duration requestTimeout,
+  ) async {
+    final client = _getClient();
+    http.Response? lastResponse;
+    for (final root in baseUrls) {
+      try {
+        final response = await client
+            .post(
+              Uri.parse(deliveryPushUrl(root)),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': apiKey,
+              },
+              body: jsonEncode(body),
+            )
+            .timeout(requestTimeout);
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        }
+        lastResponse = response;
+        debugPrint(
+          '[CDP] Push metric non-2xx on $root (${response.statusCode}), trying next host.',
+        );
+      } catch (e) {
+        debugPrint('[CDP] Push metric failed on $root: $e');
+      }
+    }
+    return lastResponse;
+  }
+
   /// Sends a push notification metric to the data-gateway `message/delivery/push` API.
   ///
-  /// [MetricEvent.actionClicked] maps to `status: "clicked"` with
-  /// `props: { "action_id": "<id>" }` (not a top-level `action_id` field).
-  /// Includes retry logic with exponential backoff for better reliability.
-  ///
-  /// This method is designed to work in background contexts where the main
-  /// SDK may not be initialized.
-  ///
-  /// [baseUrl] must match [OpenCDPConfig.baseUrl] (i.e. default or [OpenCDPConfig.cdpEndpoint]).
+  /// Tries [baseUrls] in order on each attempt, then applies exponential backoff
+  /// when all hosts fail.
   static Future<bool> sendMetric(
     String apiKey,
-    String baseUrl,
+    List<String> baseUrls,
     MetricEvent event,
     String deliveryMessageId, {
     String? personId,
@@ -63,18 +86,20 @@ class PushNotificationTracker {
     bool isBackground = false,
     String? appGroup,
     String? actionId,
+    Duration requestTimeout = CdpGatewayUrls.defaultRequestTimeout,
   }) async {
-    // If personId is not provided and we're in background mode, try to get from native storage
+    final resolvedUrls = baseUrls.isEmpty
+        ? CdpGatewayUrls.resolveAllBaseUrls()
+        : baseUrls;
+    final timeout = CdpGatewayUrls.clampRequestTimeout(requestTimeout);
+
     String? userId = personId;
     if (userId == null && isBackground) {
-      // For iOS, we need the app group
-      // For Android, app group is not needed
       userId = await NativeBridge.getUserIdFromNative(
-        appGroup: appGroup, // Will be used on iOS, ignored on Android
+        appGroup: appGroup,
       );
     }
 
-    // If we still don't have a userId, check if it's in the deliveryMessageId (some systems embed it)
     if (userId == null && deliveryMessageId.contains(':')) {
       final parts = deliveryMessageId.split(':');
       if (parts.length > 1) {
@@ -84,13 +109,11 @@ class PushNotificationTracker {
       }
     }
 
-    // If we still don't have a userId, we can't send the metric
     if (userId == null) {
       debugPrint('[CDP] Cannot send push metric: No user ID available');
       return false;
     }
 
-    // Get current timestamp in ISO8601 format with UTC timezone
     final timestamp = DateTime.now().toUtc().toIso8601String();
 
     final body = <String, dynamic>{
@@ -117,35 +140,33 @@ class PushNotificationTracker {
 
     while (retryCount <= _maxRetries) {
       try {
-        // Use a new client for each attempt in case of connection issues
-        final client = _getClient();
-
         debugPrint(
-            '[CDP] Sending push metric $retryCount: ${jsonEncode(body)}...');
+            '[CDP] Sending push metric attempt $retryCount: ${jsonEncode(body)}...');
 
-        final response = await client.post(
-          Uri.parse(deliveryPushUrl(baseUrl)),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': apiKey,
-          },
-          body: jsonEncode(body),
+        final response = await _postMetricWithFailover(
+          resolvedUrls,
+          apiKey,
+          body,
+          timeout,
         );
 
-        if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response != null &&
+            response.statusCode >= 200 &&
+            response.statusCode < 300) {
           if (kDebugMode) {
             debugPrint(
                 '[CDP] Push metric sent successfully: ${_mapEventToStatus(event)}');
           }
           return true;
-        } else {
-          if (retryCount == _maxRetries) {
-            debugPrint(
-              '[CDP] Failed to send ${_mapEventToStatus(event)} metric after $_maxRetries retries '
-              '(status: ${response.statusCode})Request body:{jsonEncode(body)} Response body:=> ${response.body}',
-            );
-            return false;
-          }
+        }
+
+        if (retryCount == _maxRetries) {
+          final status = response?.statusCode;
+          debugPrint(
+            '[CDP] Failed to send ${_mapEventToStatus(event)} metric after $_maxRetries retries '
+            '(status: $status) Request body: ${jsonEncode(body)} Response body: ${response?.body}',
+          );
+          return false;
         }
       } catch (e, st) {
         if (retryCount == _maxRetries) {
@@ -155,7 +176,6 @@ class PushNotificationTracker {
         }
       }
 
-      // Calculate exponential backoff delay with jitter
       final delay = _baseRetryDelayMs * pow(2, retryCount) +
           Random().nextInt(_baseRetryDelayMs);
       await Future.delayed(Duration(milliseconds: delay.toInt()));
@@ -165,13 +185,9 @@ class PushNotificationTracker {
     return false;
   }
 
-  /// Sends a metric and doesn't wait for the result
-  /// Useful for fire-and-forget scenarios in notification service extensions
-  /// On iOS, requires appGroup for background operations
-  /// On Android, appGroup is not needed
   static void sendMetricAndForget(
     String apiKey,
-    String baseUrl,
+    List<String> baseUrls,
     MetricEvent event,
     String deliveryMessageId, {
     String? personId,
@@ -180,12 +196,11 @@ class PushNotificationTracker {
     bool isBackground = false,
     String? appGroup,
     String? actionId,
+    Duration requestTimeout = CdpGatewayUrls.defaultRequestTimeout,
   }) {
-    // Don't await - just fire the request and move on
-    // Important for background tasks with limited execution time
     sendMetric(
       apiKey,
-      baseUrl,
+      baseUrls,
       event,
       deliveryMessageId,
       personId: personId,
@@ -194,10 +209,10 @@ class PushNotificationTracker {
       isBackground: isBackground,
       appGroup: appGroup,
       actionId: actionId,
+      requestTimeout: requestTimeout,
     );
   }
 
-  /// Maps a MetricEvent to the corresponding status string for the API
   static String _mapEventToStatus(MetricEvent event) {
     switch (event) {
       case MetricEvent.delivered:
@@ -213,7 +228,6 @@ class PushNotificationTracker {
     }
   }
 
-  /// Helper to safely get a substring prefix of a string
   static String safeSubstring(String input, int maxLength) {
     if (input.isEmpty) return '';
     final length = min(maxLength, input.length);

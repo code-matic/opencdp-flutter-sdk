@@ -212,6 +212,7 @@ class OpenCDPSDK {
         final appGroup = config.iOSAppGroup ?? '';
         await NativeBridge.clearApiKeyFromNative(appGroup: appGroup);
         await NativeBridge.clearBaseUrlFromNative(appGroup: appGroup);
+        await NativeBridge.clearGatewayHostsFromNative(appGroup: appGroup);
       } catch (e) {
         debugPrint('[CDP] Error clearing native API key: $e');
       }
@@ -302,6 +303,27 @@ class OpenCDPSDK {
       eventName: eventName,
       properties: properties,
     );
+  }
+
+  /// Debug-only: exercise host failover (dead host then configured gateways).
+  ///
+  /// No-op when [OpenCDPConfig.debug] is false. Watch the debug console for
+  /// `[CDP] POST … failed on …` then `Successfully sent POST …`.
+  Future<void> debugTestHostFailover() async {
+    if (_implementation == null) return;
+    await _implementation!.debugTestHostFailover();
+  }
+
+  /// Debug-only: queue a POST by targeting unreachable hosts only.
+  Future<void> debugTestQueueRetry() async {
+    if (_implementation == null) return;
+    await _implementation!.debugTestQueueRetry();
+  }
+
+  /// Debug-only: send a successful track to drain the POST retry queue.
+  Future<void> debugDrainQueue() async {
+    if (_implementation == null) return;
+    await _implementation!.debugDrainQueue();
   }
 
   /// Update properties for a user

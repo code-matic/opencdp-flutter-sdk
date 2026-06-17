@@ -4,7 +4,6 @@ import 'dart:io' show HttpDate;
 import 'dart:math';
 
 import 'package:flutter/widgets.dart';
-import 'package:http/http.dart' as http;
 import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/in_app/sse_parser.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
@@ -308,23 +307,23 @@ class CDPInAppRealtimeClient with WidgetsBindingObserver {
   }
 
   Future<void> _openOnce() async {
-    final uri = Uri.parse('${_httpClient.baseUrl}${CDPEndpoints.inAppStream}')
-        .replace(queryParameters: {'person_id': _personId});
-
-    final request = http.Request('GET', uri);
-    request.headers.addAll({
+    final headers = <String, String>{
       'Accept': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Authorization': _httpClient.apiKey,
-    });
+    };
     if (_lastEventId != null && _lastEventId!.isNotEmpty) {
       // Standard SSE resume hint. The current backend ignores it (every
       // event is independent), but sending it keeps us forward-compatible
       // and zero-cost.
-      request.headers['Last-Event-ID'] = _lastEventId!;
+      headers['Last-Event-ID'] = _lastEventId!;
     }
 
-    final response = await _httpClient.rawClient.send(request);
+    final response = await _httpClient.sendGetStreamWithFailover(
+      endpoint: CDPEndpoints.inAppStream,
+      headers: headers,
+      queryParameters: {'person_id': _personId},
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       // 4xx/5xx — drain and retry. We do not throw here because the loop
       // is responsible for backoff/recovery; throwing would just bubble

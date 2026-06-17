@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/cdp_gateway_urls.dart';
 
 class NativeBridge {
   static const MethodChannel _channel = MethodChannel('open_cdp_sdk');
@@ -165,6 +166,74 @@ class NativeBridge {
     } on PlatformException catch (e) {
       debugPrint('[CDP] Failed to clear base URL from native: ${e.message}');
     }
+  }
+
+  /// Save ordered gateway hosts (primary + fallbacks) for native push delivery.
+  static Future<void> saveGatewayHostsToNative({
+    required List<String> baseUrls,
+    String? appGroup,
+  }) async {
+    try {
+      final Map<String, dynamic> args = {'baseUrls': baseUrls};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      await _channel.invokeMethod('opencdpsdk_save_base_urls', args);
+      debugPrint(
+        '[CDP] Gateway host list saved to native storage (${baseUrls.length} hosts)',
+      );
+    } on PlatformException catch (e) {
+      debugPrint('[CDP] Failed to save gateway hosts to native: ${e.message}');
+    }
+  }
+
+  static Future<List<String>?> getGatewayHostsFromNative({
+    String? appGroup,
+  }) async {
+    try {
+      final Map<String, dynamic> args = {};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      final raw = await _channel.invokeMethod<List<dynamic>>(
+        'opencdpsdk_get_base_urls',
+        args,
+      );
+      if (raw == null || raw.isEmpty) return null;
+      return raw.map((e) => '$e').where((s) => s.trim().isNotEmpty).toList();
+    } on PlatformException catch (e) {
+      debugPrint('[CDP] Failed to get gateway hosts from native: ${e.message}');
+      return null;
+    }
+  }
+
+  static Future<void> clearGatewayHostsFromNative({
+    String? appGroup,
+  }) async {
+    try {
+      final Map<String, dynamic> args = {};
+      if (appGroup != null) {
+        args['appGroup'] = appGroup;
+      }
+      await _channel.invokeMethod('opencdpsdk_clear_base_urls', args);
+      debugPrint('[CDP] Gateway host list cleared from native storage');
+    } on PlatformException catch (e) {
+      debugPrint(
+        '[CDP] Failed to clear gateway hosts from native: ${e.message}',
+      );
+    }
+  }
+
+  /// Reads persisted host list or derives from single primary URL / SDK defaults.
+  static Future<List<String>> resolveGatewayHostsFromNative({
+    String? appGroup,
+  }) async {
+    final stored = await getGatewayHostsFromNative(appGroup: appGroup);
+    if (stored != null && stored.isNotEmpty) {
+      return stored;
+    }
+    final primary = await getBaseUrlFromNative(appGroup: appGroup);
+    return CdpGatewayUrls.resolveAllBaseUrls(primaryOverride: primary);
   }
 
   /// Clear user ID from native shared storage

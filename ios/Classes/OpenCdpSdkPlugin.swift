@@ -98,6 +98,35 @@ public class OpenCdpSdkPlugin: NSObject, FlutterPlugin {
             }
             result(clearBaseUrlFromSharedStorage(appGroup: appGroup))
 
+        case "opencdpsdk_save_base_urls":
+            guard let args = call.arguments as? [String: Any],
+                  let baseUrls = args["baseUrls"] as? [String] else {
+                result(FlutterError(code: "INVALID_ARGS", message: "Missing baseUrls argument", details: nil))
+                return
+            }
+            let appGroup = args["appGroup"] as? String
+            if let appGroup = appGroup, !appGroup.isEmpty {
+                result(saveBaseUrlsToSharedStorage(baseUrls: baseUrls, appGroup: appGroup))
+            } else {
+                result(false)
+            }
+
+        case "opencdpsdk_get_base_urls":
+            guard let args = call.arguments as? [String: Any],
+                  let appGroup = args["appGroup"] as? String else {
+                result(nil)
+                return
+            }
+            result(getBaseUrlsFromSharedStorage(appGroup: appGroup))
+
+        case "opencdpsdk_clear_base_urls":
+            guard let args = call.arguments as? [String: Any],
+                  let appGroup = args["appGroup"] as? String else {
+                result(false)
+                return
+            }
+            result(clearBaseUrlsFromSharedStorage(appGroup: appGroup))
+
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -176,6 +205,31 @@ public class OpenCdpSdkPlugin: NSObject, FlutterPlugin {
     private func getBaseUrlFromSharedStorage(appGroup: String) -> String? {
         if let userDefaults = UserDefaults(suiteName: appGroup) {
             return userDefaults.string(forKey: "opencdpsdk_base_url")
+        }
+        return nil
+    }
+
+    @discardableResult
+    private func saveBaseUrlsToSharedStorage(baseUrls: [String], appGroup: String) -> Bool {
+        if let userDefaults = UserDefaults(suiteName: appGroup) {
+            userDefaults.set(baseUrls, forKey: "opencdpsdk_base_urls")
+            return true
+        }
+        return false
+    }
+
+    @discardableResult
+    private func clearBaseUrlsFromSharedStorage(appGroup: String) -> Bool {
+        if let userDefaults = UserDefaults(suiteName: appGroup) {
+            userDefaults.removeObject(forKey: "opencdpsdk_base_urls")
+            return true
+        }
+        return false
+    }
+
+    private func getBaseUrlsFromSharedStorage(appGroup: String) -> [String]? {
+        if let userDefaults = UserDefaults(suiteName: appGroup) {
+            return userDefaults.stringArray(forKey: "opencdpsdk_base_urls")
         }
         return nil
     }

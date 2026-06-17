@@ -32,6 +32,10 @@ class SDKInitializer {
           baseUrl: config.baseUrl,
           appGroup: config.iOSAppGroup,
         );
+        await NativeBridge.saveGatewayHostsToNative(
+          baseUrls: config.allBaseUrls,
+          appGroup: config.iOSAppGroup,
+        );
 
         // Warn if on iOS and the app group is missing
         if (Platform.isIOS && config.iOSAppGroup == null) {

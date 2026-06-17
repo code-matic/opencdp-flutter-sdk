@@ -1,0 +1,32 @@
+{
+  "name": "open_cdp_flutter_sdk",
+  "version": "0.0.2",
+  "summary": "Native iOS components for Open CDP SDK.",
+  "description": "This pod provides the native helper functions for push notification tracking in Open CDP SDK.",
+  "homepage": "http://opencdp.io",
+  "license": {
+    "type": "MIT",
+    "file": "../LICENSE"
+  },
+  "authors": {
+    "Codematic Technology Services": "developers@codematic.io"
+  },
+  "source": {
+    "path": "."
+  },
+  "source_files": "Classes/**/*.{h,m,swift}",
+  "public_header_files": "Classes/**/*.h",
+  "dependencies": {
+    "Flutter": [
+
+    ]
+  },
+  "platforms": {
+    "ios": "11.0"
+  },
+  "pod_target_xcconfig": {
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": "i386"
+  },
+  "swift_versions": "5.0",
+  "swift_version": "5.0"
+}

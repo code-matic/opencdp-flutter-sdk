@@ -16,6 +16,7 @@ import 'package:open_cdp_flutter_sdk/src/constants/endpoints.dart';
 import 'package:open_cdp_flutter_sdk/src/models/config.dart';
 import 'package:open_cdp_flutter_sdk/src/models/event_type.dart';
 import 'package:open_cdp_flutter_sdk/src/models/validation_exception.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/cdp_gateway_urls.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
 
 /// Private implementation of the OpenCDP SDK
@@ -50,8 +51,9 @@ class OpenCDPSDKImplementation {
   }) async {
     final CDPHttpClient client = httpClient ??
         (await CDPHttpClient.create(
-          baseUrl: config.baseUrl,
+          baseUrls: config.allBaseUrls,
           apiKey: config.cdpApiKey,
+          requestTimeout: config.cdpRequestTimeout,
           debug: config.debug,
         ));
 
@@ -644,17 +646,19 @@ class OpenCDPSDKImplementation {
       }
 
       String? resolvedBase = baseUrlOverride;
-      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
-        if (isBackground) {
-          resolvedBase = await NativeBridge.getBaseUrlFromNative(
-            appGroup: appGroup,
-          );
+      List<String> baseUrls;
+      if (isBackground) {
+        baseUrls = await NativeBridge.resolveGatewayHostsFromNative(
+          appGroup: appGroup,
+        );
+      } else {
+        if (resolvedBase == null || resolvedBase.trim().isEmpty) {
+          resolvedBase = CDPEndpoints.baseUrl;
         }
+        baseUrls = CdpGatewayUrls.resolveAllBaseUrls(
+          primaryOverride: resolvedBase,
+        );
       }
-      if (resolvedBase == null || resolvedBase.trim().isEmpty) {
-        resolvedBase = CDPEndpoints.baseUrl;
-      }
-      final String baseUrl = resolvedBase;
 
       // Get the user ID
       String? personId;
@@ -672,7 +676,7 @@ class OpenCDPSDKImplementation {
       if (isBackground) {
         PushNotificationTracker.sendMetricAndForget(
           apiKey,
-          baseUrl,
+          baseUrls,
           event,
           deliveryMessageId,
           deliverySendContext: deliverySendContext,
@@ -685,7 +689,7 @@ class OpenCDPSDKImplementation {
       } else {
         await PushNotificationTracker.sendMetric(
           apiKey,
-          baseUrl,
+          baseUrls,
           event,
           deliveryMessageId,
           deliverySendContext: deliverySendContext,
@@ -712,7 +716,7 @@ class OpenCDPSDKImplementation {
       // Use the enhanced tracking with retries
       await PushNotificationTracker.sendMetric(
         config.cdpApiKey,
-        config.baseUrl,
+        config.allBaseUrls,
         event,
         deliveryMessageId,
         isBackground: isBackground,
@@ -721,10 +725,61 @@ class OpenCDPSDKImplementation {
         personId: _userId,
         deliverySendContextId: deliverySendContextId,
         actionId: actionId,
+        requestTimeout: config.cdpRequestTimeout,
       );
     } catch (e, st) {
       debugPrint('[CDP] Error tracking push metric: $e\n$st');
     }
+  }
+
+  static const _debugDeadHost = 'https://127.0.0.1:1';
+
+  Map<String, dynamic> _debugTrackBody(String eventName) => {
+        'identifier': _currentIdentifier,
+        'eventName': eventName,
+        'properties': const {'source': 'sdk_debug'},
+      };
+
+  /// Debug-only: POST track via a dead host then real gateway hosts.
+  Future<void> debugTestHostFailover() async {
+    if (!config.debug || !_ensureInitialized()) return;
+    try {
+      await httpClient.postWithBaseUrls(
+        [_debugDeadHost, ...config.allBaseUrls],
+        CDPEndpoints.track,
+        _debugTrackBody('failover_debug_test'),
+        identifier: _currentIdentifier,
+        queueOnFailure: false,
+      );
+      debugPrint('[CDP] debugTestHostFailover completed');
+    } catch (e) {
+      debugPrint('[CDP] debugTestHostFailover failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Debug-only: force a POST onto unreachable hosts so it is queued.
+  Future<void> debugTestQueueRetry() async {
+    if (!config.debug || !_ensureInitialized()) return;
+    try {
+      await httpClient.postWithBaseUrls(
+        [_debugDeadHost, 'https://127.0.0.1:2'],
+        CDPEndpoints.track,
+        _debugTrackBody('queue_debug_test'),
+        identifier: _currentIdentifier,
+      );
+    } on CDPException catch (e) {
+      debugPrint('[CDP] debugTestQueueRetry expected failure: $e');
+    }
+  }
+
+  /// Debug-only: successful track that drains the persisted POST queue.
+  Future<void> debugDrainQueue() async {
+    if (!config.debug || !_ensureInitialized()) return;
+    await trackEvent(
+      eventName: 'failover_queue_recovery',
+      properties: const {'source': 'sdk_debug'},
+    );
   }
 
   /// Dispose the SDK instance

@@ -1,0 +1,6 @@
+framework module CioMessagingPush {
+  umbrella header "CustomerIOMessagingPush-umbrella.h"
+
+  export *
+  module * { export * }
+}
