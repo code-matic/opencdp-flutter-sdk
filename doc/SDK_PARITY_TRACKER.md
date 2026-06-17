@@ -83,7 +83,7 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 - [x] **P3-N2** Add fallback gateways + failover
 - [x] **P3-N3** Add `cdpFallbackEndpoints` config
 - [x] **P3-N4** Add `close()` for connection cleanup
-- [ ] **P3-N5** Contract tests pass
+- [x] **P3-N5** Contract tests pass
 
 ### Phase 4 — Contract tests + docs
 
