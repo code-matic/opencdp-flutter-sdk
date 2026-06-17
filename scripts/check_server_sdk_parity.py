@@ -35,6 +35,12 @@ CHECKS = [
         "public const DEFAULT_PRIMARY = '",
         "'",
     ),
+    (
+        "react-native",
+        ROOT.parent / "opencdp-react-native-sdk" / "src" / "gateway_urls.ts",
+        "DEFAULT_PRIMARY_BASE_URL =\n  '",
+        "'",
+    ),
 ]
 
 
