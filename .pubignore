@@ -1,0 +1,30 @@
+# ------------------------------------------------------------------------------
+# .pubignore overrides .gitignore at the package root. Include both publish-only
+# exclusions and standard .gitignore patterns below.
+# ------------------------------------------------------------------------------
+
+# --- Publish-only: not needed by pub.dev consumers ---
+/example/
+/doc/
+/docs/
+/scripts/
+/test/
+/android/src/test/
+
+# Internal / contributor docs (README + CHANGELOG stay published)
+/ANDROID_BUILD_FIX.md
+/PUSH_NOTIFICATION_V2_INTEGRATION.md
+/CONTRIBUTING.md
+/CODE_OF_CONDUCT.md
+
+# --- Standard ignore patterns (from .gitignore; required because .pubignore wins) ---
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/.gradle/
+*.iml
+.idea/
+.DS_Store
+/pubspec.lock
+/android/local.properties
