@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "gateway": {
-    "primary": "https://api.opencdp.com/gateway/data-gateway",
+    "primary": "https://api.opencdp.io/gateway/data-gateway",
     "fallbacks": [
-      "https://api.opencdp.xyz/gateway/data-gateway",
-      "https://api.opencdp.io/gateway/data-gateway"
+      "https://api.opencdp.com/gateway/data-gateway",
+      "https://api.opencdp.xyz/gateway/data-gateway"
     ]
   },
   "vectors": [

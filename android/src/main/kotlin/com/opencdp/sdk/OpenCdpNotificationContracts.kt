@@ -8,12 +8,12 @@ internal object OpenCdpNotificationContracts {
     const val BASE_URLS_KEY = "opencdpsdk_base_urls"
 
     /** Last-resort primary when SDK prefs were never written (matches Dart [CDPEndpoints.baseUrl]). */
-    const val DEFAULT_BASE_URL = "https://api.opencdp.com/gateway/data-gateway"
+    const val DEFAULT_BASE_URL = "https://api.opencdp.io/gateway/data-gateway"
 
     /** Last-resort fallbacks when SDK prefs were never written. */
     val DEFAULT_FALLBACK_URLS = listOf(
+        "https://api.opencdp.com/gateway/data-gateway",
         "https://api.opencdp.xyz/gateway/data-gateway",
-        "https://api.opencdp.io/gateway/data-gateway",
     )
 
     val DEFAULT_GATEWAY_HOSTS: List<String> =

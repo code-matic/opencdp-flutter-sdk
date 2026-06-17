@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VECTORS = ROOT / "docs" / "conformance_vectors.json"
+VECTORS = ROOT / "doc" / "conformance_vectors.json"
 
 CHECKS = [
     (
