@@ -42,12 +42,12 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 
 - [x] **P0-1** Create `SDK_CONTRACT.md` (endpoints, payloads, config mapping)
 - [x] **P0-2** Add JSON conformance vectors (`identify`, `track`, `registerDevice`)
-- [x] **P0-3** Document gateway failover rules (`com` → `xyz` → `io`)
+- [x] **P0-3** Document gateway failover rules (`io` → `com` → `xyz`)
 - [ ] **P0-4** Confirm Authorization header format with gateway team
 
 ### Phase 1 — Python SDK
 
-- [x] **P1-1** Default endpoint → `https://api.opencdp.com/gateway/data-gateway`
+- [x] **P1-1** Default endpoint → `https://api.opencdp.io/gateway/data-gateway`
 - [x] **P1-2** Add fallback gateways (`.xyz`, `.io`) + failover logic
 - [x] **P1-3** Paths → `/v1/persons/identify`, `/track`, `/registerDevice`
 - [x] **P1-4** Paths → `/v1/send/email`, `/push`, `/sms` + `/v1/health/ping`
@@ -60,7 +60,7 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 
 ### Phase 2 — Go SDK
 
-- [x] **P2-1** Default primary URL → `api.opencdp.com`
+- [x] **P2-1** Default primary URL → `api.opencdp.io`
 - [x] **P2-2** Add fallback gateways + failover
 - [x] **P2-3** Add `cdpFallbackEndpoints` config
 - [x] **P2-4** JSON fields → `identifier`, `properties`, `eventName`
@@ -71,7 +71,7 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 
 ### Phase 3 — PHP SDK
 
-- [x] **P3-1** Default primary URL → `api.opencdp.com`
+- [x] **P3-1** Default primary URL → `api.opencdp.io`
 - [x] **P3-2** Add fallback gateways + failover
 - [x] **P3-3** Add `cdpFallbackEndpoints` config
 - [x] **P3-4** Add `maxConcurrentRequests`
@@ -79,11 +79,11 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 
 ### Phase 3 — Node SDK
 
-- [x] **P3-N1** Default primary URL → `api.opencdp.com`
+- [x] **P3-N1** Default primary URL → `api.opencdp.io`
 - [x] **P3-N2** Add fallback gateways + failover
 - [x] **P3-N3** Add `cdpFallbackEndpoints` config
 - [x] **P3-N4** Add `close()` for connection cleanup
-- [ ] **P3-N5** Contract tests pass
+- [x] **P3-N5** Contract tests pass
 
 ### Phase 4 — Contract tests + docs
 
@@ -133,8 +133,8 @@ Track each shared feature per SDK. Mark `[x]` when implemented and tested.
 
 | ID | Feature | Go | Node | PHP | Python |
 |----|---------|:--:|:----:|:---:|:------:|
-| SRV-01 | Primary gateway `api.opencdp.com` | `[x]` | `[x]` | `[x]` | `[x]` |
-| SRV-02 | Fallback gateways `.xyz` + `.io` | `[x]` | `[x]` | `[x]` | `[x]` |
+| SRV-01 | Primary gateway `api.opencdp.io` | `[x]` | `[x]` | `[x]` | `[x]` |
+| SRV-02 | Fallback gateways `.com` + `.xyz` | `[x]` | `[x]` | `[x]` | `[x]` |
 | SRV-03 | Gateway failover (multi-host retry) | `[x]` | `[x]` | `[x]` | `[x]` |
 | SRV-04 | `cdpFallbackEndpoints` config | `[x]` | `[x]` | `[x]` | `[x]` |
 | SRV-05 | Paths `/v1/persons/*` | `[-]` | `[-]` | `[-]` | `[x]` |

@@ -9,9 +9,9 @@ public class OpenCdpPushExtensionHelper {
     private static let baseRetryDelayMs: UInt64 = 1000
 
     private static let defaultGatewayHosts = [
+        "https://api.opencdp.io/gateway/data-gateway",
         "https://api.opencdp.com/gateway/data-gateway",
         "https://api.opencdp.xyz/gateway/data-gateway",
-        "https://api.opencdp.io/gateway/data-gateway",
     ]
 
     public static func didReceiveNotificationExtensionRequest(
@@ -66,8 +66,8 @@ public class OpenCdpPushExtensionHelper {
         }
         if let single = readBaseUrlFromSharedStorage(appGroup: appGroup), !single.isEmpty {
             let fallbacks = [
+                "https://api.opencdp.com/gateway/data-gateway",
                 "https://api.opencdp.xyz/gateway/data-gateway",
-                "https://api.opencdp.io/gateway/data-gateway",
             ]
             return dedupeHosts([single] + fallbacks)
         }

@@ -9,8 +9,8 @@ class CdpGatewayUrls {
   static const Duration maxRequestTimeout = Duration(seconds: 120);
 
   static const List<String> defaultFallbackBaseUrls = [
-    CDPEndpoints.backupBaseUrlXyz,
     CDPEndpoints.backupBaseUrlCom,
+    CDPEndpoints.backupBaseUrlXyz,
   ];
 
   /// Clamps [value] to [minRequestTimeout]..[maxRequestTimeout].

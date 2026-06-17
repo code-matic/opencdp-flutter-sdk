@@ -6,9 +6,9 @@ Canonical API contract for all OpenCDP SDKs. **Flutter SDK v3.1.1** is the refer
 
 | Role | URL |
 |------|-----|
-| Primary | `https://api.opencdp.com/gateway/data-gateway` |
-| Fallback 1 | `https://api.opencdp.xyz/gateway/data-gateway` |
-| Fallback 2 | `https://api.opencdp.io/gateway/data-gateway` |
+| Primary | `https://api.opencdp.io/gateway/data-gateway` |
+| Fallback 1 | `https://api.opencdp.com/gateway/data-gateway` |
+| Fallback 2 | `https://api.opencdp.xyz/gateway/data-gateway` |
 
 - Trim whitespace; remove trailing slashes from base URLs.
 - Deduplicate hosts; try primary first, then fallbacks on network error or non-2xx.

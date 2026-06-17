@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VECTORS = ROOT / "docs" / "conformance_vectors.json"
+VECTORS = ROOT / "doc" / "conformance_vectors.json"
 
 CHECKS = [
     (
@@ -33,6 +33,12 @@ CHECKS = [
         "php",
         ROOT.parent / "opencdp-php" / "src" / "GatewayUrls.php",
         "public const DEFAULT_PRIMARY = '",
+        "'",
+    ),
+    (
+        "react-native",
+        ROOT.parent / "opencdp-react-native-sdk" / "src" / "gateway_urls.ts",
+        "DEFAULT_PRIMARY_BASE_URL =\n  '",
         "'",
     ),
 ]
