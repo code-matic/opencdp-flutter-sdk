@@ -17,7 +17,7 @@ class CDPPushAction {
   final String? icon;
 }
 
-/// Helpers for push notification v2 payloads (`custom_data`, `actions`).
+/// Helpers for push notification v2 payloads (`custom_data`, `actions`, `image_url`).
 class OpenCDPPushPayload {
   OpenCDPPushPayload._();
 
@@ -95,5 +95,15 @@ class OpenCDPPushPayload {
       ));
     }
     return out;
+  }
+
+  /// Parses `data['image_url']` when the backend sends a rich push image URL.
+  ///
+  /// Returns `null` if missing or blank.
+  static String? parseImageUrl(Map<String, dynamic> data) {
+    final raw = data['image_url'];
+    if (raw == null) return null;
+    final url = raw.toString().trim();
+    return url.isEmpty ? null : url;
   }
 }

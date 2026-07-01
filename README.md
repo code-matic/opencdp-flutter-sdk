@@ -509,7 +509,11 @@ class PushService {
 
 If you use **action buttons** in CDP (`data.actions` with `action_id` / `label`), use the dedicated guide:
 
-**Android note:** For actionable pushes, the backend sends a data-focused FCM message (no top-level `notification` block). Preferred path is `OpenCDPSDK.showAndroidActionableNotification(...)` inside your background handler.
+**Android note:** For actionable pushes, the backend sends a data-focused FCM message (no top-level `notification` block). Preferred path is `OpenCDPSDK.showAndroidActionableNotification(...)` inside your background handler. When the payload includes **`image_url`**, the SDK downloads the image and shows a big-picture notification automatically.
+
+**iOS note:** Rich images use `image_url` in the `data` payload. Your Notification Service Extension must call `OpenCdpPushExtensionHelper` (as below), and the backend must set **`aps.mutable-content: 1`** so the extension can attach the image.
+
+**Foreground Android:** For data-only pushes received while the app is open, also call `OpenCDPSDK.showAndroidActionableNotification(message.data)` from your `FirebaseMessaging.onMessage` listener if you want a tray notification with image and actions.
 
 - [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode)
 

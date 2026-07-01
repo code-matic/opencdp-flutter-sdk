@@ -16,7 +16,8 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 
 - Add string key **`custom_data`**: JSON-serialized object of user-defined key-value pairs (Liquid-rendered values). Keeps a single namespace so keys never collide with CDP fields (`link`, `delivery_message_id`, etc.).
 - Add string key **`actions`**: JSON-serialized array of up to 3 objects: `{ "action_id", "label", "link?", "icon?" }`. Do **not** rely on `android.notification.actions` in Firebase Admin Node types; both platforms read from `data`.
-- Map **delivery options** to FCM: `android.priority`, `android.ttl` (ms from seconds), `android.notification.channelId`, `android.collapseKey`; APNS headers (`apns-priority`, `apns-expiration`, `apns-collapse-id`) and `aps` (`badge`, `sound`, `mutable-content`); set **`aps.category` = `CDP_ACTIONS`** when `actions` is non-empty.
+- Add string key **`image_url`**: HTTPS URL for a rich push image. Android: rendered by `showAndroidActionableNotification` via `BigPictureStyle`. iOS: attached in the Notification Service Extension when `aps.mutable-content: 1` is set.
+- Map **delivery options** to FCM: `android.priority`, `android.ttl` (ms from seconds), `android.notification.channelId`, `android.collapseKey`; APNS headers (`apns-priority`, `apns-expiration`, `apns-collapse-id`) and `aps` (`badge`, `sound`, `mutable-content`); set **`aps.category` = `CDP_ACTIONS`** when `actions` is non-empty; set **`aps.mutable-content` = `1`** when `image_url` or rich actions are present.
 - **Silent push**: `silent: true` → data-only message, `content_available` / high priority as per spec; title/body optional only in that mode.
 
 ### Validation & types
@@ -43,15 +44,17 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 
 ### Done in this package (baseline v2)
 
-- **`OpenCDPPushPayload.parseCustomData` / `parseActions`** — `lib/src/utils/push_notification_payload.dart` (exported).
+- **`OpenCDPPushPayload.parseCustomData` / `parseActions` / `parseImageUrl`** — `lib/src/utils/push_notification_payload.dart` (exported).
 - **`MetricEvent.actionClicked`** → API status **`action_clicked`**.
 - **Delivery POST** includes optional **`action_id`** when set (`PushNotificationTracker`).
 - **`OpenCDPSDK.handlePushNotificationOpen(data, { String? action_clicked })`** — Value is the tapped button’s **`action_id`**. If that argument, `data['action_id']`, or `data['action_clicked']` (string) is non-empty → reports **`action_clicked`** + `action_id` on the wire; otherwise **opened**. Foreground delivery handler guards missing initialization.
 
+- **Android actionable push helper** — `showAndroidActionableNotification` renders `image_url` with `BigPictureStyle` (v3.1.3+).
+- **iOS NSE image attachment** — `OpenCdpPushExtensionHelper` downloads `image_url` when `mutable-content` is enabled (v3.1.3+).
+
 ### Optional follow-ups (same repo, later)
 
 - Convenience API for local notification plugins (e.g. unified callback shape).
-- Native Android helper to attach `NotificationCompat.Action` from `data['actions']` (requires either `flutter_local_notifications` integration or platform code in the **host app**).
 
 ---
 
@@ -71,11 +74,12 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 
 - Create **notification channels** whose IDs match what marketers set as `android_channel_id`.
 - When displaying notifications locally, parse `OpenCDPPushPayload.parseActions(message.data)` and add up to three actions; on tap, resolve the correct `action_id` and call the SDK as above.
+- For big-picture pushes, prefer `OpenCDPSDK.showAndroidActionableNotification(message.data)` (handles `image_url` natively) or `OpenCDPPushPayload.parseImageUrl(message.data)` if you use your own notification plugin.
 
 ### iOS
 
 - Register **`UNNotificationCategory`** identifier **`CDP_ACTIONS`** (and notification center delegate) so action buttons appear and you receive `actionIdentifier` / response; map that to **`action_clicked:`** (the button’s `action_id` string) for `handlePushNotificationOpen`.
-- Rich / mutable content: keep existing Notification Service Extension pattern for **delivered** metrics.
+- Rich / mutable content: keep existing Notification Service Extension pattern for **delivered** metrics and **`image_url`** attachments (`mutable-content: 1` required).
 
 ### Silent / data-only
 
@@ -84,6 +88,10 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 ### Testing
 
 - End-to-end: campaign with `custom_data` + actions → correct route + `action_clicked` vs `opened` in CDP analytics / callbacks.
+- Big-picture manual E2E:
+  - Android background data-only push with `image_url` + actions → expanded big picture visible; failed download → text-only notification; delivery/open tracking unchanged.
+  - iOS with NSE + `mutable-content: 1` → image attachment visible in notification.
+  - Image URL must be HTTPS, publicly reachable, reasonable size (&lt; ~1MB), correct content-type.
 
 ---
 
@@ -91,7 +99,7 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 
 | Source | Key / behavior |
 |--------|----------------|
-| FCM `data` | `custom_data` (JSON string), `actions` (JSON string), existing flat CDP keys |
+| FCM `data` | `custom_data` (JSON string), `actions` (JSON string), `image_url` (HTTPS string), existing flat CDP keys |
 | App → CDP | `status`: `delivered` \| `opened` \| `action_clicked` \| … ; optional `action_id` when `action_clicked` |
 | iOS category | `CDP_ACTIONS` when server sends action buttons |
 

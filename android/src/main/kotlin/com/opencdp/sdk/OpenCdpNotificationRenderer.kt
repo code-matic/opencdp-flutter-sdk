@@ -58,6 +58,18 @@ internal object OpenCdpNotificationRenderer {
             .setAutoCancel(true)
             .setContentIntent(openPendingIntent)
 
+        OpenCdpNotificationImage.parseImageUrl(data["image_url"])?.let { imageUrl ->
+            OpenCdpNotificationImage.downloadBitmap(imageUrl)?.let { bitmap ->
+                builder.setLargeIcon(bitmap)
+                builder.setStyle(
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(bitmap)
+                        .bigLargeIcon(null as android.graphics.Bitmap?)
+                        .setSummaryText(body),
+                )
+            }
+        }
+
         parseActions(data["actions"]).take(3).forEachIndexed { index, actionItem ->
             val clickIntent = Intent(context, OpenCdpNotificationActionReceiver::class.java).apply {
                 setAction(OpenCdpNotificationContracts.ACTION_CLICK)

@@ -56,4 +56,28 @@ void main() {
       expect(actions.single.actionId, 'x');
     });
   });
+
+  group('OpenCDPPushPayload.parseImageUrl', () {
+    test('returns trimmed URL', () {
+      final data = <String, dynamic>{
+        'image_url': '  https://cdn.example.com/push.jpg  ',
+      };
+      expect(
+        OpenCDPPushPayload.parseImageUrl(data),
+        'https://cdn.example.com/push.jpg',
+      );
+    });
+
+    test('returns null when missing or blank', () {
+      expect(OpenCDPPushPayload.parseImageUrl({}), isNull);
+      expect(
+        OpenCDPPushPayload.parseImageUrl({'image_url': ''}),
+        isNull,
+      );
+      expect(
+        OpenCDPPushPayload.parseImageUrl({'image_url': '   '}),
+        isNull,
+      );
+    });
+  });
 }

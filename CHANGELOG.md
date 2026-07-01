@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.1.3] - 2026-07-01
+
+### Added
+
+* **Push big-picture (`image_url`)**
+  * Android `OpenCDPSDK.showAndroidActionableNotification(...)` now downloads `data.image_url` and renders a `BigPictureStyle` notification (text-only fallback when download fails).
+  * iOS `OpenCdpPushExtensionHelper` attaches `image_url` as a `UNNotificationAttachment` in the Notification Service Extension (requires `aps.mutable-content: 1` from the backend).
+  * **`OpenCDPPushPayload.parseImageUrl`** — helper for host apps that display pushes with their own notification plugin.
+
 ## [3.1.1] - 2026-05-18
 
 ### Changed

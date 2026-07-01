@@ -47,6 +47,8 @@ public class OpenCdpPushExtensionHelper {
 
         let deliverySendContextId = userInfo["delivery_send_context_id"] as? String ?? ""
 
+        attachImageIfPresent(userInfo: userInfo, to: bestAttemptContent)
+
         reportPushStatus(
             deliveryMessageId: deliveryMessageId,
             personId: personId,
@@ -90,6 +92,68 @@ public class OpenCdpPushExtensionHelper {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return trimmed }
         return trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
+    }
+
+    static func parseImageUrl(from userInfo: [AnyHashable: Any]) -> String? {
+        guard let raw = userInfo["image_url"] as? String else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func attachImageIfPresent(
+        userInfo: [AnyHashable: Any],
+        to content: UNMutableNotificationContent
+    ) {
+        guard let imageUrl = parseImageUrl(from: userInfo),
+              let url = URL(string: imageUrl) else {
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var attachment: UNNotificationAttachment?
+
+        let task = URLSession.shared.downloadTask(with: request) { location, response, error in
+            defer { semaphore.signal() }
+
+            guard let location = location, error == nil else { return }
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                return
+            }
+
+            let fileExtension = url.pathExtension.isEmpty ? "jpg" : url.pathExtension
+            let destination = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension(fileExtension)
+
+            do {
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.moveItem(at: location, to: destination)
+                attachment = try UNNotificationAttachment(
+                    identifier: "opencdp_image",
+                    url: destination,
+                    options: nil
+                )
+            } catch {
+                log("Failed to attach push image: \(error.localizedDescription)")
+            }
+        }
+        task.resume()
+
+        if semaphore.wait(timeout: .now() + 8) == .timedOut {
+            task.cancel()
+            log("Timed out downloading push image")
+            return
+        }
+
+        if let attachment = attachment {
+            content.attachments = [attachment]
+        }
     }
 
     private static func readApiKeyFromSharedStorage(appGroup: String) -> String? {

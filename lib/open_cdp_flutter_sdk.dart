@@ -548,6 +548,10 @@ class OpenCDPSDK {
   /// Android-only helper to render a notification with action buttons using
   /// native `NotificationCompat` APIs from push `data` payload.
   ///
+  /// When `data['image_url']` is present, downloads the image and applies
+  /// `BigPictureStyle`. Falls back to a text-only notification if the download
+  /// fails.
+  ///
   /// Useful in `FirebaseMessaging.onBackgroundMessage` when actionable pushes
   /// are sent as data-focused messages and must be displayed by the app.
   static Future<bool> showAndroidActionableNotification(
