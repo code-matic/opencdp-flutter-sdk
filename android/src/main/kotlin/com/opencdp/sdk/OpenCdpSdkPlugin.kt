@@ -2,6 +2,7 @@ package com.opencdp.sdk
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -15,6 +16,7 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
 
     companion object {
+        private const val TAG = "OpenCdpPush"
         private const val PREFS_NAME = OpenCdpNotificationContracts.PREFS_NAME
         private const val API_KEY_KEY = OpenCdpNotificationContracts.API_KEY_KEY
         private const val USER_ID_KEY = OpenCdpNotificationContracts.USER_ID_KEY
@@ -32,6 +34,7 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+        Log.d(TAG, "methodCall: ${call.method}")
         when (call.method) {
             "opencdpsdk_save_api_key" -> {
                 val apiKey = call.argument<String>("apiKey")
@@ -133,18 +136,26 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
             "opencdpsdk_show_actionable_notification" -> {
                 val rawData = call.argument<Map<String, Any?>>("data")
                 if (rawData == null) {
+                    Log.w(TAG, "show_actionable_notification: data was null")
                     result.error("INVALID_ARGS", "data was null", null)
                     return
                 }
                 val channelName = call.argument<String>("channelName") ?: "CDP Notifications"
                 val channelDescription = call.argument<String>("channelDescription")
                     ?: "Push notifications from CDP"
+                Log.d(
+                    TAG,
+                    "show_actionable_notification: keys=${rawData.keys} " +
+                        "title=${rawData["title"]} channel=$channelName " +
+                        "image_url=${rawData["image_url"]}",
+                )
                 val shown = OpenCdpNotificationRenderer.showActionableNotification(
                     context = context,
                     data = rawData,
                     channelName = channelName,
                     channelDescription = channelDescription
                 )
+                Log.d(TAG, "show_actionable_notification result: shown=$shown")
                 result.success(shown)
             }
 

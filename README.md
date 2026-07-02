@@ -463,57 +463,55 @@ Future<void> main() async {
 
 ##### Step 2.2: Set Up Push Handlers
 
-Create a class and a top-level function to handle incoming notifications. This code uses the specific SDK methods for each event type.
+The SDK provides turnkey push wiring (v3.2.0+). Configure Firebase initialization for the background isolate, register the SDK handler, then call `setupPushNotifications` after `initialize`:
 
 ```dart
-// lib/main.dart or a new file like lib/push_service.dart
+// lib/main.dart or bootstrap
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
-// This handler must be a top-level function
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // You must initialize Firebase here for the background isolate to work.
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  
-  // Let the SDK handle the background delivery event
-  OpenCDPSDK.handleBackgroundPushDelivery(message.data);
-}
 
-class PushService {
-  static Future<void> setupPushListeners() async {
-    // 1. Set the background message handler
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  OpenCDPSDK.configurePushBackground(
+    initializeFirebase: () => Firebase.initializeApp(),
+  );
+  FirebaseMessaging.onBackgroundMessage(
+    OpenCDPSDK.firebaseBackgroundMessageHandler,
+  );
 
-    // 2. Handles "delivered" events when the app is in the foreground
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      OpenCDPSDK.handleForegroundPushDelivery(message.data);
-    });
+  await OpenCDPSDK.initialize(
+    config: OpenCDPConfig(
+      cdpApiKey: "YOUR_API_KEY_HERE",
+      iOSAppGroup: "group.com.yourcompany.yourapp",
+    ),
+  );
 
-    // 3. Handles "opened" events if the app is opened from a terminated state
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) {
-        OpenCDPSDK.handlePushNotificationOpen(message.data);
-      }
-    });
+  await OpenCDPSDK.setupPushNotifications(
+    options: OpenCDPPushSetupOptions(
+      onTokenRefreshed: (token) async {
+        await OpenCDPSDK.instance.registerDeviceToken(fcmToken: token);
+      },
+    ),
+  );
 
-    // 4. Handles "opened" events if the app is opened from a background state
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      OpenCDPSDK.handlePushNotificationOpen(message.data);
-    });
-  }
+  runApp(MyApp());
 }
 ```
+
+When the payload includes **`image_url`**, Android notifications use `BigPictureStyle` automatically. iOS rich images require the Notification Service Extension below and **`aps.mutable-content: 1`**.
 
 #### 2.3 Notification action buttons (manual registration)
 
 If you use **action buttons** in CDP (`data.actions` with `action_id` / `label`), use the dedicated guide:
 
-**Android note:** For actionable pushes, the backend sends a data-focused FCM message (no top-level `notification` block). Preferred path is `OpenCDPSDK.showAndroidActionableNotification(...)` inside your background handler. When the payload includes **`image_url`**, the SDK downloads the image and shows a big-picture notification automatically.
+**Android note:** With `setupPushNotifications`, actionable pushes with `image_url` and action buttons are rendered automatically on Android. For custom FCM wiring, call `OpenCDPSDK.showAndroidActionableNotification(...)` in your background handler.
 
 **iOS note:** Rich images use `image_url` in the `data` payload. Your Notification Service Extension must call `OpenCdpPushExtensionHelper` (as below), and the backend must set **`aps.mutable-content: 1`** so the extension can attach the image.
 
-**Foreground Android:** For data-only pushes received while the app is open, also call `OpenCDPSDK.showAndroidActionableNotification(message.data)` from your `FirebaseMessaging.onMessage` listener if you want a tray notification with image and actions.
+**Foreground Android:** `setupPushNotifications` displays tray notifications for foreground data-only pushes. For manual wiring, call `showAndroidActionableNotification` from `onMessage`.
 
 - [Actionable Push Notifications (Manual Mode)](https://docs.conviso.ai/integrations/flutter/features/push-notifications#4-actionable-notifications-manual-mode)
 

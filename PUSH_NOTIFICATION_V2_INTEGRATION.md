@@ -42,14 +42,15 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 
 ## Flutter SDK repository (`open_cdp_flutter_sdk`)
 
-### Done in this package (baseline v2)
+### Done in this package (baseline v2 + v3.2 turnkey push)
 
+- **`OpenCDPSDK.configurePushBackground` / `firebaseBackgroundMessageHandler` / `setupPushNotifications`** — turnkey FCM wiring with Android big-picture and delivery/open tracking (v3.2.0+).
 - **`OpenCDPPushPayload.parseCustomData` / `parseActions` / `parseImageUrl`** — `lib/src/utils/push_notification_payload.dart` (exported).
 - **`MetricEvent.actionClicked`** → API status **`action_clicked`**.
 - **Delivery POST** includes optional **`action_id`** when set (`PushNotificationTracker`).
 - **`OpenCDPSDK.handlePushNotificationOpen(data, { String? action_clicked })`** — Value is the tapped button’s **`action_id`**. If that argument, `data['action_id']`, or `data['action_clicked']` (string) is non-empty → reports **`action_clicked`** + `action_id` on the wire; otherwise **opened**. Foreground delivery handler guards missing initialization.
 
-- **Android actionable push helper** — `showAndroidActionableNotification` renders `image_url` with `BigPictureStyle` (v3.1.3+).
+- **Android actionable push helper** — `showAndroidActionableNotification` renders `image_url` with `BigPictureStyle` and `actions[].icon` on action buttons (v3.2.0+).
 - **iOS NSE image attachment** — `OpenCdpPushExtensionHelper` downloads `image_url` when `mutable-content` is enabled (v3.1.3+).
 
 ### Optional follow-ups (same repo, later)

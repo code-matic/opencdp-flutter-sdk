@@ -671,6 +671,21 @@ class OpenCDPSDKImplementation {
         personId = _userId;
       }
 
+      if (kDebugMode) {
+        final apiKeySource = isBackground
+            ? (apiKeyOverride != null && apiKeyOverride.isNotEmpty
+                ? 'override'
+                : 'native')
+            : 'instance';
+        final personIdSource = isBackground ? 'native' : 'sdk_instance';
+        debugPrint(
+          '[CDP] trackBackgroundPushNotificationMetric resolved: '
+          'apiKeySource=$apiKeySource personIdSource=$personIdSource '
+          'personId=${personId != null ? PushNotificationTracker.safeSubstring(personId, 8) : 'null'} '
+          'gatewayHosts=$baseUrls',
+        );
+      }
+
       // For background operations, fire-and-forget might be more appropriate
       // to avoid keeping the background task alive unnecessarily
       if (isBackground) {

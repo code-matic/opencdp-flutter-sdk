@@ -268,6 +268,12 @@ class NativeBridge {
     String channelName = 'CDP Notifications',
     String channelDescription = 'Push notifications from CDP',
   }) async {
+    if (kDebugMode) {
+      debugPrint(
+        '[CDP] showAndroidActionableNotification keys=${data.keys.toList()} '
+        'channel=$channelName',
+      );
+    }
     try {
       final result = await _channel.invokeMethod<bool>(
         'opencdpsdk_show_actionable_notification',
@@ -277,6 +283,11 @@ class NativeBridge {
           'channelDescription': channelDescription,
         },
       );
+      if (kDebugMode) {
+        debugPrint(
+          '[CDP] showAndroidActionableNotification method channel result: $result',
+        );
+      }
       return result ?? false;
     } on PlatformException catch (e) {
       debugPrint(

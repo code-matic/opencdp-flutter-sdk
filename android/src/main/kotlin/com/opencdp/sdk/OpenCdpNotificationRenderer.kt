@@ -6,13 +6,17 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
 
 internal object OpenCdpNotificationRenderer {
+    private const val TAG = "OpenCdpPush"
+
     fun showActionableNotification(
         context: Context,
         data: Map<String, Any?>,
@@ -29,6 +33,13 @@ internal object OpenCdpNotificationRenderer {
         } else {
             (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
         }
+
+        Log.d(
+            TAG,
+            "showActionableNotification: title=$title body=$body channelId=$channelId " +
+                "notificationId=$notificationId image_url=${data["image_url"]} " +
+                "delivery_message_id=$deliveryMessageId",
+        )
 
         ensureChannel(context, channelId, channelName, channelDescription)
 
@@ -59,18 +70,25 @@ internal object OpenCdpNotificationRenderer {
             .setContentIntent(openPendingIntent)
 
         OpenCdpNotificationImage.parseImageUrl(data["image_url"])?.let { imageUrl ->
-            OpenCdpNotificationImage.downloadBitmap(imageUrl)?.let { bitmap ->
-                builder.setLargeIcon(bitmap)
-                builder.setStyle(
-                    NotificationCompat.BigPictureStyle()
-                        .bigPicture(bitmap)
-                        .bigLargeIcon(null as android.graphics.Bitmap?)
-                        .setSummaryText(body),
-                )
+            OpenCdpNotificationImage.downloadBitmap(imageUrl)?.let { fullBitmap ->
+                val thumbnail = OpenCdpNotificationImage.createSquareThumbnail(fullBitmap, 256)
+                Log.d(TAG, "bigPicture applied for notificationId=$notificationId")
+                val style = NotificationCompat.BigPictureStyle()
+                    .bigPicture(fullBitmap)
+                    .bigLargeIcon(thumbnail)
+                    .setSummaryText(body)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    style.showBigPictureWhenCollapsed(true)
+                } else {
+                    builder.setLargeIcon(thumbnail)
+                }
+                builder.setStyle(style)
             }
         }
 
-        parseActions(data["actions"]).take(3).forEachIndexed { index, actionItem ->
+        val actions = parseActions(data["actions"])
+        Log.d(TAG, "action buttons count=${actions.size} for notificationId=$notificationId")
+        actions.take(3).forEachIndexed { index, actionItem ->
             val clickIntent = Intent(context, OpenCdpNotificationActionReceiver::class.java).apply {
                 setAction(OpenCdpNotificationContracts.ACTION_CLICK)
                 putExtra(OpenCdpNotificationContracts.EXTRA_PAYLOAD_JSON, payloadJson)
@@ -84,10 +102,25 @@ internal object OpenCdpNotificationRenderer {
                 clickIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            builder.addAction(0, actionItem.label, clickPendingIntent)
+            val iconBitmap = actionItem.iconUrl?.let { iconUrl ->
+                OpenCdpNotificationImage.parseImageUrl(iconUrl)?.let { normalizedUrl ->
+                    OpenCdpNotificationImage.downloadScaledBitmap(normalizedUrl, 128)
+                }
+            }
+            if (iconBitmap != null) {
+                val action = NotificationCompat.Action.Builder(
+                    IconCompat.createWithBitmap(iconBitmap),
+                    actionItem.label,
+                    clickPendingIntent,
+                ).build()
+                builder.addAction(action)
+            } else {
+                builder.addAction(0, actionItem.label, clickPendingIntent)
+            }
         }
 
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        Log.d(TAG, "notification posted id=$notificationId")
         return true
     }
 
@@ -128,7 +161,15 @@ internal object OpenCdpNotificationRenderer {
             val label = item.optString("label", "").trim()
             if (actionId.isEmpty() || label.isEmpty()) continue
             val link = item.optString("link", "").trim().ifEmpty { null }
-            out.add(ActionItem(actionId = actionId, label = label, link = link))
+            val iconUrl = item.optString("icon", "").trim().ifEmpty { null }
+            out.add(
+                ActionItem(
+                    actionId = actionId,
+                    label = label,
+                    link = link,
+                    iconUrl = iconUrl,
+                ),
+            )
         }
         return out
     }
@@ -136,7 +177,8 @@ internal object OpenCdpNotificationRenderer {
     private data class ActionItem(
         val actionId: String,
         val label: String,
-        val link: String?
+        val link: String?,
+        val iconUrl: String?,
     )
 }
 

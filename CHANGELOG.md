@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.0] - 2026-07-01
+
+### Added
+
+* **Turnkey push setup** — `OpenCDPSDK.configurePushBackground`, `OpenCDPSDK.firebaseBackgroundMessageHandler`, and `OpenCDPSDK.setupPushNotifications` wire FCM listeners, Android big-picture display, and delivery/open tracking in one call.
+* **Android action button icons** — `actions[].icon` HTTPS URLs are downloaded and rendered on notification action buttons.
+
+### Fixed
+
+* **Android rich push thumbnail** — on API 31+, collapsed notifications show a right-side image preview via `BigPictureStyle.showBigPictureWhenCollapsed`, and expanded notifications keep a top-right corner badge via `bigLargeIcon`. On API 24–30, a center-cropped square thumbnail is used as `setLargeIcon` fallback. The app logo in the header (`setSmallIcon`) is unchanged.
+* **iOS rich push images** — `OpenCdpPushExtensionHelper` attaches `image_url` before delivery-metric guards so images appear even when tracking prerequisites are missing.
+* **URL normalization** — `OpenCDPPushPayload.parseImageUrl` and iOS `parseImageUrl` prepend `https://` when the scheme is missing (matching Android).
+
 ## [3.1.3] - 2026-07-01
 
 ### Added

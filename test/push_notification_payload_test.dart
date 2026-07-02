@@ -68,6 +68,16 @@ void main() {
       );
     });
 
+    test('prepends https when scheme is missing', () {
+      final data = <String, dynamic>{
+        'image_url': 'cdn.example.com/push.jpg',
+      };
+      expect(
+        OpenCDPPushPayload.parseImageUrl(data),
+        'https://cdn.example.com/push.jpg',
+      );
+    });
+
     test('returns null when missing or blank', () {
       expect(OpenCDPPushPayload.parseImageUrl({}), isNull);
       expect(
@@ -77,6 +87,35 @@ void main() {
       expect(
         OpenCDPPushPayload.parseImageUrl({'image_url': '   '}),
         isNull,
+      );
+    });
+  });
+
+  group('OpenCDPPushPayload.resolveImageUrl', () {
+    test('falls back to notification android imageUrl', () {
+      expect(
+        OpenCDPPushPayload.resolveImageUrl(
+          {},
+          androidNotificationImageUrl: 'https://cdn.example.com/from-fcm.jpg',
+        ),
+        'https://cdn.example.com/from-fcm.jpg',
+      );
+    });
+
+    test('falls back to data.image', () {
+      expect(
+        OpenCDPPushPayload.resolveImageUrl({'image': 'cdn.example.com/x.png'}),
+        'https://cdn.example.com/x.png',
+      );
+    });
+
+    test('prefers data.image_url over notification image', () {
+      expect(
+        OpenCDPPushPayload.resolveImageUrl(
+          {'image_url': 'https://cdn.example.com/cdp.jpg'},
+          androidNotificationImageUrl: 'https://cdn.example.com/fcm.jpg',
+        ),
+        'https://cdn.example.com/cdp.jpg',
       );
     });
   });

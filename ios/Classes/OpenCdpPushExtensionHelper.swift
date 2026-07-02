@@ -23,16 +23,19 @@ public class OpenCdpPushExtensionHelper {
         let bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent) ?? UNMutableNotificationContent()
         let userInfo = request.content.userInfo
 
+        // Always enrich with image first — independent of delivery metric prerequisites.
+        attachImageIfPresent(userInfo: userInfo, to: bestAttemptContent)
+
         guard let deliveryMessageId = userInfo["delivery_message_id"] as? String,
               let deliverySendContext = userInfo["delivery_send_context"] as? String else {
-            log("Missing delivery tracking info. Returning original content.")
-            completion(request.content)
+            log("Missing delivery tracking info. Returning content with image if attached.")
+            completion(bestAttemptContent)
             return
         }
 
         guard let apiKey = readApiKeyFromSharedStorage(appGroup: appGroup) else {
-            log("API Key not found. Returning original content.")
-            completion(request.content)
+            log("API Key not found. Returning content with image if attached.")
+            completion(bestAttemptContent)
             return
         }
 
@@ -40,14 +43,12 @@ public class OpenCdpPushExtensionHelper {
         let personIdFromPayload = userInfo["person_id"] as? String
 
         guard let personId = personIdFromPayload ?? userId else {
-            log("Could not find person_id. Returning original content.")
-            completion(request.content)
+            log("Could not find person_id. Returning content with image if attached.")
+            completion(bestAttemptContent)
             return
         }
 
         let deliverySendContextId = userInfo["delivery_send_context_id"] as? String ?? ""
-
-        attachImageIfPresent(userInfo: userInfo, to: bestAttemptContent)
 
         reportPushStatus(
             deliveryMessageId: deliveryMessageId,
@@ -94,10 +95,18 @@ public class OpenCdpPushExtensionHelper {
         return trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
     }
 
+    static func normalizeImageUrl(_ url: String) -> String {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
+            return trimmed
+        }
+        return "https://\(trimmed)"
+    }
+
     static func parseImageUrl(from userInfo: [AnyHashable: Any]) -> String? {
         guard let raw = userInfo["image_url"] as? String else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        return trimmed.isEmpty ? nil : normalizeImageUrl(trimmed)
     }
 
     private static func attachImageIfPresent(
