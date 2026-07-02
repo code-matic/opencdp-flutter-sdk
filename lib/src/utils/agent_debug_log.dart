@@ -12,6 +12,7 @@ Future<void> agentDebugLog(
   String? hypothesisId,
   String runId = 'pre-fix',
 }) async {
+  if (!kDebugMode) return;
   // #region agent log
   final payload = <String, Object?>{
     'sessionId': '5ccecb',

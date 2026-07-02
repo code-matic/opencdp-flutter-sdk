@@ -133,6 +133,11 @@ class OpenCdpSdkPlugin : FlutterPlugin, MethodCallHandler {
                 result.success(null)
             }
 
+            "opencdpsdk_consume_notification_launch" -> {
+                val pending = OpenCdpPendingNotificationLaunch.consume(context)
+                result.success(pending)
+            }
+
             "opencdpsdk_show_actionable_notification" -> {
                 val rawData = call.argument<Map<String, Any?>>("data")
                 if (rawData == null) {

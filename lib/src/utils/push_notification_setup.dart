@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_payload.dart';
 
 /// Callback when the user opens a push notification or taps an action button.
@@ -33,6 +34,13 @@ class OpenCDPPushSetupOptions {
   final OpenCDPPushTokenCallback? onTokenRefreshed;
   final OpenCDPPushOpenCallback? onNotificationOpen;
 }
+
+/// Whether the FCM message includes a top-level `notification` block (hybrid payload).
+///
+/// Hybrid payloads cause Android to auto-post a plain tray notification while the
+/// app handler also posts a custom rich notification. Prefer **data-only** FCM for
+/// Android rich pushes; the SDK cancels matching tray duplicates natively before post.
+bool isHybridFcmMessage(RemoteMessage message) => message.notification != null;
 
 /// Whether the payload should trigger a local Android notification display.
 bool shouldDisplayAndroidPush(Map<String, dynamic> data) {

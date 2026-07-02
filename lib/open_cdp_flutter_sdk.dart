@@ -88,6 +88,8 @@ class OpenCDPSDK {
   static String _backgroundPushChannelDescription = 'Push notifications from CDP';
   static StreamSubscription<RemoteMessage>? _foregroundPushSubscription;
   static StreamSubscription<RemoteMessage>? _openedFromBackgroundSubscription;
+  static String? _persistedIOSAppGroup;
+  static OpenCDPPushOpenCallback? _onNotificationOpenCallback;
 
   /// Get the singleton instance of the SDK
   static OpenCDPSDK get instance {
@@ -125,6 +127,8 @@ class OpenCDPSDK {
     _implementation = null;
     _screenTracker = null;
     _lifecycleTracker = null;
+    _persistedIOSAppGroup = null;
+    _onNotificationOpenCallback = null;
 
     debugPrint('[CDP] SDK reset for testing');
   }
@@ -166,6 +170,7 @@ class OpenCDPSDK {
 
         // Create new instance
         _instance = OpenCDPSDK._();
+        _persistedIOSAppGroup = config.iOSAppGroup;
         _implementation = await OpenCDPSDKImplementation.create(
             config: config, httpClient: httpClient);
 
@@ -558,6 +563,7 @@ class OpenCDPSDK {
       debugPrint(
           '[CDP] Using SDK instance API key for background push tracking');
     } else {
+      appGroup = _persistedIOSAppGroup;
       debugPrint(
           '[CDP] SDK not initialized, will try to use stored API key for background push tracking');
     }
@@ -668,6 +674,14 @@ class OpenCDPSDK {
     final parsedImageUrl = OpenCDPPushPayload.parseImageUrl(data);
     final shouldDisplay = shouldDisplayAndroidPush(data);
 
+    if (isHybridFcmMessage(message)) {
+      debugPrint(
+        '[CDP] Hybrid FCM payload detected (notification + data blocks). '
+        'Android may auto-display a plain notification before the SDK rich '
+        'notification; prefer data-only FCM for Android rich pushes.',
+      );
+    }
+
     // #region agent log
     await agentDebugLog(
       'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
@@ -740,6 +754,7 @@ class OpenCDPSDK {
   }) async {
     _backgroundPushChannelName = options.channelName;
     _backgroundPushChannelDescription = options.channelDescription;
+    _onNotificationOpenCallback = options.onNotificationOpen;
 
     if (options.requestPermission) {
       await FirebaseMessaging.instance.requestPermission();
@@ -766,11 +781,14 @@ class OpenCDPSDK {
       handlePushNotificationOpen(data);
     });
 
-    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null) {
-      final data = _effectivePushData(initialMessage);
-      options.onNotificationOpen?.call(data);
-      await handlePushNotificationOpen(data);
+    final handledPendingLaunch = await handlePendingNotificationLaunch();
+    if (!handledPendingLaunch) {
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        final data = _effectivePushData(initialMessage);
+        options.onNotificationOpen?.call(data);
+        await handlePushNotificationOpen(data);
+      }
     }
 
     final onTokenRefreshed = options.onTokenRefreshed;
@@ -783,6 +801,44 @@ class OpenCDPSDK {
         await onTokenRefreshed(token);
       });
     }
+  }
+
+  /// Consumes a pending SDK-rendered Android notification tap and invokes
+  /// [OpenCDPPushSetupOptions.onNotificationOpen] for routing.
+  ///
+  /// Native [OpenCdpNotificationActionReceiver] already posts open/click
+  /// metrics, so this does **not** call [handlePushNotificationOpen].
+  ///
+  /// Call on app resume if you use a custom background handler instead of
+  /// [setupPushNotifications], or after warm-start from an SDK notification.
+  static Future<bool> handlePendingNotificationLaunch() async {
+    final pending = await NativeBridge.consumeNotificationLaunch();
+    if (pending == null) return false;
+
+    final payloadJson = pending['payload_json'];
+    if (payloadJson == null || payloadJson.isEmpty) return false;
+
+    Map<String, dynamic> data;
+    try {
+      final decoded = jsonDecode(payloadJson);
+      if (decoded is! Map) return false;
+      data = Map<String, dynamic>.from(decoded.cast<String, dynamic>());
+    } catch (e) {
+      debugPrint('[CDP] Failed to parse pending notification payload: $e');
+      return false;
+    }
+
+    final actionId = pending['action_id']?.trim();
+    if (actionId != null && actionId.isNotEmpty) {
+      data['action_id'] = actionId;
+    }
+    final actionLink = pending['action_link']?.trim();
+    if (actionLink != null && actionLink.isNotEmpty) {
+      data['link'] = actionLink;
+    }
+
+    _onNotificationOpenCallback?.call(data);
+    return true;
   }
 
   static Map<String, dynamic> _effectivePushData(RemoteMessage message) {

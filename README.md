@@ -501,7 +501,7 @@ Future<void> main() async {
 }
 ```
 
-When the payload includes **`image_url`**, Android notifications use `BigPictureStyle` automatically. iOS rich images require the Notification Service Extension below and **`aps.mutable-content: 1`**.
+When the payload includes **`image_url`**, Android notifications use `BigPictureStyle` automatically. On **Android 12+ (API 31+)**, the image appears as a right-side thumbnail when collapsed and expands to a large image at the bottom. On **API 24–30**, collapsed layout shows a left-side preview (platform limitation). Ship `res/drawable/ic_stat_opencdp_notify` or `ic_notification` for the header app icon. iOS rich images require the Notification Service Extension below and **`aps.mutable-content: 1`**.
 
 #### 2.3 Notification action buttons (manual registration)
 

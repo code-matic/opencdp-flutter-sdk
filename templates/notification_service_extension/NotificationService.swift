@@ -6,30 +6,17 @@ import OpenCdpPushExtension
 /// Replace `YOUR_APP_GROUP` with the same App Group ID passed to [OpenCDPConfig.iOSAppGroup].
 class NotificationService: UNNotificationServiceExtension {
 
-    var contentHandler: ((UNNotificationContent) -> Void)?
-    var bestAttemptContent: UNMutableNotificationContent?
+    private let session = OpenCdpNotificationExtensionSession()
 
     override func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) {
-        self.contentHandler = contentHandler
-        self.bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
-
         let appGroup = "YOUR_APP_GROUP"
-
-        OpenCdpPushExtensionHelper.didReceiveNotificationExtensionRequest(
-            request,
-            appGroup: appGroup
-        ) { modifiedContent in
-            contentHandler(modifiedContent)
-        }
+        session.didReceive(request, appGroup: appGroup, contentHandler: contentHandler)
     }
 
     override func serviceExtensionTimeWillExpire() {
-        if let contentHandler = contentHandler,
-           let bestAttemptContent = bestAttemptContent {
-            contentHandler(bestAttemptContent)
-        }
+        session.serviceExtensionTimeWillExpire()
     }
 }

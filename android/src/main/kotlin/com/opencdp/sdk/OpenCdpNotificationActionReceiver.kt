@@ -33,6 +33,12 @@ class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
                 "delivery_message_id=${payload.optString("delivery_message_id", "")}",
         )
 
+        OpenCdpPendingNotificationLaunch.save(
+            context = context,
+            payloadJson = payloadJson,
+            actionId = actionId,
+            actionLink = actionLink,
+        )
         trackAsync(context, payload, status, actionId)
         openApp(context, payloadJson, actionId, actionLink)
         if (notificationId >= 0) {

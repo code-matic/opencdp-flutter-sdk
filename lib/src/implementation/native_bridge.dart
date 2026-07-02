@@ -256,6 +256,26 @@ class NativeBridge {
     }
   }
 
+  /// Consumes a pending SDK-rendered notification tap saved by the native
+  /// Android action receiver. Returns `null` when there is no pending launch.
+  static Future<Map<String, String?>?> consumeNotificationLaunch() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
+    }
+    try {
+      final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'opencdpsdk_consume_notification_launch',
+      );
+      if (raw == null || raw.isEmpty) return null;
+      return raw.map((key, value) => MapEntry('$key', value?.toString()));
+    } on PlatformException catch (e) {
+      debugPrint(
+        '[CDP] Failed to consume pending notification launch: ${e.message}',
+      );
+      return null;
+    }
+  }
+
   /// Helper function for string length safety
   static int min(int a, int b) => a < b ? a : b;
 

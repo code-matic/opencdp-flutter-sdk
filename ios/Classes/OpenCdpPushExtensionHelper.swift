@@ -26,16 +26,17 @@ public class OpenCdpPushExtensionHelper {
         // Always enrich with image first — independent of delivery metric prerequisites.
         attachImageIfPresent(userInfo: userInfo, to: bestAttemptContent)
 
+        // Deliver enriched content immediately so display is not blocked by metrics.
+        completion(bestAttemptContent)
+
         guard let deliveryMessageId = userInfo["delivery_message_id"] as? String,
               let deliverySendContext = userInfo["delivery_send_context"] as? String else {
-            log("Missing delivery tracking info. Returning content with image if attached.")
-            completion(bestAttemptContent)
+            log("Missing delivery tracking info. Metric skipped.")
             return
         }
 
         guard let apiKey = readApiKeyFromSharedStorage(appGroup: appGroup) else {
-            log("API Key not found. Returning content with image if attached.")
-            completion(bestAttemptContent)
+            log("API Key not found. Metric skipped.")
             return
         }
 
@@ -43,8 +44,7 @@ public class OpenCdpPushExtensionHelper {
         let personIdFromPayload = userInfo["person_id"] as? String
 
         guard let personId = personIdFromPayload ?? userId else {
-            log("Could not find person_id. Returning content with image if attached.")
-            completion(bestAttemptContent)
+            log("Could not find person_id. Metric skipped.")
             return
         }
 
@@ -59,7 +59,7 @@ public class OpenCdpPushExtensionHelper {
             apiKey: apiKey,
             appGroup: appGroup
         ) {
-            completion(bestAttemptContent)
+            // Fire-and-forget; notification already displayed.
         }
     }
 
@@ -339,5 +339,48 @@ public class OpenCdpPushExtensionHelper {
 
     private static func log(_ message: String) {
         os_log("[OpenCDP SDK - Push Extension] %@", message)
+    }
+}
+
+/// Manages NSE lifecycle with safe expiration fallback and double-completion guard.
+public final class OpenCdpNotificationExtensionSession {
+    private var contentHandler: ((UNNotificationContent) -> Void)?
+    private var enrichedContent: UNMutableNotificationContent?
+    private var didComplete = false
+
+    public init() {}
+
+    public func didReceive(
+        _ request: UNNotificationRequest,
+        appGroup: String,
+        contentHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+        self.contentHandler = contentHandler
+        let fallback = (request.content.mutableCopy() as? UNMutableNotificationContent)
+            ?? UNMutableNotificationContent()
+        enrichedContent = fallback
+
+        OpenCdpPushExtensionHelper.didReceiveNotificationExtensionRequest(
+            request,
+            appGroup: appGroup
+        ) { [weak self] modifiedContent in
+            guard let self = self else { return }
+            if let mutable = modifiedContent.mutableCopy() as? UNMutableNotificationContent {
+                self.enrichedContent = mutable
+            }
+            self.finish(with: modifiedContent)
+        }
+    }
+
+    public func serviceExtensionTimeWillExpire() {
+        guard let content = enrichedContent else { return }
+        finish(with: content)
+    }
+
+    private func finish(with content: UNNotificationContent) {
+        guard !didComplete, let handler = contentHandler else { return }
+        didComplete = true
+        handler(content)
+        contentHandler = nil
     }
 }
