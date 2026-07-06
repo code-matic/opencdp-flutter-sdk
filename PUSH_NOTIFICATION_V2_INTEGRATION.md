@@ -117,3 +117,53 @@ This document coordinates three deliverables: **backend (FCM + APIs)**, **Open C
 | iOS category | `CDP_ACTIONS` when server sends action buttons |
 
 Questions: align `action_clicked` + `action_id` with your data-gateway schema before enabling strict validation on the server.
+
+---
+
+## Native port checklist (Android / iOS SDK parity)
+
+Use this checklist when porting big-picture push from the Flutter SDK (v3.2.x) into **opencdp-android-sdk** and **opencdp-ios-sdk**. Flutter plugin sources are the canonical reference.
+
+### Payload contract (all SDKs)
+
+| Key | Type | Rules |
+|-----|------|--------|
+| `data.image_url` | string | HTTPS URL; scheme optional (SDK prepends `https://`); trim whitespace; empty → no image |
+| `data.actions` | JSON string | Up to 3 items: `{ action_id, label, link?, icon? }` |
+| `aps.mutable-content` | `1` | **iOS only** — required for NSE to attach `image_url` |
+
+### Android (`OpenCdpNotificationRenderer` + `OpenCdpNotificationImage`)
+
+- [ ] `parseImageUrl` / `normalizeImageUrl` — trim, reject blank, prepend `https://` when scheme missing
+- [ ] Download `image_url` with retry (2 attempts, 500ms delay); 15s connect/read timeout
+- [ ] Apply `NotificationCompat.BigPictureStyle` when download succeeds; text-only fallback when download fails
+- [ ] **API 31+ (Android 12+):** `showBigPictureWhenCollapsed(true)` — right-side thumbnail when collapsed; full image when expanded
+- [ ] **API 24–30:** `setLargeIcon(thumbnail)` fallback — left-side preview when collapsed
+- [ ] `setSmallIcon` from `ic_stat_opencdp_notify` or `ic_notification` drawable, else app icon
+- [ ] Action button icons from `actions[].icon` HTTPS URLs (download + `IconCompat.createWithBitmap`)
+- [ ] `cancelHybridFcmDuplicates()` before posting — cancel id `0`, scan active notifications by title/body, tag by `delivery_message_id`
+- [ ] Prefer **data-only FCM** (no top-level `notification` block) to avoid duplicate tray entries
+- [ ] Entry point: `showActionableNotification(context, data, channelName, channelDescription)`
+- [ ] Must not run image download on main thread (document for FCM background handler callers)
+
+### iOS (`OpenCdpPushExtensionHelper` + `OpenCdpNotificationExtensionSession`)
+
+- [ ] `parseImageUrl(from userInfo:)` / `normalizeImageUrl(_:)` — same rules as Android/Dart
+- [ ] `attachImageIfPresent(userInfo:to:)` — download `image_url`, create `UNNotificationAttachment`
+- [ ] **Delivery order:** attach image and call `completion(enrichedContent)` **before** async delivery metric POST
+- [ ] Image attachment runs even when `delivery_message_id`, API key, or `person_id` are missing
+- [ ] Delivery metric is fire-and-forget after content is delivered (display not blocked)
+- [ ] `OpenCdpNotificationExtensionSession` — expiration fallback + double-completion guard for NSE targets
+- [ ] Backend must set `aps.mutable-content: 1` when `image_url` is present
+
+### Shared payload helpers
+
+- [ ] `OpenCDPPushPayload.parseImageUrl(data)` exported on Android and iOS (same normalization as Flutter Dart helper)
+
+### Manual E2E (all platforms)
+
+- [ ] Android 12+ collapsed: app icon left, image thumbnail right; expanded: large image at bottom
+- [ ] Android API 24–30: left-side image preview when collapsed
+- [ ] Android: data-only FCM with `image_url` + actions; failed download → text-only notification
+- [ ] iOS: NSE + `mutable-content: 1` → image visible in notification
+- [ ] iOS: image shows even when delivery metric prerequisites are missing

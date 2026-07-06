@@ -92,10 +92,14 @@ class OpenCDPSDKImplementation {
 
     _isInitialized = true;
 
-    // // Track device attributes if enabled - moved after initialization
-    // if (config.autoTrackDeviceAttributes) {
-    //   await _trackDeviceAttributes();
-    // }
+    if (config.autoTrackDeviceAttributes) {
+      final fcmToken = prefs.getString('fcm_token');
+      final apnToken = prefs.getString('apn_token');
+      if ((fcmToken != null && fcmToken.isNotEmpty) ||
+          (apnToken != null && apnToken.isNotEmpty)) {
+        await registerDevice(fcmToken: fcmToken, apnToken: apnToken);
+      }
+    }
   }
 
   /// Ensure SDK is initialized
@@ -541,6 +545,12 @@ class OpenCDPSDKImplementation {
       if (!_validatePushToken(apnToken, 'apnToken')) {
         return;
       }
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        await prefs.setString('fcm_token', fcmToken);
+      }
+      if (apnToken != null && apnToken.isNotEmpty) {
+        await prefs.setString('apn_token', apnToken);
+      }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
 
@@ -604,6 +614,17 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
+
+      if (config.sendToCustomerIo) {
+        try {
+          final token = fcmToken ?? apnToken;
+          if (token != null && token.isNotEmpty) {
+            cio.CustomerIO.instance.registerDeviceToken(deviceToken: token);
+          }
+        } catch (e) {
+          _handleNestedError('Customer.io registerDeviceToken error', e);
+        }
+      }
     } catch (e) {
       _handleError('Error registering device', e);
     }

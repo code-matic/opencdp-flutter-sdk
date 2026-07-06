@@ -410,6 +410,16 @@ class OpenCDPSDK {
     );
   }
 
+  /// Subscribe to in-app message delivery events.
+  void addInAppListener(InAppMessageListener listener) {
+    _inAppManager?.addListener(listener);
+  }
+
+  /// Unsubscribe from in-app message delivery events.
+  void removeInAppListener(InAppMessageListener listener) {
+    _inAppManager?.removeListener(listener);
+  }
+
   /// Sync in-app messages for the current person and context.
   Future<List<InAppMessage>> syncInAppMessages({
     required String screen,
@@ -587,6 +597,15 @@ class OpenCDPSDK {
       baseUrlOverride: _implementation?.config.baseUrl,
       appGroup: appGroup,
     );
+  }
+
+  /// Routes push delivery to foreground or background handlers for doc symmetry.
+  static Future<void> handlePushDelivery(Map<String, dynamic> data) async {
+    if (_implementation != null) {
+      await handleForegroundPushDelivery(data);
+    } else {
+      await handleBackgroundPushDelivery(data);
+    }
   }
 
   /// Android-only helper to render a notification with action buttons using

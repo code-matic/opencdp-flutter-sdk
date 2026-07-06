@@ -2,6 +2,16 @@
 
 A Flutter SDK for integrating with the OpenCDP platform. Track user events, screen views, and device attributes with automatic lifecycle tracking and dual write to Customer.io 
 
+## Documentation
+
+Published guides on [docs.opencdp.io](https://docs.opencdp.io):
+
+- [Mobile E2E integration guide](https://docs.opencdp.io/integrations/mobile/e2e-guide) — step-by-step push and in-app testing
+- [Identity and devices](https://docs.opencdp.io/integrations/mobile/identity-and-devices) — person ID vs device ID vs push token
+- [Rich push images](https://docs.opencdp.io/integrations/mobile/push-big-picture) — image layout by platform
+- [Flutter SDK docs](https://docs.opencdp.io/integrations/flutter/intro)
+- [Example app guide](https://docs.opencdp.io/integrations/flutter/examples/example-app)
+
 ## Features
 
 - User identification and tracking

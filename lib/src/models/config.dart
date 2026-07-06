@@ -190,7 +190,10 @@ class OpenCDPConfig {
   /// Whether to track application lifecycle events
   final bool trackApplicationLifecycleEvents;
 
-  /// Screen view tracking configuration
+  /// Screen view tracking configuration.
+  ///
+  /// **Deprecated:** Not read by the SDK; use [autoTrackScreens] instead.
+  @Deprecated('Not implemented; use autoTrackScreens instead')
   final ScreenView screenViewUse;
 
   /// Whether the SDK should automatically deliver in-app messages on

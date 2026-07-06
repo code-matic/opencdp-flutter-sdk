@@ -19,17 +19,14 @@ class _ConfigScreenState extends State<ConfigScreen> {
   final _formKey = GlobalKey<FormState>();
   // Default points at a typical local data-gateway. Change for staging/prod.
   final _endpointController = TextEditingController(
-    text:
-        "https://cdp-data-gateway-749119130796.europe-west1.run.app/data-gateway",
+    text: 'https://api.opencdp.io/gateway/data-gateway',
   );
-  final _apiKeyController =
-      TextEditingController(text: 'apikey_1758285755732_0ehl3sye');
-  final _personIdController =
-      TextEditingController(text: 'in-app-message-test-user2');
-  final _firstNameController = TextEditingController(text: 'Goodness');
-  final _lastNameController = TextEditingController(text: 'Richards');
+  final _apiKeyController = TextEditingController();
+  final _personIdController = TextEditingController(text: 'user_123');
+  final _firstNameController = TextEditingController(text: 'Test');
+  final _lastNameController = TextEditingController(text: 'User');
   final _emailController = TextEditingController(
-    text: 'richards+inappmessage@codematic.io',
+    text: 'user@example.com',
   );
   bool _busy = false;
 
