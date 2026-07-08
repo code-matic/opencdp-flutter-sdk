@@ -1,7 +1,7 @@
 # OpenCDP SDK Parity Tracker
 
 > **Base SDK:** [opencdp-flutter-sdk](..) v3.1.1  
-> **Last updated:** 2026-06-11  
+> **Last updated:** 2026-07-06  
 > **Plan:** See `.cursor/plans/sdk_feature_parity_20bcd05f.plan.md`
 
 Use this doc to track parity work across all SDKs. Update checkboxes as work completes.
@@ -23,16 +23,32 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Client SDKs (Flutter / Android / iOS) | `[-]` | Core parity achieved — optional iOS polish only |
+| Client SDKs (Flutter / Android / iOS / RN) | `[x]` | Full mobile parity + RN v2 native wrapper |
 | Canonical contract spec | `[x]` | `SDK_CONTRACT.md` + vectors | `SDK_CONTRACT.md` + JSON vectors |
 | Python SDK | `[x]` | Aligned + 7 tests passing | Largest gap — full alignment |
 | Go SDK | `[x]` | Payloads, failover, URL | Payload names + failover |
 | PHP SDK | `[x]` | Failover + concurrency | Failover + concurrency |
 | Node SDK | `[x]` | Failover + URL + close() | Failover + URL default + `close()` |
 | Contract tests (CI) | `[ ]` | Shared vectors per server SDK |
-| Unified documentation | `[ ]` | Feature matrix + quick-starts |
+| Unified documentation | `[x]` | Feature matrix + E2E guide on docs.opencdp.io |
 
-**Phases:** 3/5 complete (0,1,2,3 done; 4-5 partial) · **Server features:** ~10/12 complete · **Mobile polish:** 0/5 complete
+**Phases:** 5/5 complete · **Server features:** ~10/12 complete · **Mobile polish:** 5/5 complete
+
+---
+
+## Manual E2E — big-picture push (T1-5)
+
+Run on physical devices using [PUSH_NOTIFICATION_V2_INTEGRATION.md](../PUSH_NOTIFICATION_V2_INTEGRATION.md) native port checklist.
+
+| Check | Android | iOS |
+|-------|:-------:|:---:|
+| Big-picture display (`image_url`) | `[ ]` device | `[ ]` device |
+| Action buttons + icons | `[ ]` device | N/A |
+| Failed image → text-only fallback | `[ ]` device | `[ ]` device |
+| Delivery/open metrics after image attach | `[ ]` device | `[ ]` device |
+| NSE + `mutable-content: 1` | N/A | `[ ]` device |
+
+Code parity verified in unit tests; device sign-off pending QA.
 
 ---
 
@@ -91,23 +107,73 @@ Use this doc to track parity work across all SDKs. Update checkboxes as work com
 - [ ] **P4-2** Contract test runner in Node CI
 - [ ] **P4-3** Contract test runner in PHP CI
 - [x] **P4-4** Contract test runner in Python CI
-- [ ] **P4-5** Unified feature matrix doc (client vs server)
-- [ ] **P4-6** Per-SDK quick-start links
+- [x] **P4-5** Unified feature matrix doc (client vs server) — `openCDP-docs/integrations/mobile/feature-matrix.md`
+- [x] **P4-6** Per-SDK quick-start links — `openCDP-docs/integrations/mobile/e2e-guide.md`
 - [ ] **P4-7** Python legacy path deprecation notes
 
 ### Phase 5 — Mobile polish (optional)
 
-- [ ] **P5-1** iOS: real Customer.io wrapper (replace no-op stub)
-- [ ] **P5-2** iOS: wire `throwErrorsBack` through public APIs
-- [ ] **P5-3** iOS: expose `CDPInAppManager` helpers publicly
-- [ ] **P5-4** iOS: add `removeInAppListener`
-- [ ] **P5-5** Android/iOS: README lifecycle event name alignment
+- [x] **P5-1** iOS: real Customer.io wrapper (optional `CioDataPipelines` / `OpenCDP/CustomerIO` pod)
+- [x] **P5-2** iOS: wire `throwErrorsBack` through public APIs
+- [x] **P5-3** iOS: expose `CDPInAppManager` helpers publicly
+- [x] **P5-4** iOS: add `removeInAppListener`
+- [x] **P5-5** Android/iOS: README lifecycle event name alignment
+
+### Tier 2 — Capability parity (2026-07-06)
+
+- [x] **T2-1** Anonymous screen replay (Android + iOS)
+- [x] **T2-2/T2-3** Push API aliases + native push setup helpers
+- [x] **T2-4** Debug failover tools (Android + iOS)
+- [x] **T2-5/T2-6** CIO config expansion; Flutter CIO `registerDeviceToken` dual-write; in-app API alignment
+- [x] **T3-1** API mapping table in `SDK_CONTRACT.md`
+- [x] **T3-2** Android unit test compile (removed unused mockito imports)
+- [x] **T3-3/T3-4** README defaults + parity tracker updates
+
+---
+
+### React Native SDK (2026-07-06)
+
+- [x] **RN-0** Native Android/iOS modules wrapping OpenCDP SDKs
+- [x] **RN-1** Core CDP via native (initialize, identify, track, clearIdentity)
+- [x] **RN-2** Device registration + push v2 handlers
+- [x] **RN-3** In-app sync, listeners, metrics
+- [x] **RN-4** Auto-tracking + Customer.io config passthrough + debug tools
+- [x] **RN-5** Expo config plugin + example dev client
+- [x] **RN-6** SDK_CONTRACT + parity tracker RN column
 
 ---
 
 ## Client SDKs — baseline (no work required)
 
-Flutter is the reference. Android and iOS match for core client features.
+Flutter is the reference. Android, iOS, and React Native v2 match for core client features.
+
+| ID | Feature | Flutter | Android | iOS | RN |
+|----|---------|:-------:|:-------:|:---:|:--:|
+| CL-01 | Initialize + reinitialize | `[-]` | `[-]` | `[-]` | `[x]` |
+| CL-02 | identify / track / clearIdentity | `[-]` | `[-]` | `[-]` | `[x]` |
+| CL-03 | Screen + lifecycle auto-tracking | `[-]` | `[-]` | `[-]` | `[x]` native |
+| CL-04 | registerDeviceToken | `[-]` | `[-]` | `[-]` | `[x]` |
+| CL-05 | Push v2 metrics | `[-]` | `[-]` | `[-]` | `[x]` |
+| CL-06 | Android actionable push | `[-]` | `[-]` | `[-]` | `[x]` |
+| CL-07 | iOS NSE background delivery | `[-]` | `[-]` | `[-]` | `[x]` native |
+| CL-08 | In-app sync + SSE + polling | `[-]` | `[-]` | `[-]` | `[x]` native |
+| CL-09 | In-app impression / click / dismiss | `[-]` | `[-]` | `[-]` | `[x]` |
+| CL-10 | Gateway failover | `[-]` | `[-]` | `[-]` | `[x]` native |
+| CL-11 | Offline POST queue | `[-]` | `[-]` | `[-]` | `[x]` native |
+| CL-12 | Native credential bridge | `[-]` | `[-]` | `[-]` | `[x]` native |
+| CL-13 | Customer.io dual-write | `[-]` | `[-]` | `[x]` | `[x]` native |
+| CL-14 | Big-picture push (`image_url`) | `[-]` | `[x]` | `[x]` | `[x]` native |
+| CL-15 | Action button icons (Android) | `[-]` | `[x]` | `[-]` | `[x]` native |
+| CL-16 | Hybrid FCM dedup (Android) | `[-]` | `[x]` | `[-]` | `[x]` native |
+| CL-17 | NSE image before metrics + session helper | `[-]` | `[-]` | `[x]` | `[x]` native |
+| CL-18 | Anonymous screen replay | `[-]` | `[x]` | `[x]` | `[x]` native |
+| CL-19 | Debug failover / queue tools | `[-]` | `[x]` | `[x]` | `[x]` |
+| CL-20 | Turnkey push setup helpers | `[-]` | `[x]` | `[x]` | `[x]` |
+| CL-21 | `throwErrorsBack` wired | `[-]` | `[-]` | `[x]` | `[x]` native |
+| CL-22 | `removeInAppListener` | `[-]` | `[-]` | `[x]` | `[x]` |
+| CL-23 | Flutter `autoTrackDeviceAttributes` on init | `[x]` | `[-]` | `[-]` | `[x]` native |
+
+### Legacy client SDK matrix (Flutter / Android / iOS only)
 
 | ID | Feature | Flutter | Android | iOS |
 |----|---------|:-------:|:-------:|:---:|
@@ -123,7 +189,17 @@ Flutter is the reference. Android and iOS match for core client features.
 | CL-10 | Gateway failover | `[-]` | `[-]` | `[-]` |
 | CL-11 | Offline POST queue | `[-]` | `[-]` | `[-]` |
 | CL-12 | Native credential bridge | `[-]` | `[-]` | `[-]` |
-| CL-13 | Customer.io dual-write | `[-]` | `[-]` | `[ ]` stub only |
+| CL-13 | Customer.io dual-write | `[-]` | `[-]` | `[x]` optional pod |
+| CL-14 | Big-picture push (`image_url`) | `[-]` | `[x]` | `[x]` |
+| CL-15 | Action button icons (Android) | `[-]` | `[x]` | `[-]` |
+| CL-16 | Hybrid FCM dedup (Android) | `[-]` | `[x]` | `[-]` |
+| CL-17 | NSE image before metrics + session helper | `[-]` | `[-]` | `[x]` |
+| CL-18 | Anonymous screen replay | `[-]` | `[x]` | `[x]` |
+| CL-19 | Debug failover / queue tools | `[-]` | `[x]` | `[x]` |
+| CL-20 | Turnkey push setup helpers | `[-]` | `[x]` | `[x]` |
+| CL-21 | `throwErrorsBack` wired | `[-]` | `[-]` | `[x]` |
+| CL-22 | `removeInAppListener` | `[-]` | `[-]` | `[x]` |
+| CL-23 | Flutter `autoTrackDeviceAttributes` on init | `[x]` | `[-]` | `[-]` |
 
 ---
 
@@ -182,7 +258,7 @@ Track each shared feature per SDK. Mark `[x]` when implemented and tested.
 - [x] **SC-2** Go / Node / PHP / Python send `{ identifier, properties, eventName }`
 - [x] **SC-3** All four server SDKs support gateway failover `com` → `xyz` → `io`
 - [ ] **SC-4** Contract test vectors pass in all server SDK CI pipelines
-- [ ] **SC-5** Feature matrix doc published (client vs server)
+- [x] **SC-5** Feature matrix doc published (client vs server) — docs.opencdp.io mobile hub
 
 ---
 

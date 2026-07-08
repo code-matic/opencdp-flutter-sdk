@@ -16,7 +16,7 @@ import kotlin.random.Random
  * [PushNotificationTracker] host loop, without persistent queue).
  */
 internal object OpenCdpPushDeliveryClient {
-    private const val TAG = "OpenCDP"
+    private const val TAG = "OpenCdpPush"
     private const val CONNECT_TIMEOUT_MS = 8000
     private const val READ_TIMEOUT_MS = 8000
     private const val MAX_RETRIES = 3
@@ -71,6 +71,7 @@ internal object OpenCdpPushDeliveryClient {
         body: JSONObject,
         baseUrls: List<String>,
     ): Boolean {
+        Log.d(TAG, "postDeliveryMetric body=$body hosts=$baseUrls")
         val hosts = if (baseUrls.isEmpty()) {
             OpenCdpNotificationContracts.DEFAULT_GATEWAY_HOSTS
         } else {
@@ -83,7 +84,7 @@ internal object OpenCdpPushDeliveryClient {
                 try {
                     val status = postOnce(apiKey, body, root)
                     if (status in 200..299) {
-                        Log.d(TAG, "Push metric sent via $root (status=$status)")
+                        Log.d(TAG, "Push metric sent via $root (status=$status) body=$body")
                         return true
                     }
                     Log.w(

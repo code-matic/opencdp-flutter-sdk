@@ -86,3 +86,13 @@ and watch the in-app message arrive (or hit **Sync now**).
 - Models: `lib/src/models/in_app_message.dart`
 - Docs: `doc/in_app_messaging.md`
 - Public API: `lib/open_cdp_flutter_sdk.dart`
+
+## Published documentation
+
+Step-by-step integration and testing guides:
+
+- [Mobile E2E guide](https://docs.opencdp.io/integrations/mobile/e2e-guide)
+- [Flutter example app (docs)](https://docs.opencdp.io/integrations/flutter/examples/example-app)
+- [Identity and devices](https://docs.opencdp.io/integrations/mobile/identity-and-devices)
+
+Enter your own CDP API key, gateway URL, and test person ID on the config screen — do not use committed placeholder values from source.

@@ -92,6 +92,33 @@ Client-only (not required on server SDKs): `/v1/message/delivery/push`, `/v1/in-
 
 When enabled, mirror `identify`, `track`, and `registerDevice` to Customer.io. CIO failures must not fail the primary CDP request unless `failOnException` is true for validation errors only.
 
+## Client API mapping (Flutter reference)
+
+Capability parity across mobile SDKs — method names differ; behavior should match.
+
+| Capability | Flutter | Android | iOS | React Native |
+|------------|---------|---------|-----|--------------|
+| Initialize | `OpenCDPSDK.initialize(config:)` | `OpenCDP.initialize(context, config)` | `OpenCDP.shared.initialize(config:)` | `OpenCDPSDK.initialize({ config })` |
+| Identify | `OpenCDPSDK.instance.identify(...)` | `OpenCDP.identify(...)` | `OpenCDP.shared.identify(...)` throws when `throwErrorsBack` | `OpenCDPSDK.instance.identify(...)` |
+| Current user | `OpenCDPSDK.instance.userId` | `OpenCDP.userId` | `OpenCDP.shared.currentUserId` | `OpenCDPSDK.instance.userId` |
+| Track event | `OpenCDPSDK.instance.track(...)` | `OpenCDP.track(...)` | `OpenCDP.shared.track(...)` throws when `throwErrorsBack` | `OpenCDPSDK.instance.track(...)` |
+| Screen view | `OpenCDPSDK.instance.trackScreenView(...)` | `OpenCDP.trackScreenView(...)` | `OpenCDP.shared.trackScreenView(...)` | `OpenCDPSDK.instance.trackScreenView(...)` |
+| Register device | `OpenCDPSDK.instance.registerDeviceToken(...)` | `OpenCDP.registerDeviceToken(...)` | `OpenCDP.shared.registerDeviceToken(...)` throws when `throwErrorsBack` | `OpenCDPSDK.instance.registerDeviceToken(...)` |
+| Clear identity | `OpenCDPSDK.instance.clearIdentity()` | `OpenCDP.clearIdentity()` | `OpenCDP.shared.clearIdentity()` | `OpenCDPSDK.instance.clearIdentity()` |
+| Push delivery (fg) | `OpenCDPSDK.handleForegroundPushDelivery(data)` | `OpenCDP.handleForegroundPushDelivery(data)` / alias `handlePushDelivery` | `OpenCDP.shared.handleForegroundPushDelivery(data)` | `OpenCDPSDK.handleForegroundPushDelivery(data)` |
+| Push delivery (bg) | `OpenCDPSDK.handleBackgroundPushDelivery(data)` | `OpenCDP.handleBackgroundPushDelivery(data)` | `OpenCDP.shared.handleBackgroundPushDelivery(data)` | `OpenCDPSDK.handleBackgroundPushDelivery(data)` |
+| Push open | `OpenCDPSDK.handlePushNotificationOpen(data)` | `OpenCDP.handlePushOpen(data)` / alias `handlePushNotificationOpen` | `OpenCDP.shared.handlePushNotificationOpen(data)` | `OpenCDPSDK.handlePushNotificationOpen(data)` |
+| Push action click | `OpenCDPSDK.handlePushActionClick(data, actionId)` | `OpenCDP.handlePushActionClick(data, actionId)` | `OpenCDP.shared.handlePushActionClick(data, actionId:)` | `OpenCDPSDK.handlePushActionClick(data, actionId)` |
+| Android actionable UI | `OpenCDPSDK.showAndroidActionableNotification(...)` | `OpenCDP.showActionableNotification(...)` | N/A (use NSE + `OpenCdpPushExtensionHelper`) | `OpenCDPSDK.showActionableNotification(...)` |
+| Pending launch (Android) | `OpenCDPSDK.handlePendingNotificationLaunch()` | `OpenCDP.handlePendingNotificationLaunch(context)` | N/A | `OpenCDPSDK.handlePendingNotificationLaunch()` |
+| Turnkey push setup | `OpenCDPSDK.setupPushNotifications(...)` | `OpenCDPPushSetup` helpers | `OpenCDPPushSetup.setupPushNotifications(...)` | `OpenCDPSDK.setupPushNotifications(...)` |
+| In-app listener | `OpenCDPSDK.instance.addInAppListener(...)` | `OpenCDP.addInAppListener(...)` | `OpenCDP.shared.addInAppListener(...)` | `OpenCDPSDK.instance.addInAppListener(...)` |
+| Remove in-app listener | `OpenCDPSDK.instance.removeInAppListener(...)` | `OpenCDP.removeInAppListener(...)` | `OpenCDP.shared.removeInAppListener(...)` | `OpenCDPSDK.instance.removeInAppListener(...)` |
+| Debug failover | `OpenCDPSDK.instance.debugTestHostFailover()` | `OpenCDP.debugTestHostFailover()` | `OpenCDP.shared.debugTestHostFailover()` (#if DEBUG) | `OpenCDPSDK.instance.debugTestHostFailover()` |
+| Debug queue retry | `OpenCDPSDK.instance.debugTestQueueRetry()` | `OpenCDP.debugTestQueueRetry()` | `OpenCDP.shared.debugTestQueueRetry()` (#if DEBUG) | `OpenCDPSDK.instance.debugTestQueueRetry()` |
+| Debug drain queue | `OpenCDPSDK.instance.debugDrainQueue()` | `OpenCDP.debugDrainQueue()` | `OpenCDP.shared.debugDrainQueue()` (#if DEBUG) | `OpenCDPSDK.instance.debugDrainQueue()` |
+| Customer.io dual-write | `sendToCustomerIo` + `customerIo` config | `sendToCustomerIo` + `customerIoConfig` | `sendToCustomerIo` + `customerIo` (optional `OpenCDP/CustomerIO` pod) | `sendToCustomerIo` + `customerIo` / `customerIoConfig` (native) |
+
 ## Conformance vectors
 
 See [conformance_vectors.json](./conformance_vectors.json) for golden request bodies used in SDK tests.

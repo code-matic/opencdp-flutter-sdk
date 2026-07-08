@@ -1,5 +1,50 @@
 # Changelog
 
+## [3.2.2] - 2026-07-02
+
+### Fixed
+
+* **Android big-picture collapsed layout (API 31+)** — use `showBigPictureWhenCollapsed(true)` so `image_url` renders as a right-side thumbnail when collapsed; app icon stays via `setSmallIcon`. Pre-API 31 keeps left-side `setLargeIcon` fallback.
+* **Android notification small icon** — `resolveSmallIcon` also checks host `ic_notification` drawable (common FCM manifest name).
+
+## [3.2.1] - 2026-07-02
+
+### Added
+
+* **`OpenCDPSDK.handlePendingNotificationLaunch()`** — consumes SDK-rendered Android notification taps for routing via `onNotificationOpen` (native receiver already posts open/click metrics).
+* **`OpenCdpNotificationExtensionSession`** — NSE template helper with safe expiration fallback and double-completion guard.
+
+### Fixed
+
+* **Android hybrid FCM deduplication** — implemented `cancel(0)`, active-notification title/body scan, and `delivery_message_id` notification tag in `OpenCdpNotificationRenderer`.
+* **iOS NSE display latency** — `OpenCdpPushExtensionHelper` delivers enriched content before async delivery-metric POST.
+* **iOS NSE expiration** — template uses `OpenCdpNotificationExtensionSession` so timeout delivers image-enriched content, not the pre-helper copy.
+* **iOS background delivery metrics** — `appGroup` persisted at init for background-isolate credential reads when SDK instance is unavailable.
+* **`agentDebugLog`** — gated behind `kDebugMode` so release builds do not POST debug telemetry on every background push.
+
+## [3.2.0] - 2026-07-01
+
+### Added
+
+* **Turnkey push setup** — `OpenCDPSDK.configurePushBackground`, `OpenCDPSDK.firebaseBackgroundMessageHandler`, and `OpenCDPSDK.setupPushNotifications` wire FCM listeners, Android big-picture display, and delivery/open tracking in one call.
+* **Android action button icons** — `actions[].icon` HTTPS URLs are downloaded and rendered on notification action buttons.
+
+### Fixed
+
+* **Android hybrid FCM deduplication** — `showAndroidActionableNotification` cancels FCM auto-posts (notification id `0`), matching title/body tray entries (including `EXTRA_BIG_TEXT`), and posts with a `delivery_message_id` notification tag so rich notifications replace plain FCM duplicates. Prefer data-only FCM for Android rich pushes.
+* **Android rich push image** — restored `BigPictureStyle` layout: full image on expand (`bigLargeIcon(null)`), `showBigPictureWhenCollapsed(true)` for right-side collapsed thumbnail on API 31+, and `setLargeIcon` thumbnail fallback on API 24–30 only.
+* **iOS rich push images** — `OpenCdpPushExtensionHelper` attaches `image_url` before delivery-metric guards so images appear even when tracking prerequisites are missing.
+* **URL normalization** — `OpenCDPPushPayload.parseImageUrl` and iOS `parseImageUrl` prepend `https://` when the scheme is missing (matching Android).
+
+## [3.1.3] - 2026-07-01
+
+### Added
+
+* **Push big-picture (`image_url`)**
+  * Android `OpenCDPSDK.showAndroidActionableNotification(...)` now downloads `data.image_url` and renders a `BigPictureStyle` notification (text-only fallback when download fails).
+  * iOS `OpenCdpPushExtensionHelper` attaches `image_url` as a `UNNotificationAttachment` in the Notification Service Extension (requires `aps.mutable-content: 1` from the backend).
+  * **`OpenCDPPushPayload.parseImageUrl`** — helper for host apps that display pushes with their own notification plugin.
+
 ## [3.1.1] - 2026-05-18
 
 ### Changed

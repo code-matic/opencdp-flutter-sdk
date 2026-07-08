@@ -17,7 +17,7 @@ class CDPPushAction {
   final String? icon;
 }
 
-/// Helpers for push notification v2 payloads (`custom_data`, `actions`).
+/// Helpers for push notification v2 payloads (`custom_data`, `actions`, `image_url`).
 class OpenCDPPushPayload {
   OpenCDPPushPayload._();
 
@@ -95,5 +95,77 @@ class OpenCDPPushPayload {
       ));
     }
     return out;
+  }
+
+  /// Normalizes an image URL string, prepending `https://` when no scheme is set.
+  static String normalizeImageUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return 'https://$trimmed';
+  }
+
+  /// Parses `data['image_url']` when the backend sends a rich push image URL.
+  ///
+  /// Returns `null` if missing or blank.
+  static String? parseImageUrl(Map<String, dynamic> data) {
+    final raw = data['image_url'];
+    if (raw == null) return null;
+    final url = raw.toString().trim();
+    return url.isEmpty ? null : normalizeImageUrl(url);
+  }
+
+  /// Resolves a push image URL from CDP `data.image_url` and common FCM fields.
+  ///
+  /// Checks, in order: `data.image_url`, `data.image`, `data.gcm.notification.image`,
+  /// [androidNotificationImageUrl] (`notification.android.image`), and
+  /// [appleNotificationImageUrl].
+  static String? resolveImageUrl(
+    Map<String, dynamic> data, {
+    String? androidNotificationImageUrl,
+    String? appleNotificationImageUrl,
+  }) {
+    final fromCdp = parseImageUrl(data);
+    if (fromCdp != null) return fromCdp;
+
+    for (final key in const [
+      'image',
+      'gcm.notification.image',
+      'notification_image',
+    ]) {
+      final raw = data[key];
+      if (raw == null) continue;
+      final url = raw.toString().trim();
+      if (url.isNotEmpty) return normalizeImageUrl(url);
+    }
+
+    final android = androidNotificationImageUrl?.trim();
+    if (android != null && android.isNotEmpty) {
+      return normalizeImageUrl(android);
+    }
+
+    final apple = appleNotificationImageUrl?.trim();
+    if (apple != null && apple.isNotEmpty) {
+      return normalizeImageUrl(apple);
+    }
+
+    return null;
+  }
+
+  /// Writes resolved `image_url` into [data] when found via [resolveImageUrl].
+  static void enrichDataWithImageUrl(
+    Map<String, dynamic> data, {
+    String? androidNotificationImageUrl,
+    String? appleNotificationImageUrl,
+  }) {
+    final resolved = resolveImageUrl(
+      data,
+      androidNotificationImageUrl: androidNotificationImageUrl,
+      appleNotificationImageUrl: appleNotificationImageUrl,
+    );
+    if (resolved != null) {
+      data.putIfAbsent('image_url', () => resolved);
+    }
   }
 }

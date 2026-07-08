@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -14,6 +16,9 @@ import 'package:open_cdp_flutter_sdk/src/models/metric_event.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/lifecycle_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/screen_tracker.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/http_client.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/agent_debug_log.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/push_notification_payload.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/push_notification_setup.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 
 export 'src/in_app/in_app_manager.dart';
@@ -23,6 +28,7 @@ export 'src/models/metric_event.dart';
 export 'src/models/validation_exception.dart';
 export 'src/utils/http_client.dart' show CDPException;
 export 'src/utils/push_notification_payload.dart';
+export 'src/utils/push_notification_setup.dart';
 
 String? _effectivePushActionId(
   Map<String, dynamic> data,
@@ -77,6 +83,13 @@ class OpenCDPSDK {
   static CDPScreenTracker? _screenTracker;
   static CDPLifecycleTracker? _lifecycleTracker;
   static CDPInAppManager? _inAppManager;
+  static OpenCDPFirebaseInitializer? _firebaseInitializerForBackground;
+  static String _backgroundPushChannelName = 'CDP Notifications';
+  static String _backgroundPushChannelDescription = 'Push notifications from CDP';
+  static StreamSubscription<RemoteMessage>? _foregroundPushSubscription;
+  static StreamSubscription<RemoteMessage>? _openedFromBackgroundSubscription;
+  static String? _persistedIOSAppGroup;
+  static OpenCDPPushOpenCallback? _onNotificationOpenCallback;
 
   /// Get the singleton instance of the SDK
   static OpenCDPSDK get instance {
@@ -114,6 +127,8 @@ class OpenCDPSDK {
     _implementation = null;
     _screenTracker = null;
     _lifecycleTracker = null;
+    _persistedIOSAppGroup = null;
+    _onNotificationOpenCallback = null;
 
     debugPrint('[CDP] SDK reset for testing');
   }
@@ -155,6 +170,7 @@ class OpenCDPSDK {
 
         // Create new instance
         _instance = OpenCDPSDK._();
+        _persistedIOSAppGroup = config.iOSAppGroup;
         _implementation = await OpenCDPSDKImplementation.create(
             config: config, httpClient: httpClient);
 
@@ -394,6 +410,16 @@ class OpenCDPSDK {
     );
   }
 
+  /// Subscribe to in-app message delivery events.
+  void addInAppListener(InAppMessageListener listener) {
+    _inAppManager?.addListener(listener);
+  }
+
+  /// Unsubscribe from in-app message delivery events.
+  void removeInAppListener(InAppMessageListener listener) {
+    _inAppManager?.removeListener(listener);
+  }
+
   /// Sync in-app messages for the current person and context.
   Future<List<InAppMessage>> syncInAppMessages({
     required String screen,
@@ -483,6 +509,11 @@ class OpenCDPSDK {
   /// Handles a delivered push notification when app is in foreground
   static Future<void> handleForegroundPushDelivery(
       Map<String, dynamic> data) async {
+    if (kDebugMode) {
+      debugPrint(
+        '[CDP] handleForegroundPushDelivery payload: ${jsonEncode(data)}',
+      );
+    }
     if (_implementation == null) {
       debugPrint(
           '[CDP] ERROR: Cannot track foreground push delivery - SDK not initialized. Call OpenCDPSDK.initialize() first.');
@@ -497,6 +528,14 @@ class OpenCDPSDK {
     final deliverySendContextId = data['delivery_send_context_id'] ?? "";
     final deliverySendContext = data['delivery_send_context'] ?? "";
 
+    if (kDebugMode) {
+      debugPrint(
+        '[CDP] handleForegroundPushDelivery tracking delivered: '
+        'messageId=$deliveryMessageId context=$deliverySendContext '
+        'contextId=$deliverySendContextId (SDK instance)',
+      );
+    }
+
     await _implementation!.trackPushNotificationMetric(
       MetricEvent.delivered,
       deliveryMessageId,
@@ -509,6 +548,11 @@ class OpenCDPSDK {
   /// Handles a delivered push notification when app is in background
   static Future<void> handleBackgroundPushDelivery(
       Map<String, dynamic> data) async {
+    if (kDebugMode) {
+      debugPrint(
+        '[CDP] handleBackgroundPushDelivery payload: ${jsonEncode(data)}',
+      );
+    }
     final deliveryMessageId = data['delivery_message_id'] as String?;
     if (deliveryMessageId == null || deliveryMessageId.isEmpty) {
       debugPrint(
@@ -529,8 +573,18 @@ class OpenCDPSDK {
       debugPrint(
           '[CDP] Using SDK instance API key for background push tracking');
     } else {
+      appGroup = _persistedIOSAppGroup;
       debugPrint(
           '[CDP] SDK not initialized, will try to use stored API key for background push tracking');
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[CDP] handleBackgroundPushDelivery tracking delivered: '
+        'messageId=$deliveryMessageId context=$deliverySendContext '
+        'contextId=$deliverySendContextId '
+        'apiKeySource=${apiKey != null ? 'sdk_instance' : 'native_fallback'}',
+      );
     }
 
     await OpenCDPSDKImplementation.trackBackgroundPushNotificationMetric(
@@ -545,8 +599,21 @@ class OpenCDPSDK {
     );
   }
 
+  /// Routes push delivery to foreground or background handlers for doc symmetry.
+  static Future<void> handlePushDelivery(Map<String, dynamic> data) async {
+    if (_implementation != null) {
+      await handleForegroundPushDelivery(data);
+    } else {
+      await handleBackgroundPushDelivery(data);
+    }
+  }
+
   /// Android-only helper to render a notification with action buttons using
   /// native `NotificationCompat` APIs from push `data` payload.
+  ///
+  /// When `data['image_url']` is present, downloads the image and applies
+  /// `BigPictureStyle`. Falls back to a text-only notification if the download
+  /// fails.
   ///
   /// Useful in `FirebaseMessaging.onBackgroundMessage` when actionable pushes
   /// are sent as data-focused messages and must be displayed by the app.
@@ -557,6 +624,278 @@ class OpenCDPSDK {
   }) async {
     return NativeBridge.showAndroidActionableNotification(
       data: data,
+      channelName: channelName,
+      channelDescription: channelDescription,
+    );
+  }
+
+  /// Configures Firebase initialization for [firebaseBackgroundMessageHandler].
+  ///
+  /// Call once before `FirebaseMessaging.onBackgroundMessage(...)`.
+  static void configurePushBackground({
+    required OpenCDPFirebaseInitializer initializeFirebase,
+  }) {
+    _firebaseInitializerForBackground = initializeFirebase;
+  }
+
+  /// Top-level FCM background handler provided by the SDK.
+  ///
+  /// Register with:
+  /// `FirebaseMessaging.onBackgroundMessage(OpenCDPSDK.firebaseBackgroundMessageHandler)`
+  ///
+  /// Requires [configurePushBackground] so Firebase can initialize in the
+  /// background isolate.
+  @pragma('vm:entry-point')
+  static Future<void> firebaseBackgroundMessageHandler(
+    RemoteMessage message,
+  ) async {
+    // #region agent log
+    await agentDebugLog(
+      'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+      'handler entry',
+      {
+        'dataKeys': message.data.keys.toList(),
+        'rawImageUrl': message.data['image_url']?.toString(),
+        'notificationTitle': message.notification?.title,
+        'hasNotificationBlock': message.notification != null,
+      },
+      hypothesisId: 'H2',
+    );
+    // #endregion
+
+    try {
+      WidgetsFlutterBinding.ensureInitialized();
+      final initializeFirebase = _firebaseInitializerForBackground;
+      if (initializeFirebase != null) {
+        await initializeFirebase();
+      } else {
+        // #region agent log
+        await agentDebugLog(
+          'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+          'firebase initializer missing in background isolate',
+          {},
+          hypothesisId: 'H5',
+        );
+        // #endregion
+      }
+    } catch (e, st) {
+      // #region agent log
+      await agentDebugLog(
+        'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+        'firebase init failed',
+        {'error': e.toString(), 'stack': st.toString()},
+        hypothesisId: 'H1',
+      );
+      // #endregion
+    }
+
+    final data = _effectivePushData(message);
+    final parsedImageUrl = OpenCDPPushPayload.parseImageUrl(data);
+    final shouldDisplay = shouldDisplayAndroidPush(data);
+
+    if (isHybridFcmMessage(message)) {
+      debugPrint(
+        '[CDP] Hybrid FCM payload detected (notification + data blocks). '
+        'Android may auto-display a plain notification before the SDK rich '
+        'notification; prefer data-only FCM for Android rich pushes.',
+      );
+    }
+
+    // #region agent log
+    await agentDebugLog(
+      'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+      'pre display',
+      {
+        'parsedImageUrl': parsedImageUrl,
+        'shouldDisplay': shouldDisplay,
+        'title': data['title']?.toString(),
+        'body': data['body']?.toString(),
+      },
+      hypothesisId: 'H4',
+    );
+    // #endregion
+
+    if (shouldDisplay) {
+      try {
+        final shown = await showAndroidActionableNotification(
+          data,
+          channelName: _backgroundPushChannelName,
+          channelDescription: _backgroundPushChannelDescription,
+        );
+        // #region agent log
+        await agentDebugLog(
+          'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+          'showAndroidActionableNotification result',
+          {'shown': shown, 'imageUrl': parsedImageUrl},
+          hypothesisId: 'H3',
+        );
+        // #endregion
+      } catch (e, st) {
+        // #region agent log
+        await agentDebugLog(
+          'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+          'display failed',
+          {'error': e.toString(), 'stack': st.toString()},
+          hypothesisId: 'H1',
+        );
+        // #endregion
+      }
+    }
+
+    try {
+      await handleBackgroundPushDelivery(data);
+      // #region agent log
+      await agentDebugLog(
+        'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+        'delivery tracking completed',
+        {},
+        hypothesisId: 'H1',
+      );
+      // #endregion
+    } catch (e, st) {
+      // #region agent log
+      await agentDebugLog(
+        'open_cdp_flutter_sdk.dart:firebaseBackgroundMessageHandler',
+        'delivery tracking failed',
+        {'error': e.toString(), 'stack': st.toString()},
+        hypothesisId: 'H1',
+      );
+      // #endregion
+    }
+  }
+
+  /// Registers foreground/open listeners and optionally requests permission.
+  ///
+  /// Call after [initialize]. Also register [firebaseBackgroundMessageHandler]
+  /// with `FirebaseMessaging.onBackgroundMessage` before `runApp`.
+  static Future<void> setupPushNotifications({
+    OpenCDPPushSetupOptions options = const OpenCDPPushSetupOptions(),
+  }) async {
+    _backgroundPushChannelName = options.channelName;
+    _backgroundPushChannelDescription = options.channelDescription;
+    _onNotificationOpenCallback = options.onNotificationOpen;
+
+    if (options.requestPermission) {
+      await FirebaseMessaging.instance.requestPermission();
+    }
+
+    await _foregroundPushSubscription?.cancel();
+    await _openedFromBackgroundSubscription?.cancel();
+
+    _foregroundPushSubscription =
+        FirebaseMessaging.onMessage.listen((message) async {
+      final data = _effectivePushData(message);
+      await _displayAndroidPushIfNeeded(
+        data,
+        channelName: options.channelName,
+        channelDescription: options.channelDescription,
+      );
+      await handleForegroundPushDelivery(data);
+    });
+
+    _openedFromBackgroundSubscription =
+        FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      final data = _effectivePushData(message);
+      options.onNotificationOpen?.call(data);
+      handlePushNotificationOpen(data);
+    });
+
+    final handledPendingLaunch = await handlePendingNotificationLaunch();
+    if (!handledPendingLaunch) {
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        final data = _effectivePushData(initialMessage);
+        options.onNotificationOpen?.call(data);
+        await handlePushNotificationOpen(data);
+      }
+    }
+
+    final onTokenRefreshed = options.onTokenRefreshed;
+    if (onTokenRefreshed != null) {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        await onTokenRefreshed(token);
+      }
+      FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+        await onTokenRefreshed(token);
+      });
+    }
+  }
+
+  /// Consumes a pending SDK-rendered Android notification tap and invokes
+  /// [OpenCDPPushSetupOptions.onNotificationOpen] for routing.
+  ///
+  /// Native [OpenCdpNotificationActionReceiver] already posts open/click
+  /// metrics, so this does **not** call [handlePushNotificationOpen].
+  ///
+  /// Call on app resume if you use a custom background handler instead of
+  /// [setupPushNotifications], or after warm-start from an SDK notification.
+  static Future<bool> handlePendingNotificationLaunch() async {
+    final pending = await NativeBridge.consumeNotificationLaunch();
+    if (pending == null) return false;
+
+    final payloadJson = pending['payload_json'];
+    if (payloadJson == null || payloadJson.isEmpty) return false;
+
+    Map<String, dynamic> data;
+    try {
+      final decoded = jsonDecode(payloadJson);
+      if (decoded is! Map) return false;
+      data = Map<String, dynamic>.from(decoded.cast<String, dynamic>());
+    } catch (e) {
+      debugPrint('[CDP] Failed to parse pending notification payload: $e');
+      return false;
+    }
+
+    final actionId = pending['action_id']?.trim();
+    if (actionId != null && actionId.isNotEmpty) {
+      data['action_id'] = actionId;
+    }
+    final actionLink = pending['action_link']?.trim();
+    if (actionLink != null && actionLink.isNotEmpty) {
+      data['link'] = actionLink;
+    }
+
+    _onNotificationOpenCallback?.call(data);
+    return true;
+  }
+
+  static Map<String, dynamic> _effectivePushData(RemoteMessage message) {
+    final data = Map<String, dynamic>.from(message.data);
+    final notification = message.notification;
+    if (notification != null) {
+      final title = notification.title;
+      final body = notification.body;
+      if (title != null && title.isNotEmpty) {
+        data.putIfAbsent('title', () => title);
+      }
+      if (body != null && body.isNotEmpty) {
+        data.putIfAbsent('body', () => body);
+      }
+      OpenCDPPushPayload.enrichDataWithImageUrl(
+        data,
+        androidNotificationImageUrl: notification.android?.imageUrl,
+        appleNotificationImageUrl: notification.apple?.imageUrl,
+      );
+    } else {
+      OpenCDPPushPayload.enrichDataWithImageUrl(data);
+    }
+    return data;
+  }
+
+  static Future<void> _displayAndroidPushIfNeeded(
+    Map<String, dynamic> data, {
+    required String channelName,
+    required String channelDescription,
+  }) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    if (!shouldDisplayAndroidPush(data)) {
+      return;
+    }
+    await showAndroidActionableNotification(
+      data,
       channelName: channelName,
       channelDescription: channelDescription,
     );

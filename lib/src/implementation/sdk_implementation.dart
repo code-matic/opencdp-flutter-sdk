@@ -92,10 +92,14 @@ class OpenCDPSDKImplementation {
 
     _isInitialized = true;
 
-    // // Track device attributes if enabled - moved after initialization
-    // if (config.autoTrackDeviceAttributes) {
-    //   await _trackDeviceAttributes();
-    // }
+    if (config.autoTrackDeviceAttributes) {
+      final fcmToken = prefs.getString('fcm_token');
+      final apnToken = prefs.getString('apn_token');
+      if ((fcmToken != null && fcmToken.isNotEmpty) ||
+          (apnToken != null && apnToken.isNotEmpty)) {
+        await registerDevice(fcmToken: fcmToken, apnToken: apnToken);
+      }
+    }
   }
 
   /// Ensure SDK is initialized
@@ -541,6 +545,12 @@ class OpenCDPSDKImplementation {
       if (!_validatePushToken(apnToken, 'apnToken')) {
         return;
       }
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        await prefs.setString('fcm_token', fcmToken);
+      }
+      if (apnToken != null && apnToken.isNotEmpty) {
+        await prefs.setString('apn_token', apnToken);
+      }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
 
@@ -604,6 +614,17 @@ class OpenCDPSDKImplementation {
         },
         identifier: _currentIdentifier,
       );
+
+      if (config.sendToCustomerIo) {
+        try {
+          final token = fcmToken ?? apnToken;
+          if (token != null && token.isNotEmpty) {
+            cio.CustomerIO.instance.registerDeviceToken(deviceToken: token);
+          }
+        } catch (e) {
+          _handleNestedError('Customer.io registerDeviceToken error', e);
+        }
+      }
     } catch (e) {
       _handleError('Error registering device', e);
     }
@@ -669,6 +690,21 @@ class OpenCDPSDKImplementation {
         );
       } else {
         personId = _userId;
+      }
+
+      if (kDebugMode) {
+        final apiKeySource = isBackground
+            ? (apiKeyOverride != null && apiKeyOverride.isNotEmpty
+                ? 'override'
+                : 'native')
+            : 'instance';
+        final personIdSource = isBackground ? 'native' : 'sdk_instance';
+        debugPrint(
+          '[CDP] trackBackgroundPushNotificationMetric resolved: '
+          'apiKeySource=$apiKeySource personIdSource=$personIdSource '
+          'personId=${personId != null ? PushNotificationTracker.safeSubstring(personId, 8) : 'null'} '
+          'gatewayHosts=$baseUrls',
+        );
       }
 
       // For background operations, fire-and-forget might be more appropriate

@@ -4,10 +4,15 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import org.json.JSONObject
 import java.time.Instant
 
 class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
+    companion object {
+        private const val TAG = "OpenCdpPush"
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         val payloadJson = intent.getStringExtra(OpenCdpNotificationContracts.EXTRA_PAYLOAD_JSON) ?: return
         val payload = try {
@@ -21,6 +26,19 @@ class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
         val actionLink = intent.getStringExtra(OpenCdpNotificationContracts.EXTRA_ACTION_LINK)
         val notificationId = intent.getIntExtra(OpenCdpNotificationContracts.EXTRA_NOTIFICATION_ID, -1)
 
+        Log.d(
+            TAG,
+            "onReceive action=$action status=$status actionId=$actionId " +
+                "notificationId=$notificationId " +
+                "delivery_message_id=${payload.optString("delivery_message_id", "")}",
+        )
+
+        OpenCdpPendingNotificationLaunch.save(
+            context = context,
+            payloadJson = payloadJson,
+            actionId = actionId,
+            actionLink = actionLink,
+        )
         trackAsync(context, payload, status, actionId)
         openApp(context, payloadJson, actionId, actionLink)
         if (notificationId >= 0) {
@@ -78,9 +96,10 @@ class OpenCdpNotificationActionReceiver : BroadcastReceiver() {
                 }
 
                 val baseUrls = OpenCdpPushDeliveryClient.resolveGatewayHosts(prefs)
-                OpenCdpPushDeliveryClient.postDeliveryMetric(apiKey, body, baseUrls)
-            } catch (_: Throwable) {
-                // best-effort background tracking
+                val sent = OpenCdpPushDeliveryClient.postDeliveryMetric(apiKey, body, baseUrls)
+                Log.d(TAG, "trackAsync metric sent=$sent status=$status")
+            } catch (e: Throwable) {
+                Log.w(TAG, "trackAsync failed: ${e.message}")
             }
         }.start()
     }

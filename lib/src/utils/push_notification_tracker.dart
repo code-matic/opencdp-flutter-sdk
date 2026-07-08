@@ -61,9 +61,12 @@ class PushNotificationTracker {
           return response;
         }
         lastResponse = response;
-        debugPrint(
-          '[CDP] Push metric non-2xx on $root (${response.statusCode}), trying next host.',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            '[CDP] Push metric non-2xx on $root (${response.statusCode}) '
+            'url=${deliveryPushUrl(root)} body=${response.body}',
+          );
+        }
       } catch (e) {
         debugPrint('[CDP] Push metric failed on $root: $e');
       }
@@ -155,7 +158,9 @@ class PushNotificationTracker {
             response.statusCode < 300) {
           if (kDebugMode) {
             debugPrint(
-                '[CDP] Push metric sent successfully: ${_mapEventToStatus(event)}');
+              '[CDP] Push metric sent successfully: ${_mapEventToStatus(event)} '
+              'status=${response.statusCode} body=${response.body}',
+            );
           }
           return true;
         }
