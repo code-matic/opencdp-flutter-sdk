@@ -103,23 +103,74 @@ public class OpenCdpPushExtensionHelper {
         return "https://\(trimmed)"
     }
 
+    /// Resolves a push image URL from CDP `image_url` and common FCM Apple fields.
+    ///
+    /// Order: `image_url`, `image`, `gcm.notification.image`, `notification_image`,
+    /// then nested `fcm_options.image` (FCM APNS delivery of Apple notification image).
     static func parseImageUrl(from userInfo: [AnyHashable: Any]) -> String? {
-        guard let raw = userInfo["image_url"] as? String else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : normalizeImageUrl(trimmed)
+        let flatKeys = [
+            "image_url",
+            "image",
+            "gcm.notification.image",
+            "notification_image",
+        ]
+        for key in flatKeys {
+            if let normalized = normalizedString(userInfo[key]) {
+                return normalizeImageUrl(normalized)
+            }
+        }
+
+        if let imageFromOptions = imageFromFcmOptions(userInfo["fcm_options"]) {
+            return normalizeImageUrl(imageFromOptions)
+        }
+
+        return nil
+    }
+
+    private static func imageFromFcmOptions(_ value: Any?) -> String? {
+        guard let value else { return nil }
+
+        if let options = value as? [String: Any] {
+            return normalizedString(options["image"])
+        }
+        if let options = value as? [AnyHashable: Any] {
+            return normalizedString(options["image"])
+        }
+        if let options = value as? NSDictionary {
+            return normalizedString(options["image"])
+        }
+        return nil
+    }
+
+    private static func normalizedString(_ value: Any?) -> String? {
+        guard let value else { return nil }
+        if let string = value as? String {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        if let string = value as? NSString {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        return nil
     }
 
     private static func attachImageIfPresent(
         userInfo: [AnyHashable: Any],
         to content: UNMutableNotificationContent
     ) {
+        let keys = userInfo.keys.map { String(describing: $0) }.sorted()
+        log("NSE userInfo keys: \(keys.joined(separator: ", "))")
+
         guard let imageUrl = parseImageUrl(from: userInfo),
               let url = URL(string: imageUrl) else {
+            log("NSE no resolvable push image URL in userInfo")
             return
         }
+        log("NSE resolved push image URL: \(imageUrl)")
 
         var request = URLRequest(url: url)
-        request.timeoutInterval = 8
+        request.timeoutInterval = 12
 
         let semaphore = DispatchSemaphore(value: 0)
         var attachment: UNNotificationAttachment?
@@ -154,7 +205,7 @@ public class OpenCdpPushExtensionHelper {
         }
         task.resume()
 
-        if semaphore.wait(timeout: .now() + 8) == .timedOut {
+        if semaphore.wait(timeout: .now() + 12) == .timedOut {
             task.cancel()
             log("Timed out downloading push image")
             return
