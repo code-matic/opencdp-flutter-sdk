@@ -81,8 +81,8 @@ class _OpenCDPInAppInlineSlotState extends State<OpenCDPInAppInlineSlot> {
     final registry = OpenCDPInAppSlotScope.maybeOf(context);
     if (registry == null) return const SizedBox.shrink();
 
-    return ListenableBuilder(
-      listenable: registry,
+    return AnimatedBuilder(
+      animation: registry,
       builder: (context, _) {
         final message = registry.inlineForSlot(widget.slotId);
         if (message == null) return const SizedBox.shrink();
@@ -168,8 +168,8 @@ class OpenCDPInAppInboxSlot extends StatelessWidget {
     final registry = OpenCDPInAppSlotScope.maybeOf(context);
     if (registry == null) return const SizedBox.shrink();
 
-    return ListenableBuilder(
-      listenable: registry,
+    return AnimatedBuilder(
+      animation: registry,
       builder: (context, _) {
         final messages = registry.inboxMessages;
         if (messages.isEmpty) return const SizedBox.shrink();

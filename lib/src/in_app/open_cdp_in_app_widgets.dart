@@ -109,7 +109,9 @@ class OpenCDPInAppBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              // withOpacity kept for Flutter >=3.3.0; withValues needs newer SDK.
+              // ignore: deprecated_member_use
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -147,7 +149,7 @@ class OpenCDPInAppBanner extends StatelessWidget {
                 child: Text(primary.label),
               ),
             IconButton(
-  onPressed: onClose,
+              onPressed: onClose,
               icon: const Icon(Icons.close, size: 18),
               tooltip: 'Dismiss',
             ),
@@ -181,7 +183,7 @@ class OpenCDPInAppInlineCard extends StatelessWidget {
     return Material(
       elevation: 1,
       borderRadius: BorderRadius.circular(12),
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: theme.cardColor,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         child: Row(

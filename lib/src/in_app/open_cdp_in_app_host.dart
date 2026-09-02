@@ -90,6 +90,12 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     return OpenCDPSDK.instance.config?.enableInAppAutoPresent ?? false;
   }
 
+  void _debugLog(String message) {
+    if (OpenCDPSDK.instance.config?.debug ?? false) {
+      debugPrint(message);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -118,14 +124,14 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
   void _attach() {
     final manager = OpenCDPSDK.instance.inApp;
     if (manager == null) {
-      debugPrint(
+      _debugLog(
         '[CDP] OpenCDPInAppHost: in-app manager is null — '
         'enableInAppMessages and initialize the SDK first.',
       );
       return;
     }
     if (!_shouldPresentOverlay) {
-      debugPrint(
+      _debugLog(
         '[CDP] OpenCDPInAppHost: enableInAppAutoPresent is false; '
         'modal/banner skipped (slots still active). '
         'Pass forcePresent: true to present overlays.',
@@ -161,7 +167,7 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
         (widget.onInboxMessage ?? widget.onInlineMessage)?.call(message);
         break;
       case InAppRenderType.unknown:
-        debugPrint(
+        _debugLog(
           '[CDP] OpenCDPInAppHost: skipping unknown render type '
           'for ${message.deliveryId}',
         );

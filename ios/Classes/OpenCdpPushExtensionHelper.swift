@@ -159,15 +159,22 @@ public class OpenCdpPushExtensionHelper {
         userInfo: [AnyHashable: Any],
         to content: UNMutableNotificationContent
     ) {
-        let keys = userInfo.keys.map { String(describing: $0) }.sorted()
-        log("NSE userInfo keys: \(keys.joined(separator: ", "))")
+        #if DEBUG
+        let keyCount = userInfo.keys.count
+        log("NSE attachImage: \(keyCount) userInfo keys present")
+        #endif
 
         guard let imageUrl = parseImageUrl(from: userInfo),
               let url = URL(string: imageUrl) else {
+            #if DEBUG
             log("NSE no resolvable push image URL in userInfo")
+            #endif
             return
         }
-        log("NSE resolved push image URL: \(imageUrl)")
+        #if DEBUG
+        // Log host only — avoid printing full URLs (may include signed query params).
+        log("NSE resolved push image host: \(url.host ?? "unknown")")
+        #endif
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
@@ -200,14 +207,18 @@ public class OpenCdpPushExtensionHelper {
                     options: nil
                 )
             } catch {
+                #if DEBUG
                 log("Failed to attach push image: \(error.localizedDescription)")
+                #endif
             }
         }
         task.resume()
 
         if semaphore.wait(timeout: .now() + 12) == .timedOut {
             task.cancel()
+            #if DEBUG
             log("Timed out downloading push image")
+            #endif
             return
         }
 
@@ -389,7 +400,9 @@ public class OpenCdpPushExtensionHelper {
     }
 
     private static func log(_ message: String) {
-        os_log("[OpenCDP SDK - Push Extension] %@", message)
+        #if DEBUG
+        os_log(.debug, "[OpenCDP SDK - Push Extension] %{public}@", message)
+        #endif
     }
 }
 
