@@ -44,7 +44,7 @@ gpg --batch --pinentry-mode loopback --passphrase "$GPG_SIGNING_PASSWORD" \
 ```bash
 cd opencdp-flutter-sdk
 
-# 1. Bump version in pubspec.yaml (e.g. 3.2.2)
+# 1. Bump version in pubspec.yaml (e.g. 3.3.0)
 
 # 2. Preflight
 flutter pub get

@@ -1,12 +1,24 @@
 # Open CDP Flutter SDK
 
-A Flutter SDK for integrating with the OpenCDP platform. Track user events, screen views, and device attributes with automatic lifecycle tracking and dual write to Customer.io 
+A Flutter SDK for integrating with the OpenCDP platform. Track user events, screen views, and device attributes with automatic lifecycle tracking and dual write to Customer.io.
+
+## What's new (3.3.0)
+
+Highlights in **3.3.0** (see [CHANGELOG.md](CHANGELOG.md) for full history):
+
+- **In-app auto-present** — set `enableInAppAutoPresent: true` and wrap your app with `OpenCDPInAppHost` so `modal` / `banner` show automatically (optional `modalBuilder` / `bannerBuilder` for branded UI).
+- **Inline / inbox slots** — place `OpenCDPInAppInlineSlot` or `OpenCDPInAppInboxSlot` in your widget tree where layout-bound messages should appear (no GlobalKey hunting).
+- **Screen page rules** — Include / Exclude targeting still runs on the Data Gateway via `/sync?screen=…`; keep `autoTrackScreens` + navigator observers (or call `setCurrentScreen`).
+- **Safer `registerDevice` payload** — optional null/empty fields (`apnToken`, `name`, `osVersion`, …) are **omitted** from the JSON body (gateway rejects `"field": null` on optional strings). `fcmToken` remains required; APNs-only sends the `noAPNStoken` sentinel.
+
+Deep dive: [Flutter in-app messaging](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging) · [Mobile in-app hub](https://docs.opencdp.io/integrations/mobile/in-app-messaging)
 
 ## Documentation
 
 Published guides on [docs.opencdp.io](https://docs.opencdp.io):
 
 - [Mobile E2E integration guide](https://docs.opencdp.io/integrations/mobile/e2e-guide) — step-by-step push and in-app testing
+- [In-app messaging (Flutter)](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging) — recommended auto-present + slots
 - [Identity and devices](https://docs.opencdp.io/integrations/mobile/identity-and-devices) — person ID vs device ID vs push token
 - [Rich push images](https://docs.opencdp.io/integrations/mobile/push-big-picture) — image layout by platform
 - [Flutter SDK docs](https://docs.opencdp.io/integrations/flutter/intro)
@@ -17,6 +29,7 @@ Published guides on [docs.opencdp.io](https://docs.opencdp.io):
 - User identification and tracking
 - Event tracking (custom, screen view, lifecycle)
 - Device registration and push notification support
+- Native OpenCDP in-app messages (auto-present + layout slots)
 - Automatic screen tracking
 - Application lifecycle tracking
 - Customer.io integration
@@ -72,7 +85,7 @@ Add the following to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  open_cdp_flutter_sdk: ^1.0.0
+  open_cdp_flutter_sdk: ^3.3.0
 ```
 
 ---
@@ -253,28 +266,26 @@ await OpenCDPSDK.instance.registerDeviceToken(
 
 ## In-App Messages
 
-The SDK ships with an in-app delivery manager (`CDPInAppManager`) that fetches
-messages from the OpenCDP Data Gateway and notifies your app on
-`messageStream` when something is ready to render.
+Native OpenCDP in-app campaigns are delivered from the Data Gateway. Include /
+Exclude **page rules** filter on `/sync?screen=…` — use `autoTrackScreens` (or
+call `inApp.setCurrentScreen`) so those names match the dashboard.
 
-The SDK filters client-side for expiry, local dismiss state, and persistence
-limits — it **does not** re-sort by priority (the server order is canonical).
-The SDK does **not** render UI — you build modals, banners, inline cards, etc.
+**Recommended path:** turn on auto-present and wrap your app with
+`OpenCDPInAppHost`. Modal / banner show as overlays; inline / inbox need a
+slot in your layout.
 
-See also [doc/in_app_messaging.md](doc/in_app_messaging.md) for a concise reference.
+Full guide: [Flutter in-app messaging](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging).
 
-### 1. Enable in-app messaging
+### 1. Enable + wrap the app (recommended)
 
 ```dart
 await OpenCDPSDK.initialize(
   config: OpenCDPConfig(
     cdpApiKey: 'YOUR_API_KEY_HERE',
-    autoTrackScreens: true, // recommended: page rules follow navigation
+    autoTrackScreens: true,
     enableInAppMessages: true,
+    enableInAppAutoPresent: true, // present modal/banner via OpenCDPInAppHost
     inAppSyncLimit: 10,
-    // optional overrides:
-    inAppPlatformOverride: null,    // defaults to 'ios' / 'android' / 'web'
-    inAppAppVersionOverride: null,
   ),
 );
 
@@ -282,104 +293,84 @@ await OpenCDPSDK.instance.identify(
   identifier: 'user_123',
   properties: {'email': 'user@example.com'},
 );
-```
 
-When `enableInAppMessages: true`, messages are delivered on `messageStream`
-after you `identify` the user. When `false` (the default), fetch and track
-manually with `syncInAppMessages` and `trackInApp*` — useful for inbox UIs.
-
-If you use `autoTrackScreens`, add the tracker to your navigator:
-
-```dart
 MaterialApp(
   navigatorObservers: [
     if (OpenCDPSDK.instance.screenTracker != null)
       OpenCDPSDK.instance.screenTracker!,
   ],
-  // ...
+  builder: (context, child) => OpenCDPInAppHost(
+    child: child!,
+    // Optional: keep auto-present, use your branded UI
+    // modalBuilder: (context, message) => MyModal(message: message),
+    // bannerBuilder: (context, message, {required onPrimaryCta, required onClose}) =>
+    //     MyBanner(message: message, onCta: onPrimaryCta, onClose: onClose),
+  ),
+  home: const HomePage(),
 );
 ```
 
-### 2. Listen for messages and render them
+`modalBuilder` should `Navigator.pop(context, ctaIdOrNull)` so the host can
+track click vs dismiss. Omit builders to use the SDK defaults.
 
-Subscribe to the manager's stream (or add a callback) and render the message
-yourself. After the UI is on screen, call `trackImpression`. Hook your CTAs
-up to `trackClick` and your dismiss UI to `trackDismiss`.
+### 2. Place slots for inline / inbox
+
+`modal` / `banner` use overlays. **`inline`** and **`inbox_card`** need a
+place in the tree — put a slot where the card should appear:
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
-
-class InAppMessageHost extends StatefulWidget {
-  const InAppMessageHost({super.key, required this.child});
-  final Widget child;
-
-  @override
-  State<InAppMessageHost> createState() => _InAppMessageHostState();
-}
-
-class _InAppMessageHostState extends State<InAppMessageHost> {
-  StreamSubscription<InAppMessage>? _subscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _subscription = OpenCDPSDK.instance.inApp?.messageStream.listen(_onMessage);
-  }
-
-  void _onMessage(InAppMessage message) async {
-    if (!mounted) return;
-
-    if (message.renderType == InAppRenderType.modal) {
-      await OpenCDPSDK.instance.inApp?.trackImpression(message);
-      final result = await showDialog<String>(
-        context: context,
-        builder: (_) => _InAppDialog(message: message),
-      );
-      if (result == null) {
-        await OpenCDPSDK.instance.inApp?.trackDismiss(
-          message: message,
-          reason: InAppDismissReason.userClose,
-        );
-      } else {
-        await OpenCDPSDK.instance.inApp?.trackClick(
-          message: message,
-          actionId: result,
-        );
-      }
-    }
-    // Handle other renderTypes (banner, inline, inboxCard) however you like.
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}
+Column(
+  children: [
+    OpenCDPInAppInlineSlot(
+      slotId: 'home_above_balance', // optional; use one slot per screen if omitted targeting
+      // builder: (context, message, {required onCta, required onDismiss}) =>
+      //   MyInlineCard(message: message, onTap: onCta, onClose: onDismiss),
+    ),
+    BalanceHeader(...),
+    // Optional feed of inbox cards:
+    // OpenCDPInAppInboxSlot(),
+  ],
+)
 ```
 
-### 3. Updating screen / session manually (optional)
+Requires an ancestor `OpenCDPInAppHost`. Slots track impression / click /
+dismiss. Optional `builder` keeps your branded UI.
 
-If you don't use `autoTrackScreens`, call `setCurrentScreen` so backend page
-rules can target the right surface, and `resetSession` whenever you want to
-restart per-session counters (e.g. on login or after foregrounding):
+### 3. Custom UI (advanced)
+
+Disable auto-present (`enableInAppAutoPresent: false`) and listen to
+`messageStream` yourself — useful when you fully own presentation:
+
+```dart
+OpenCDPSDK.instance.inApp?.messageStream.listen((message) async {
+  switch (message.renderType) {
+    case InAppRenderType.modal:
+      // showDialog(...); trackImpression / trackClick / trackDismiss
+      break;
+    case InAppRenderType.banner:
+    case InAppRenderType.inline:
+    case InAppRenderType.inboxCard:
+    case InAppRenderType.unknown:
+      break;
+  }
+});
+```
+
+Avoid enabling auto-present **and** a custom overlay host for the same
+modal/banner messages (double presentation).
+
+### 4. Updating screen / session manually (optional)
 
 ```dart
 OpenCDPSDK.instance.inApp?.setCurrentScreen('home');
 OpenCDPSDK.instance.inApp?.resetSession();
+OpenCDPSDK.instance.inApp?.syncNow();
 ```
 
-You can also refresh now with `OpenCDPSDK.instance.inApp?.syncNow()`.
+### 5. Manual sync (no auto delivery)
 
-### 4. Manual mode (no auto delivery)
-
-Set `enableInAppMessages: false` (the default) and fetch messages when you
-need them — useful for inbox-style screens. This bypasses `messageStream` and
-manager dispatch state; pass `screen` / `platform` to the track APIs yourself:
+Set `enableInAppMessages: false` and fetch when you need to (e.g. inbox
+screens):
 
 ```dart
 final messages = await OpenCDPSDK.instance.syncInAppMessages(
