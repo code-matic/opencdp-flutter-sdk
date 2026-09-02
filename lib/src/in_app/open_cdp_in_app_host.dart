@@ -105,19 +105,19 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
 
   void _wireRegistryTracking() {
     _registry.trackImpression = (message) async {
-      await OpenCDPSDK.instance.inApp?.trackImpression(message);
+      final manager = OpenCDPSDK.instance.inApp;
+      if (manager == null) return;
+      await manager.trackImpression(message);
     };
     _registry.trackClick = (message, actionId) async {
-      await OpenCDPSDK.instance.inApp?.trackClick(
-        message: message,
-        actionId: actionId,
-      );
+      final manager = OpenCDPSDK.instance.inApp;
+      if (manager == null) return;
+      await manager.trackClick(message: message, actionId: actionId);
     };
     _registry.trackDismiss = (message, reason) async {
-      await OpenCDPSDK.instance.inApp?.trackDismiss(
-        message: message,
-        reason: reason,
-      );
+      final manager = OpenCDPSDK.instance.inApp;
+      if (manager == null) return;
+      await manager.trackDismiss(message: message, reason: reason);
     };
   }
 
@@ -164,7 +164,7 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
         break;
       case InAppRenderType.inboxCard:
         _registry.addInbox(message);
-        (widget.onInboxMessage ?? widget.onInlineMessage)?.call(message);
+        widget.onInboxMessage?.call(message);
         break;
       case InAppRenderType.unknown:
         _debugLog(
