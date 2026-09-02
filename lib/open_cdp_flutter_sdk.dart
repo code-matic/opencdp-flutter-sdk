@@ -22,6 +22,10 @@ import 'package:open_cdp_flutter_sdk/src/utils/push_notification_setup.dart';
 import 'package:open_cdp_flutter_sdk/src/utils/push_notification_tracker.dart';
 
 export 'src/in_app/in_app_manager.dart';
+export 'src/in_app/open_cdp_in_app_host.dart';
+export 'src/in_app/open_cdp_in_app_slot_registry.dart';
+export 'src/in_app/open_cdp_in_app_slots.dart';
+export 'src/in_app/open_cdp_in_app_widgets.dart';
 export 'src/models/config.dart';
 export 'src/models/in_app_message.dart';
 export 'src/models/metric_event.dart';
@@ -83,6 +87,7 @@ class OpenCDPSDK {
   static CDPScreenTracker? _screenTracker;
   static CDPLifecycleTracker? _lifecycleTracker;
   static CDPInAppManager? _inAppManager;
+  static OpenCDPConfig? _config;
   static OpenCDPFirebaseInitializer? _firebaseInitializerForBackground;
   static String _backgroundPushChannelName = 'CDP Notifications';
   static String _backgroundPushChannelDescription = 'Push notifications from CDP';
@@ -112,6 +117,9 @@ class OpenCDPSDK {
   /// Automatic delivery runs only when `OpenCDPConfig.enableInAppMessages` is true.
   CDPInAppManager? get inApp => _inAppManager;
 
+  /// Active SDK configuration after [initialize], or `null` if not initialized.
+  OpenCDPConfig? get config => _config;
+
   /// Reset the SDK instance (for testing purposes)
   @visibleForTesting
   static Future<void> resetForTest() async {
@@ -127,6 +135,8 @@ class OpenCDPSDK {
     _implementation = null;
     _screenTracker = null;
     _lifecycleTracker = null;
+    _inAppManager = null;
+    _config = null;
     _persistedIOSAppGroup = null;
     _onNotificationOpenCallback = null;
 
@@ -170,6 +180,7 @@ class OpenCDPSDK {
 
         // Create new instance
         _instance = OpenCDPSDK._();
+        _config = config;
         _persistedIOSAppGroup = config.iOSAppGroup;
         _implementation = await OpenCDPSDKImplementation.create(
             config: config, httpClient: httpClient);

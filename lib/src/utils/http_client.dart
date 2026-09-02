@@ -512,8 +512,11 @@ class CDPHttpClient {
 
       final response = result.response!;
       if (debug) {
+        final querySuffix = query == null || query.isEmpty
+            ? ''
+            : '?${query.entries.map((e) => '${e.key}=${e.value}').join('&')}';
         debugPrint(
-          '[CDP] Successfully sent GET to $endpoint via ${result.lastBaseUrl}.',
+          '[CDP] Successfully sent GET to $endpoint$querySuffix via ${result.lastBaseUrl}.',
         );
         debugPrint('[CDP] Response: ${response.body}');
       }

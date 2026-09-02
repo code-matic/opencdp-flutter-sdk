@@ -104,6 +104,36 @@ class InAppPersistence {
   }
 }
 
+/// Include / exclude screen targeting from the message definition.
+class InAppPageRules {
+  final List<String> include;
+  final List<String> exclude;
+
+  const InAppPageRules({
+    this.include = const [],
+    this.exclude = const [],
+  });
+
+  factory InAppPageRules.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const InAppPageRules();
+    List<String> readList(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    }
+
+    return InAppPageRules(
+      include: readList(json['include']),
+      exclude: readList(json['exclude']),
+    );
+  }
+
+  bool get isEmpty => include.isEmpty && exclude.isEmpty;
+
+  @override
+  String toString() =>
+      'include=${include.isEmpty ? "[all]" : include}, exclude=$exclude';
+}
+
 /// A message returned by the in-app sync endpoint.
 class InAppMessage {
   final String deliveryId;
@@ -116,6 +146,7 @@ class InAppMessage {
   final List<InAppCta> ctas;
   final DateTime? expiresAt;
   final InAppPersistence? persistence;
+  final InAppPageRules pageRules;
 
   const InAppMessage({
     required this.deliveryId,
@@ -128,10 +159,14 @@ class InAppMessage {
     this.imageUrl,
     this.expiresAt,
     this.persistence,
+    this.pageRules = const InAppPageRules(),
   });
 
   /// Raw render type string as returned by the backend (e.g. `inbox_card`).
   String get renderTypeRaw => renderType.rawValue;
+
+  /// First CTA, if any.
+  InAppCta? get primaryCta => ctas.isEmpty ? null : ctas.first;
 
   bool get isExpired {
     final exp = expiresAt;
@@ -143,6 +178,7 @@ class InAppMessage {
     final content = (json['content'] as Map<String, dynamic>?) ?? {};
     final rawCtas = (json['ctas'] as List?) ?? const [];
     final rawPersistence = json['persistence'];
+    final rawPageRules = content['page_rules'] ?? json['page_rules'];
     return InAppMessage(
       deliveryId: json['delivery_id'] as String? ?? '',
       messageId: json['message_id'] as String? ?? '',
@@ -160,6 +196,9 @@ class InAppMessage {
       persistence: rawPersistence is Map
           ? InAppPersistence.fromJson(rawPersistence.cast<String, dynamic>())
           : null,
+      pageRules: InAppPageRules.fromJson(
+        rawPageRules is Map ? rawPageRules.cast<String, dynamic>() : null,
+      ),
     );
   }
 }

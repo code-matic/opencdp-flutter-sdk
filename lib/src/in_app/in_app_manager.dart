@@ -315,6 +315,19 @@ class CDPInAppManager {
         limit: managerConfig.syncLimit.clamp(1, 50),
       );
 
+      if (_config.debug) {
+        debugPrint(
+          '[CDP] In-app sync reason=$reason screen=$_currentScreen '
+          'eligible=${messages.length}',
+        );
+        for (final message in messages) {
+          debugPrint(
+            '[CDP] In-app eligible message_id=${message.messageId} '
+            'title=${message.title} page_rules=${message.pageRules}',
+          );
+        }
+      }
+
       final eligible = _arbitrate(messages);
       for (final message in eligible) {
         if (_dispatchedDeliveryIds.contains(message.deliveryId)) continue;
