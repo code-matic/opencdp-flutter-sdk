@@ -188,23 +188,6 @@ class OpenCDPSDKImplementation {
     return true;
   }
 
-  /// Validate push token (FCM or APN)
-  bool _validatePushToken(String? token, String tokenType) {
-    if (token == null) return true; // Optional, so null is valid
-
-    if (token.trim().isEmpty) {
-      final errorMessage = '$tokenType cannot be empty if provided';
-      if (config.throwErrorsBack) {
-        throw CDPValidationException(errorMessage, tokenType);
-      }
-      if (config.debug) {
-        debugPrint('[CDP] $errorMessage');
-      }
-      return false;
-    }
-    return true;
-  }
-
   /// Standard error handling for SDK public methods
   void _handleError(String operation, dynamic error) {
     if (config.throwErrorsBack &&
@@ -539,23 +522,15 @@ class OpenCDPSDKImplementation {
       if (!_ensureInitialized()) {
         return;
       }
-      if (!_validatePushToken(fcmToken, 'fcmToken')) {
-        return;
-      }
-      if (!_validatePushToken(apnToken, 'apnToken')) {
-        return;
-      }
 
-      final trimmedFcmInput = fcmToken?.trim();
-      final trimmedApnInput = apnToken?.trim();
+      // Trim first so whitespace-only tokens are treated as absent (skip),
+      // not as validation failures that abort before the skip path.
+      final trimmedFcm = fcmToken?.trim();
+      final trimmedApn = apnToken?.trim();
       final resolvedFcm =
-          (trimmedFcmInput != null && trimmedFcmInput.isNotEmpty)
-              ? trimmedFcmInput
-              : null;
+          (trimmedFcm != null && trimmedFcm.isNotEmpty) ? trimmedFcm : null;
       final resolvedApn =
-          (trimmedApnInput != null && trimmedApnInput.isNotEmpty)
-              ? trimmedApnInput
-              : null;
+          (trimmedApn != null && trimmedApn.isNotEmpty) ? trimmedApn : null;
       if (resolvedFcm == null && resolvedApn == null) {
         if (config.debug) {
           debugPrint(
