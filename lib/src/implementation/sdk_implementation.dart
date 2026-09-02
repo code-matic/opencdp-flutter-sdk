@@ -545,11 +545,27 @@ class OpenCDPSDKImplementation {
       if (!_validatePushToken(apnToken, 'apnToken')) {
         return;
       }
-      if (fcmToken != null && fcmToken.isNotEmpty) {
-        await prefs.setString('fcm_token', fcmToken);
+
+      final trimmedFcmInput = fcmToken?.trim();
+      final trimmedApnInput = apnToken?.trim();
+      final hasFcm =
+          trimmedFcmInput != null && trimmedFcmInput.isNotEmpty;
+      final hasApn =
+          trimmedApnInput != null && trimmedApnInput.isNotEmpty;
+      if (!hasFcm && !hasApn) {
+        if (config.debug) {
+          debugPrint(
+            '[CDP] registerDevice skipped: both fcmToken and apnToken are null/empty',
+          );
+        }
+        return;
       }
-      if (apnToken != null && apnToken.isNotEmpty) {
-        await prefs.setString('apn_token', apnToken);
+
+      if (hasFcm) {
+        await prefs.setString('fcm_token', trimmedFcmInput);
+      }
+      if (hasApn) {
+        await prefs.setString('apn_token', trimmedApnInput);
       }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
@@ -598,26 +614,42 @@ class OpenCDPSDKImplementation {
         deviceId = 'web-${DateTime.now().millisecondsSinceEpoch}';
       }
 
+      // CDP schema: identifier, deviceId, platform, fcmToken are required.
+      // Optional strings (name, osVersion, model, apnToken, appVersion) must be
+      // omitted when null/empty — Joi.string().optional() rejects JSON null.
+      // When only APNs is available, send the gateway sentinel `noAPNStoken`
+      // for required fcmToken (backend stores it as empty).
+      String? optionalString(dynamic value) {
+        if (value == null) return null;
+        final s = value.toString().trim();
+        return s.isEmpty ? null : s;
+      }
+
+      final name = optionalString(deviceAttributes['device_manufacturer']);
+      final osVersion = optionalString(deviceAttributes['os_version']);
+      final model = optionalString(deviceAttributes['device_model']);
+      final appVersion = optionalString(deviceAttributes['app_version']);
+
       await httpClient.post(
         CDPEndpoints.registerDevice,
         {
           'identifier': _currentIdentifier,
           'deviceId': deviceId,
-          'name': deviceAttributes['device_manufacturer'],
           'platform': platform,
-          'osVersion': deviceAttributes['os_version'],
-          'model': deviceAttributes['device_model'],
-          'fcmToken': fcmToken,
-          'apnToken': apnToken,
-          'appVersion': deviceAttributes['app_version'],
-          'attributes': deviceAttributes,
+          'fcmToken': hasFcm ? trimmedFcmInput : 'noAPNStoken',
+          if (name != null) 'name': name,
+          if (osVersion != null) 'osVersion': osVersion,
+          if (model != null) 'model': model,
+          if (hasApn) 'apnToken': trimmedApnInput,
+          if (appVersion != null) 'appVersion': appVersion,
+          if (deviceAttributes.isNotEmpty) 'attributes': deviceAttributes,
         },
         identifier: _currentIdentifier,
       );
 
       if (config.sendToCustomerIo) {
         try {
-          final token = fcmToken ?? apnToken;
+          final token = trimmedFcmInput ?? trimmedApnInput;
           if (token != null && token.isNotEmpty) {
             cio.CustomerIO.instance.registerDeviceToken(deviceToken: token);
           }

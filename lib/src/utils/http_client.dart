@@ -274,8 +274,7 @@ class CDPHttpClient {
       lastBase = root;
       try {
         final uri = Uri.parse('$root$endpoint').replace(
-          queryParameters:
-              query?.map((key, value) => MapEntry(key, '$value')),
+          queryParameters: query?.map((key, value) => MapEntry(key, '$value')),
         );
         final response = await _client
             .get(uri, headers: _authHeaders)
@@ -512,8 +511,14 @@ class CDPHttpClient {
 
       final response = result.response!;
       if (debug) {
+        final querySuffix = (query == null || query.isEmpty)
+            ? ''
+            : Uri(queryParameters: {
+                for (final e in query.entries) e.key: '${e.value}',
+              }).query;
+        final queryPart = querySuffix.isEmpty ? '' : '?$querySuffix';
         debugPrint(
-          '[CDP] Successfully sent GET to $endpoint via ${result.lastBaseUrl}.',
+          '[CDP] Successfully sent GET to $endpoint$queryPart via ${result.lastBaseUrl}.',
         );
         debugPrint('[CDP] Response: ${response.body}');
       }

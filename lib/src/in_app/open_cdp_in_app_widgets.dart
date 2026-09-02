@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
+import 'package:open_cdp_flutter_sdk/src/models/in_app_message.dart';
 
-/// A simple modal dialog rendering for `InAppRenderType.modal` messages.
+/// Default modal dialog for [InAppRenderType.modal].
 ///
-/// Returns the action id when a CTA was tapped, or `null` when the user
-/// dismissed the modal without picking one.
-class InAppModalDialog extends StatelessWidget {
-  const InAppModalDialog({super.key, required this.message});
+/// Pops with the tapped CTA id, or `null` when dismissed without a CTA.
+class OpenCDPInAppModalDialog extends StatelessWidget {
+  const OpenCDPInAppModalDialog({super.key, required this.message});
 
   final InAppMessage message;
 
@@ -84,10 +83,9 @@ class InAppModalDialog extends StatelessWidget {
   }
 }
 
-/// Top banner used for `InAppRenderType.banner` messages. Auto-dismissed by
-/// the host after a few seconds; tapping the action button reports a click.
-class InAppBanner extends StatelessWidget {
-  const InAppBanner({
+/// Top banner for [InAppRenderType.banner].
+class OpenCDPInAppBanner extends StatelessWidget {
+  const OpenCDPInAppBanner({
     super.key,
     required this.message,
     required this.onPrimaryCta,
@@ -111,6 +109,8 @@ class InAppBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
+              // withOpacity kept for Flutter >=3.3.0; withValues needs newer SDK.
+              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
@@ -119,7 +119,7 @@ class InAppBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.notifications_active, color: Colors.deepPurple),
+            Icon(Icons.notifications_active, color: Colors.blueGrey.shade700),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -160,88 +160,81 @@ class InAppBanner extends StatelessWidget {
   }
 }
 
-/// Inline card that renders inside a host widget for `InAppRenderType.inline`
-/// or `InAppRenderType.inboxCard` messages. The card itself is dumb — the
-/// caller wires up impression/click/dismiss tracking.
-class InAppCard extends StatelessWidget {
-  const InAppCard({
+/// Default embeddable card for [InAppRenderType.inline] / inbox slots.
+class OpenCDPInAppInlineCard extends StatelessWidget {
+  const OpenCDPInAppInlineCard({
     super.key,
     required this.message,
-    required this.onPrimaryCta,
+    this.onCta,
     this.onDismiss,
   });
 
   final InAppMessage message;
-  final void Function(InAppCta cta)? onPrimaryCta;
+  final VoidCallback? onCta;
   final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
-    final primary = message.ctas.isNotEmpty ? message.ctas.first : null;
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    final theme = Theme.of(context);
+    final title = message.title?.trim();
+    final body = message.body?.trim();
+    final cta = message.primaryCta;
+
+    return Material(
       elevation: 1,
+      borderRadius: BorderRadius.circular(12),
+      color: theme.cardColor,
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    message.renderTypeRaw,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.deepPurple.shade700,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (onDismiss != null)
-                  IconButton(
-                    onPressed: onDismiss,
-                    iconSize: 18,
-                    icon: const Icon(Icons.close),
-                    tooltip: 'Dismiss',
-                  ),
-              ],
+            Icon(
+              Icons.campaign_outlined,
+              color: theme.colorScheme.primary,
             ),
-            if (message.title != null && message.title!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  message.title!,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (title != null && title.isNotEmpty)
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  if (body != null && body.isNotEmpty) ...[
+                    if (title != null && title.isNotEmpty)
+                      const SizedBox(height: 4),
+                    Text(body, style: theme.textTheme.bodySmall),
+                  ],
+                  if (cta != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: onCta,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(cta.label),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            if (message.body != null && message.body!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child:
-                    Text(message.body!, style: const TextStyle(fontSize: 13)),
-              ),
-            if (primary != null)
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.tonal(
-                  onPressed: onPrimaryCta == null
-                      ? null
-                      : () => onPrimaryCta!(primary),
-                  child: Text(primary.label),
-                ),
+            ),
+            if (onDismiss != null)
+              IconButton(
+                onPressed: onDismiss,
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Dismiss',
+                visualDensity: VisualDensity.compact,
               ),
           ],
         ),

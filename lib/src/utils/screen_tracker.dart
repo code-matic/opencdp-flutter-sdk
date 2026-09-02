@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
+import 'package:open_cdp_flutter_sdk/src/utils/route_screen_name.dart';
 
 /// A navigation observer that automatically tracks screen views in the CDP system.
 ///
@@ -9,6 +10,9 @@ import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 /// It handles both identified users and anonymous sessions, storing anonymous
 /// screen views until a user is identified, at which point they are associated
 /// with the user.
+///
+/// Routes without a usable [RouteSettings.name] are skipped (no
+/// [Route.toString] fallback) so technical dumps never enter the screen catalog.
 class CDPScreenTracker extends NavigatorObserver {
   /// The OpenCDPSDK instance used to send tracking events
   final OpenCDPSDK sdk;
@@ -65,9 +69,19 @@ class CDPScreenTracker extends NavigatorObserver {
   ///
   /// If a user is identified, the screen view is immediately sent to CDP.
   /// Otherwise, it's stored for later association when a user is identified.
+  /// Unnamed or technical routes are skipped.
   void _trackScreen(Route<dynamic> route) {
-    final settings = route.settings;
-    final name = settings.name ?? route.toString();
+    final name = resolveRouteScreenName(route);
+    if (name == null) {
+      if (debug) {
+        debugPrint(
+          '[CDP] Skipping screen track: no usable RouteSettings.name '
+          '(got: ${route.settings.name})',
+        );
+      }
+      return;
+    }
+
     final screenData = {
       'screen': name,
       'route': name,

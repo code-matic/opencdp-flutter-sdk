@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.3.0] - 2026-09-02
+
+### Added
+
+* **In-app auto-present** — `OpenCDPConfig.enableInAppAutoPresent` + `OpenCDPInAppHost` presents `modal` / `banner` (optional `modalBuilder` / `bannerBuilder`).
+* **Layout slots** — `OpenCDPInAppInlineSlot` / `OpenCDPInAppInboxSlot` for `inline` / `inbox_card` placement in the widget tree.
+* **Default in-app widgets** — `OpenCDPInAppModalDialog`, `OpenCDPInAppBanner`, `OpenCDPInAppInlineCard`.
+
+### Changed
+
+* **`registerDevice` payload** — omit optional null/empty fields (`apnToken`, `name`, `osVersion`, `model`, `appVersion`); APNs-only registration sends `fcmToken: "noAPNStoken"`.
+
 ## [3.2.2] - 2026-07-02
 
 ### Fixed

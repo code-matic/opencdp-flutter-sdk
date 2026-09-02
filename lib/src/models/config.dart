@@ -201,6 +201,11 @@ class OpenCDPConfig {
   /// [initialize] and binds to the user after [OpenCDPSDK.identify].
   final bool enableInAppMessages;
 
+  /// When `true` with [enableInAppMessages], [OpenCDPInAppHost] presents
+  /// `modal` / `banner` UI automatically. Defaults to `false` so existing
+  /// host-rendered apps keep full control until they opt in.
+  final bool enableInAppAutoPresent;
+
   /// Whether to use low-latency automatic in-app delivery. Only takes effect
   /// when [enableInAppMessages] is also `true`. Defaults to `true`.
   final bool enableInAppRealtime;
@@ -280,6 +285,7 @@ class OpenCDPConfig {
     this.trackApplicationLifecycleEvents = true,
     this.screenViewUse = ScreenView.all,
     this.enableInAppMessages = false,
+    this.enableInAppAutoPresent = false,
     this.enableInAppRealtime = true,
     this.inAppPollInterval = const Duration(seconds: 30),
     this.inAppRealtimeStaleTimeout = const Duration(seconds: 60),
@@ -310,6 +316,7 @@ class OpenCDPConfig {
       'trackApplicationLifecycleEvents': trackApplicationLifecycleEvents,
       'screenViewUse': screenViewUse.toString().split('.').last,
       'enableInAppMessages': enableInAppMessages,
+      'enableInAppAutoPresent': enableInAppAutoPresent,
       'enableInAppRealtime': enableInAppRealtime,
       'inAppPollIntervalSeconds': inAppPollInterval.inSeconds,
       'inAppRealtimeStaleTimeoutSeconds': inAppRealtimeStaleTimeout.inSeconds,
