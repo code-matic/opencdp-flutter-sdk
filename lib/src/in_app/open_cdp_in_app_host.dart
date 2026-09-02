@@ -57,9 +57,15 @@ class OpenCDPInAppHost extends StatefulWidget {
   final Widget child;
 
   /// Called for [InAppRenderType.inline] (in addition to slot registry).
+  ///
+  /// Also receives [InAppRenderType.inboxCard] when [onInboxMessage] is null
+  /// (backward-compatible single-callback hosts). Prefer [onInboxMessage] when
+  /// you need separate handling.
   final void Function(InAppMessage message)? onInlineMessage;
 
   /// Called for [InAppRenderType.inboxCard] (in addition to slot registry).
+  ///
+  /// When null, inbox deliveries fall back to [onInlineMessage] if set.
   final void Function(InAppMessage message)? onInboxMessage;
 
   /// Custom modal UI. If null, the SDK default [OpenCDPInAppModalDialog] is used.
@@ -164,7 +170,9 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
         break;
       case InAppRenderType.inboxCard:
         _registry.addInbox(message);
-        widget.onInboxMessage?.call(message);
+        // Prefer onInboxMessage; fall back to onInlineMessage for hosts that
+        // use a single callback for both layout-bound render types.
+        (widget.onInboxMessage ?? widget.onInlineMessage)?.call(message);
         break;
       case InAppRenderType.unknown:
         _debugLog(
