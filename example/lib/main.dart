@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
 import 'config_screen.dart';
 import 'home_screen.dart';
@@ -7,8 +8,8 @@ import 'home_screen.dart';
 ///
 /// The app boots into a configuration screen so you can point it at any
 /// workspace (local, staging, prod) without rebuilding. Once initialized, the
-/// home screen drives identify/navigation/manual-sync flows and the in-app
-/// host overlays whatever the SDK delivers.
+/// home screen is wrapped in [OpenCDPInAppHost] so modal/banner auto-present
+/// and inline/inbox slots receive layout-bound messages.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const TestApp());
@@ -40,8 +41,12 @@ class _TestAppState extends State<TestApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      // Mount OpenCDPInAppHost only after SDK init — the host attaches to
+      // OpenCDPSDK.instance.inApp in initState.
       home: _initialized && _personId != null
-          ? HomeScreen(personId: _personId!)
+          ? OpenCDPInAppHost(
+              child: HomeScreen(personId: _personId!),
+            )
           : ConfigScreen(onInitialized: _onInitialized),
     );
   }

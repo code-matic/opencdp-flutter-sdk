@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
 
 import 'events/events_screen.dart';
-import 'in_app/in_app_host.dart';
-import 'in_app/in_app_renderers.dart';
 
 /// Main demo surface. Lets you switch logical screens (so backend page rules
-/// can target them), force a sync, reset the in-app session, and see the
-/// inline / inbox-card messages stack up.
+/// can target them), force a sync, reset the in-app session, and place
+/// [OpenCDPInAppInlineSlot] / [OpenCDPInAppInboxSlot] where layout-bound
+/// messages should appear.
+///
+/// Modal / banner are presented by the ancestor [OpenCDPInAppHost] (see
+/// `main.dart`) using the SDK default widgets.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.personId});
 
@@ -25,11 +27,11 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _screens = ['home', 'cart', 'profile', 'inbox', 'events'];
 
   int _currentIndex = 0;
-  final List<InAppMessage> _inlineMessages = [];
   String? _lastDebugResult;
 
   String get _currentScreen => _screens[_currentIndex];
   bool get _isEventsTab => _currentScreen == 'events';
+  bool get _isInboxTab => _currentScreen == 'inbox';
 
   @override
   void initState() {
@@ -57,37 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _resetLocalState() {
     OpenCDPSDK.instance.inApp?.resetSession();
-    setState(_inlineMessages.clear);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Local in-app state reset')),
     );
-  }
-
-  Future<void> _trackInlineImpression(InAppMessage message) async {
-    await OpenCDPSDK.instance.inApp?.trackImpression(message);
-  }
-
-  Future<void> _trackInlineClick(InAppMessage message, InAppCta cta) async {
-    await OpenCDPSDK.instance.inApp?.trackClick(message: message, actionId: cta.id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Click tracked: ${cta.id}')),
-    );
-  }
-
-  Future<void> _dismissInline(InAppMessage message) async {
-    await OpenCDPSDK.instance.inApp?.trackDismiss(
-      message: message,
-      reason: InAppDismissReason.userClose,
-    );
-    setState(() => _inlineMessages.removeWhere(
-        (m) => m.deliveryId == message.deliveryId));
-  }
-
-  void _onInlineMessage(InAppMessage message) {
-    if (_inlineMessages.any((m) => m.deliveryId == message.deliveryId)) return;
-    setState(() => _inlineMessages.add(message));
-    _trackInlineImpression(message);
   }
 
   void _showDebugSnack(String message) {
@@ -125,30 +99,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return InAppHost(
-      onInlineMessage: _onInlineMessage,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _isEventsTab
-                ? 'Events • test triggers'
-                : 'In-App Test • $_currentScreen',
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          _isEventsTab
+              ? 'Events • test triggers'
+              : 'In-App Test • $_currentScreen',
         ),
-        body: SafeArea(
-          child: _isEventsTab ? _buildEventsBody() : _buildInAppBody(),
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: _onScreenChange,
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-            NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Cart'),
-            NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
-            NavigationDestination(icon: Icon(Icons.inbox), label: 'Inbox'),
-            NavigationDestination(icon: Icon(Icons.bolt), label: 'Events'),
-          ],
-        ),
+      ),
+      body: SafeArea(
+        child: _isEventsTab ? _buildEventsBody() : _buildInAppBody(),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _onScreenChange,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.inbox), label: 'Inbox'),
+          NavigationDestination(icon: Icon(Icons.bolt), label: 'Events'),
+        ],
       ),
     );
   }
@@ -212,25 +183,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
           const SizedBox(height: 16),
           Text(
-            'Inline / inbox messages',
+            _isInboxTab ? 'Inbox cards' : 'Inline slot',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
+          // Layout-bound messages: inline on home/cart/profile, inbox feed
+          // on the inbox tab. Modal/banner overlays come from OpenCDPInAppHost.
+          if (_isInboxTab)
+            const OpenCDPInAppInboxSlot()
+          else
+            OpenCDPInAppInlineSlot(
+              slotId: '${_currentScreen}_above_content',
+            ),
+          const SizedBox(height: 8),
           Expanded(
-            child: _inlineMessages.isEmpty
-                ? const _EmptyState()
-                : ListView.separated(
-                    itemCount: _inlineMessages.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, index) {
-                      final m = _inlineMessages[index];
-                      return InAppCard(
-                        message: m,
-                        onPrimaryCta: (cta) => _trackInlineClick(m, cta),
-                        onDismiss: () => _dismissInline(m),
-                      );
-                    },
-                  ),
+            child: _SlotHint(isInbox: _isInboxTab),
           ),
         ],
       ),
@@ -300,8 +267,10 @@ class _StatusPanel extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+class _SlotHint extends StatelessWidget {
+  const _SlotHint({required this.isInbox});
+
+  final bool isInbox;
 
   @override
   Widget build(BuildContext context) {
@@ -309,10 +278,19 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inbox_outlined, size: 36, color: Colors.grey.shade500),
+          Icon(
+            isInbox ? Icons.inbox_outlined : Icons.view_agenda_outlined,
+            size: 36,
+            color: Colors.grey.shade500,
+          ),
           const SizedBox(height: 8),
           Text(
-            'No inline / inbox messages yet.\nQueue a campaign or hit “Test in-app” from the dashboard.',
+            isInbox
+                ? 'Inbox cards appear above when the gateway\n'
+                    'delivers inbox_card messages for this screen.'
+                : 'An inline card appears above when the gateway\n'
+                    'delivers an inline message for this screen.\n'
+                    'Modal / banner show as overlays automatically.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade600),
           ),

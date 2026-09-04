@@ -58,6 +58,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
           trackApplicationLifecycleEvents: true,
           autoTrackDeviceAttributes: false,
           enableInAppMessages: true,
+          enableInAppAutoPresent: true, // modal/banner via OpenCDPInAppHost
           enableInAppRealtime: true,
           inAppSyncLimit: 10,
         ),

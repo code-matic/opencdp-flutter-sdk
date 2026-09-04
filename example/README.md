@@ -4,7 +4,7 @@ A focused harness for verifying messaging end-to-end:
 
 ```
 Dashboard test send → Product API queues delivery → Data Gateway
-  → SDK delivers to test app → renders (modal/banner/inline/inbox)
+  → SDK delivers to test app → OpenCDPInAppHost + slots render
   → impression / click / dismiss tracked
 
 Test app fires event → Data Gateway ingests → triggers campaigns / transactionals
@@ -15,15 +15,14 @@ Test app fires event → Data Gateway ingests → triggers campaigns / transacti
 
 - Boots into a config screen so you can plug in any data-gateway URL, API key,
   test person id, and profile fields without rebuilding.
-- Initializes `OpenCDPSDK` with `enableInAppMessages: true` and identifies
-  the person you provided.
-- Lets you switch logical screens (`home`, `cart`, `profile`, `inbox`) so you
-  can exercise backend page rules.
-- Renders the four built-in render types:
-  - `modal` — full-screen dialog with CTAs
-  - `banner` — top overlay banner with primary CTA + dismiss
-  - `inline` and `inbox_card` — appended to the inline list on screen
-- Tracks impressions, CTA clicks, and dismisses through `CDPInAppManager`.
+- Initializes `OpenCDPSDK` with `enableInAppMessages: true` and
+  `enableInAppAutoPresent: true`, then identifies the person you provided.
+- Wraps the home screen in **`OpenCDPInAppHost`** so `modal` / `banner` show
+  with the SDK default widgets (`OpenCDPInAppModalDialog`, `OpenCDPInAppBanner`).
+- Places **`OpenCDPInAppInlineSlot`** on home/cart/profile and
+  **`OpenCDPInAppInboxSlot`** on the inbox tab (default `OpenCDPInAppInlineCard`).
+- Lets you switch logical screens (`home`, `cart`, `profile`, `inbox`, `events`)
+  so you can exercise backend page rules via `setCurrentScreen`.
 - **Events tab** — fire arbitrary `track()` events to drive campaigns,
   broadcasts (via segment recompute) and transactional sends.
 
@@ -82,6 +81,8 @@ and watch the in-app message arrive (or hit **Sync now**).
 
 ## Where the SDK code lives
 
+- Host + slots: `lib/src/in_app/open_cdp_in_app_host.dart`,
+  `open_cdp_in_app_slots.dart`, `open_cdp_in_app_widgets.dart`
 - Manager: `lib/src/in_app/in_app_manager.dart`
 - Models: `lib/src/models/in_app_message.dart`
 - Docs: `doc/in_app_messaging.md`
@@ -93,6 +94,7 @@ Step-by-step integration and testing guides:
 
 - [Mobile E2E guide](https://docs.opencdp.io/integrations/mobile/e2e-guide)
 - [Flutter example app (docs)](https://docs.opencdp.io/integrations/flutter/examples/example-app)
+- [In-app messaging (Flutter)](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging)
 - [Identity and devices](https://docs.opencdp.io/integrations/mobile/identity-and-devices)
 
 Enter your own CDP API key, gateway URL, and test person ID on the config screen — do not use committed placeholder values from source.
