@@ -9,7 +9,6 @@ Highlights in **3.3.0** (see [CHANGELOG.md](CHANGELOG.md) for full history):
 - **In-app auto-present** — set `enableInAppAutoPresent: true` and wrap your app with `OpenCDPInAppHost` so `modal` / `banner` show automatically (optional `modalBuilder` / `bannerBuilder` for branded UI).
 - **Inline / inbox slots** — place `OpenCDPInAppInlineSlot` or `OpenCDPInAppInboxSlot` in your widget tree where layout-bound messages should appear (no GlobalKey hunting).
 - **Screen page rules** — Include / Exclude targeting still runs on the Data Gateway via `/sync?screen=…`; keep `autoTrackScreens` + navigator observers (or call `setCurrentScreen`).
-- **Safer `registerDevice` payload** — optional null/empty fields (`apnToken`, `name`, `osVersion`, …) are **omitted** from the JSON body (gateway rejects `"field": null` on optional strings). `fcmToken` remains required; APNs-only sends the `noAPNStoken` sentinel.
 
 Deep dive: [Flutter in-app messaging](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging) · [Mobile in-app hub](https://docs.opencdp.io/integrations/mobile/in-app-messaging)
 
@@ -108,11 +107,14 @@ void main() async {
       autoTrackScreens: true,
       trackApplicationLifecycleEvents: true,
       autoTrackDeviceAttributes: true,
+      // Native OpenCDP in-app (Data Gateway) — see In-App Messages below
+      enableInAppMessages: true,
+      enableInAppAutoPresent: true, // wrap with OpenCDPInAppHost
       sendToCustomerIo: true,
       customerIo: CustomerIOConfig(
         apiKey: 'your-customer-io-api-key',
         inAppConfig: CustomerIOInAppConfig(
-          siteId: 'your-site-id',
+          siteId: 'your-site-id', // Customer.io in-app (separate from OpenCDP)
         ),
         migrationSiteId: 'your-migration-site-id',
         customerIoRegion: Region.us,
@@ -127,6 +129,9 @@ void main() async {
   );
   runApp(MyApp());
 }
+
+// In MyApp / MaterialApp: add screenTracker + OpenCDPInAppHost
+// (full example in In-App Messages).
 ```
 
 > **CRITICAL**: The SDK **MUST** be initialized before using any of its methods. If you don't initialize the SDK, all tracking operations will fail silently and you'll see error messages in the console. Make sure to await the `initialize()` call.
@@ -274,7 +279,22 @@ call `inApp.setCurrentScreen`) so those names match the dashboard.
 `OpenCDPInAppHost`. Modal / banner show as overlays; inline / inbox need a
 slot in your layout.
 
+Working harness: [`example/`](example/) — In-App tab (inline + inbox slots, sync).
 Full guide: [Flutter in-app messaging](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging).
+
+### Widgets (3.3.0)
+
+| Widget | Role |
+|--------|------|
+| `OpenCDPInAppHost` | Listens to deliveries; presents modal/banner; feeds slots |
+| `OpenCDPInAppInlineSlot` | Place in layout for `inline` messages |
+| `OpenCDPInAppInboxSlot` | Place in layout for `inbox_card` feed |
+| `OpenCDPInAppModalDialog` | Default modal UI (used when `modalBuilder` is omitted) |
+| `OpenCDPInAppBanner` | Default banner UI (used when `bannerBuilder` is omitted) |
+| `OpenCDPInAppInlineCard` | Default card for inline / inbox slots |
+
+Omit builders to use the defaults. Slots track impression / click / dismiss
+automatically.
 
 ### 1. Enable + wrap the app (recommended)
 
@@ -301,17 +321,14 @@ MaterialApp(
   ],
   builder: (context, child) => OpenCDPInAppHost(
     child: child!,
-    // Optional: keep auto-present, use your branded UI
-    // modalBuilder: (context, message) => MyModal(message: message),
-    // bannerBuilder: (context, message, {required onPrimaryCta, required onClose}) =>
-    //     MyBanner(message: message, onCta: onPrimaryCta, onClose: onClose),
   ),
   home: const HomePage(),
 );
 ```
 
-`modalBuilder` should `Navigator.pop(context, ctaIdOrNull)` so the host can
-track click vs dismiss. Omit builders to use the SDK defaults.
+Mount the host **after** `initialize` (the example wraps `HomeScreen` once
+config finishes). With `MaterialApp.builder`, initialize the SDK before
+`runApp`.
 
 ### 2. Place slots for inline / inbox
 
@@ -319,37 +336,107 @@ track click vs dismiss. Omit builders to use the SDK defaults.
 place in the tree — put a slot where the card should appear:
 
 ```dart
+// Home / cart / profile — one inline placement
 Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
   children: [
     OpenCDPInAppInlineSlot(
-      slotId: 'home_above_balance', // optional; use one slot per screen if omitted targeting
-      // builder: (context, message, {required onCta, required onDismiss}) =>
-      //   MyInlineCard(message: message, onTap: onCta, onClose: onDismiss),
+      slotId: 'home_above_balance', // optional; match backend targetSlotId
     ),
-    BalanceHeader(...),
-    // Optional feed of inbox cards:
-    // OpenCDPInAppInboxSlot(),
+    // Your screen content…
+    const BalanceHeader(),
   ],
-)
+);
+
+// Inbox tab — feed of inbox_card messages
+ListView(
+  children: const [
+    OpenCDPInAppInboxSlot(),
+    // Your other inbox rows…
+  ],
+);
 ```
 
-Requires an ancestor `OpenCDPInAppHost`. Slots track impression / click /
-dismiss. Optional `builder` keeps your branded UI.
+Requires an ancestor `OpenCDPInAppHost`. Optional `slotId` reserves a
+placement when the backend targets that id; otherwise every inline slot on
+screen can show the current message (prefer one slot per screen).
 
-### 3. Custom UI (advanced)
+### 3. Optional branded UI
+
+Keep auto-present on and pass builders for branded overlays / cards.
+`modalBuilder` must `Navigator.pop(context, ctaIdOrNull)` so the host can
+track click vs dismiss. `bannerBuilder` must call `onPrimaryCta` / `onClose`:
+
+```dart
+OpenCDPInAppHost(
+  child: child!,
+  modalBuilder: (context, message) {
+    return AlertDialog(
+      title: Text(message.title ?? ''),
+      content: Text(message.body ?? ''),
+      actions: [
+        for (final cta in message.ctas)
+          TextButton(
+            onPressed: () => Navigator.pop(context, cta.id),
+            child: Text(cta.label),
+          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  },
+  bannerBuilder: (context, message, {required onPrimaryCta, required onClose}) {
+    final cta = message.primaryCta;
+    return Material(
+      elevation: 4,
+      child: ListTile(
+        title: Text(message.title ?? ''),
+        subtitle: Text(message.body ?? ''),
+        trailing: IconButton(icon: const Icon(Icons.close), onPressed: onClose),
+        onTap: cta == null ? null : () => onPrimaryCta(cta),
+      ),
+    );
+  },
+);
+
+// Branded inline card (optional builder on the slot):
+OpenCDPInAppInlineSlot(
+  slotId: 'home_above_balance',
+  builder: (context, message, {required onCta, required onDismiss}) {
+    return Card(
+      child: ListTile(
+        title: Text(message.title ?? ''),
+        subtitle: Text(message.body ?? ''),
+        trailing: IconButton(icon: const Icon(Icons.close), onPressed: onDismiss),
+        onTap: onCta,
+      ),
+    );
+  },
+);
+```
+
+### 4. Custom presentation (advanced)
 
 Disable auto-present (`enableInAppAutoPresent: false`) and listen to
-`messageStream` yourself — useful when you fully own presentation:
+`messageStream` yourself — useful when you fully own presentation. You can
+still mount `OpenCDPInAppHost` so **slots** receive inline / inbox messages
+(modal/banner overlays are skipped unless `forcePresent: true`).
 
 ```dart
 OpenCDPSDK.instance.inApp?.messageStream.listen((message) async {
   switch (message.renderType) {
     case InAppRenderType.modal:
-      // showDialog(...); trackImpression / trackClick / trackDismiss
+      // showDialog(...); then trackImpression / trackClick / trackDismiss
       break;
     case InAppRenderType.banner:
+      // show overlay banner; track the same way
+      break;
     case InAppRenderType.inline:
     case InAppRenderType.inboxCard:
+      // Prefer OpenCDPInAppInlineSlot / OpenCDPInAppInboxSlot instead
+      break;
     case InAppRenderType.unknown:
       break;
   }
@@ -359,7 +446,7 @@ OpenCDPSDK.instance.inApp?.messageStream.listen((message) async {
 Avoid enabling auto-present **and** a custom overlay host for the same
 modal/banner messages (double presentation).
 
-### 4. Updating screen / session manually (optional)
+### 5. Updating screen / session manually (optional)
 
 ```dart
 OpenCDPSDK.instance.inApp?.setCurrentScreen('home');
@@ -367,7 +454,7 @@ OpenCDPSDK.instance.inApp?.resetSession();
 OpenCDPSDK.instance.inApp?.syncNow();
 ```
 
-### 5. Manual sync (no auto delivery)
+### 6. Manual sync (no auto delivery)
 
 Set `enableInAppMessages: false` and fetch when you need to (e.g. inbox
 screens):
@@ -810,6 +897,10 @@ See the [CHANGELOG.md](CHANGELOG.md) for full details on breaking changes.
 | `autoTrackScreens` | bool | Automatically track screen views |
 | `trackApplicationLifecycleEvents` | bool | Track app lifecycle events |
 | `autoTrackDeviceAttributes` | bool | Automatically track device attributes |
+| `enableInAppMessages` | bool | Deliver OpenCDP in-app messages on `messageStream` (default `false`) |
+| `enableInAppAutoPresent` | bool | With `OpenCDPInAppHost`, present modal/banner automatically (default `false`) |
+| `enableInAppRealtime` | bool | Low-latency delivery when in-app is enabled (default `true`) |
+| `inAppSyncLimit` | int | Max messages per sync, 1–50 (default `10`) |
 | `sendToCustomerIo` | bool | Enable Customer.io integration |
 | `customerIo` | CustomerIOConfig | Customer.io configuration |
 
@@ -818,7 +909,7 @@ See the [CHANGELOG.md](CHANGELOG.md) for full details on breaking changes.
 | Option | Type | Description |
 |--------|------|-------------|
 | `apiKey` | String | Customer.io API key |
-| `inAppConfig` | CustomerIOInAppConfig | In-app messaging configuration |
+| `inAppConfig` | CustomerIOInAppConfig | Customer.io in-app config (separate from OpenCDP in-app) |
 | `migrationSiteId` | String | Migration site ID |
 | `customerIoRegion` | Region | Customer.io region (us/eu) |
 | `autoTrackDeviceAttributes` | bool | Track device attributes in Customer.io |
