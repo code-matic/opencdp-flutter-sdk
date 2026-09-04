@@ -159,8 +159,8 @@ await OpenCDPSDK.instance.clearIdentity();          // logout
 
 ## Example app
 
-See `example/` — `OpenCDPInAppHost` in `main.dart`, slots in `home_screen.dart`,
-and `example/README.md`.
+See `example/` — `OpenCDPInAppHost` in `main.dart`, `InAppLabScreen` in
+`example/lib/in_app/in_app_lab_screen.dart`.
 
 ## Product docs
 

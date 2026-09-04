@@ -279,7 +279,7 @@ call `inApp.setCurrentScreen`) so those names match the dashboard.
 `OpenCDPInAppHost`. Modal / banner show as overlays; inline / inbox need a
 slot in your layout.
 
-Working harness: [`example/`](example/) (uses the same widgets below).
+Working harness: [`example/`](example/) — In-App tab (inline + inbox slots, sync).
 Full guide: [Flutter in-app messaging](https://docs.opencdp.io/integrations/flutter/features/in-app-messaging).
 
 ### Widgets (3.3.0)
