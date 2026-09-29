@@ -286,7 +286,7 @@ Full guide: [Flutter in-app messaging](https://docs.opencdp.io/integrations/flut
 
 | Widget | Role |
 |--------|------|
-| `OpenCDPInAppHost` | Listens to deliveries; presents modal/banner; feeds slots |
+| `OpenCDPInAppHost` | Listens to deliveries; presents modal/banner (pass `navigatorKey` when using `MaterialApp.builder`); feeds slots |
 | `OpenCDPInAppInlineSlot` | Place in layout for `inline` messages |
 | `OpenCDPInAppInboxSlot` | Place in layout for `inbox_card` feed |
 | `OpenCDPInAppModalDialog` | Default modal UI (used when `modalBuilder` is omitted) |
@@ -314,21 +314,29 @@ await OpenCDPSDK.instance.identify(
   properties: {'email': 'user@example.com'},
 );
 
+final navKey = GlobalKey<NavigatorState>();
+
 MaterialApp(
+  navigatorKey: navKey,
   navigatorObservers: [
     if (OpenCDPSDK.instance.screenTracker != null)
       OpenCDPSDK.instance.screenTracker!,
   ],
+  // Host may sit above the Navigator in `builder` when navigatorKey is set.
   builder: (context, child) => OpenCDPInAppHost(
+    navigatorKey: navKey,
     child: child!,
   ),
   home: const HomePage(),
 );
+
+// GoRouter: use the same key on GoRouter(navigatorKey: navKey) and the host.
 ```
 
-Mount the host **after** `initialize` (the example wraps `HomeScreen` once
-config finishes). With `MaterialApp.builder`, initialize the SDK before
-`runApp`.
+Mount the host **after** `initialize`. Pass **`navigatorKey`** (same key as
+`MaterialApp` / `GoRouter`) so modal / banner work from `builder`. Without a
+key, mount the host **under** a `Navigator` instead (e.g. as `home` or inside
+a shell route).
 
 ### 2. Place slots for inline / inbox
 
@@ -369,6 +377,7 @@ track click vs dismiss. `bannerBuilder` must call `onPrimaryCta` / `onClose`:
 
 ```dart
 OpenCDPInAppHost(
+  navigatorKey: navKey, // same key as MaterialApp / GoRouter
   child: child!,
   modalBuilder: (context, message) {
     return AlertDialog(
@@ -535,7 +544,7 @@ Future<void> main() async {
       cdpApiKey: "YOUR_API_KEY_HERE",
       iOSAppGroup: "group.com.yourcompany.yourapp", // App Group for iOS
       // Optional: cdpEndpoint: "https://your-tenant.data-gateway.cdp/...", // primary gateway
-      // Optional: cdpFallbackEndpoints: ["https://api.opencdp.xyz/gateway/data-gateway", ...],
+      // Optional: cdpFallbackEndpoints: ["https://api.open-cdp.xyz/gateway/data-gateway", ...],
       // Optional: cdpRequestTimeout: Duration(seconds: 45), // default 30s, clamped 5s–120s
     ),
   );

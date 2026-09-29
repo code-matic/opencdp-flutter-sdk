@@ -254,7 +254,7 @@ Track each shared feature per SDK. Mark `[x]` when implemented and tested.
 
 ## Success criteria (check when all done)
 
-- [x] **SC-1** Python uses `/v1/persons/*` and `api.opencdp.com` default
+- [x] **SC-1** Python uses `/v1/persons/*` and `api.opencdp.io` primary with `open-cdp` fallbacks
 - [x] **SC-2** Go / Node / PHP / Python send `{ identifier, properties, eventName }`
 - [x] **SC-3** All four server SDKs support gateway failover `com` → `xyz` → `io`
 - [ ] **SC-4** Contract test vectors pass in all server SDK CI pipelines

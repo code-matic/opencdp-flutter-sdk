@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.3.1] - 2026-09-22
+
+### Added
+
+* **`OpenCDPInAppHost.navigatorKey`** — pass the same `GlobalKey<NavigatorState>` as `MaterialApp` / `GoRouter` so modal / banner present reliably from `MaterialApp.builder` (host above the navigator). Without a key, mount the host under a `Navigator` (home / shell) as before.
+
+### Changed
+
+* In-app docs recommend `navigatorKey` with `builder` as the portable integration path across routing styles.
+* Default gateway fallback hosts updated from `api.opencdp.com` / `api.opencdp.xyz` to `api.open-cdp.com` / `api.open-cdp.xyz` (primary remains `api.opencdp.io`).
+
 ## [3.3.0] - 2026-09-02
 
 ### Added

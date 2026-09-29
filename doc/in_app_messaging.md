@@ -44,12 +44,18 @@ await OpenCDPSDK.instance.identify(
 Either wire automatic screen tracking:
 
 ```dart
+final navKey = GlobalKey<NavigatorState>();
+
 MaterialApp(
+  navigatorKey: navKey,
   navigatorObservers: [
     if (OpenCDPSDK.instance.screenTracker != null)
       OpenCDPSDK.instance.screenTracker!,
   ],
-  builder: (context, child) => OpenCDPInAppHost(child: child!),
+  builder: (context, child) => OpenCDPInAppHost(
+    navigatorKey: navKey,
+    child: child!,
+  ),
   // ...
 );
 ```
@@ -62,12 +68,27 @@ await OpenCDPSDK.instance.inApp?.setCurrentScreen('checkout');
 
 ## 2. Recommended: host + slots
 
+Pass the app’s root `navigatorKey` so modal / banner work even when the host
+lives in `MaterialApp.builder` (above the navigator). Same idea with GoRouter —
+use `GoRouter(navigatorKey: navKey)`.
+
 ```dart
+final navKey = GlobalKey<NavigatorState>();
+
 MaterialApp(
-  builder: (context, child) => OpenCDPInAppHost(child: child!),
+  navigatorKey: navKey,
+  builder: (context, child) => OpenCDPInAppHost(
+    navigatorKey: navKey,
+    child: child!,
+  ),
   home: const HomePage(),
 );
+```
 
+Without `navigatorKey`, mount the host **under** a `Navigator` (e.g. as
+`home` or inside a shell builder) instead.
+
+```dart
 // In a screen layout:
 Column(
   children: [
@@ -156,6 +177,7 @@ await OpenCDPSDK.instance.clearIdentity();          // logout
 | `enableInAppRealtime` | `true` | Low-latency delivery when messages enabled |
 | `inAppSyncLimit` | 10 | Max messages per fetch (1–50) |
 | `autoTrackScreens` | `false` | Navigator-based screen → page rules |
+| Host `navigatorKey` | — | Same key as `MaterialApp`/`GoRouter` for modal/banner from `builder` |
 
 ## Example app
 

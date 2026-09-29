@@ -3,8 +3,8 @@
   "gateway": {
     "primary": "https://api.opencdp.io/gateway/data-gateway",
     "fallbacks": [
-      "https://api.opencdp.com/gateway/data-gateway",
-      "https://api.opencdp.xyz/gateway/data-gateway"
+      "https://api.open-cdp.com/gateway/data-gateway",
+      "https://api.open-cdp.xyz/gateway/data-gateway"
     ]
   },
   "vectors": [
