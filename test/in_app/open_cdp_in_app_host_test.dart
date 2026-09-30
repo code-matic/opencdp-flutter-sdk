@@ -1,7 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_cdp_flutter_sdk/open_cdp_flutter_sdk.dart';
-import 'package:open_cdp_flutter_sdk/src/in_app/open_cdp_in_app_widgets.dart';
 
 void main() {
   testWidgets('OpenCDPInAppModalDialog shows title and body', (tester) async {
@@ -72,6 +73,79 @@ void main() {
       Navigator.of(navKey.currentContext!).pop();
       await dialog;
       await tester.pumpAndSettle();
+    },
+  );
+
+  InAppMessage inboxMessage(String deliveryId) {
+    return InAppMessage(
+      deliveryId: deliveryId,
+      messageId: 'm-$deliveryId',
+      renderType: InAppRenderType.inboxCard,
+      priority: 1,
+      ctas: const [],
+    );
+  }
+
+  Future<void> pumpHost(
+    WidgetTester tester,
+    Stream<InAppMessage> messages, {
+    void Function(InAppMessage message)? onInlineMessage,
+    void Function(InAppMessage message)? onInboxMessage,
+  }) async {
+    OpenCDPInAppHost.debugMessageStream = messages;
+    addTearDown(() {
+      OpenCDPInAppHost.debugMessageStream = null;
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OpenCDPInAppHost(
+          onInlineMessage: onInlineMessage,
+          onInboxMessage: onInboxMessage,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
+
+  testWidgets(
+    'inbox card invokes onInlineMessage when onInboxMessage is null',
+    (tester) async {
+      final inline = <String>[];
+      final controller = StreamController<InAppMessage>.broadcast();
+      addTearDown(controller.close);
+      await pumpHost(
+        tester,
+        controller.stream,
+        onInlineMessage: (message) => inline.add(message.deliveryId),
+      );
+
+      controller.add(inboxMessage('inbox-1'));
+      await tester.pump();
+
+      expect(inline, ['inbox-1']);
+    },
+  );
+
+  testWidgets(
+    'inbox card prefers onInboxMessage when both callbacks are set',
+    (tester) async {
+      final inline = <String>[];
+      final inbox = <String>[];
+      final controller = StreamController<InAppMessage>.broadcast();
+      addTearDown(controller.close);
+      await pumpHost(
+        tester,
+        controller.stream,
+        onInlineMessage: (message) => inline.add(message.deliveryId),
+        onInboxMessage: (message) => inbox.add(message.deliveryId),
+      );
+
+      controller.add(inboxMessage('inbox-2'));
+      await tester.pump();
+
+      expect(inbox, ['inbox-2']);
+      expect(inline, isEmpty);
     },
   );
 }

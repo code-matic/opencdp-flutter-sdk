@@ -56,6 +56,11 @@ typedef OpenCDPInAppBannerBuilder = Widget Function(
 /// banner are skipped unless [forcePresent] is true; **slots still receive**
 /// inline / inbox messages whenever this host is mounted.
 class OpenCDPInAppHost extends StatefulWidget {
+  /// When set, the host listens here instead of [OpenCDPSDK.instance.inApp].
+  /// Widget tests deliver messages without initializing the SDK.
+  @visibleForTesting
+  static Stream<InAppMessage>? debugMessageStream;
+
   const OpenCDPInAppHost({
     super.key,
     required this.child,
@@ -168,6 +173,11 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
   }
 
   void _attach() {
+    final debugStream = OpenCDPInAppHost.debugMessageStream;
+    if (debugStream != null) {
+      _subscription = debugStream.listen(_handleMessage);
+      return;
+    }
     final manager = OpenCDPSDK.instance.inApp;
     if (manager == null) {
       _debugLog(
@@ -188,12 +198,13 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
 
   Future<void> _handleMessage(InAppMessage message) async {
     if (!mounted) return;
-    final manager = OpenCDPSDK.instance.inApp;
-    if (manager == null) return;
+    final manager = OpenCDPInAppHost.debugMessageStream == null
+        ? OpenCDPSDK.instance.inApp
+        : null;
 
     switch (message.renderType) {
       case InAppRenderType.modal:
-        if (!_shouldPresentOverlay) return;
+        if (manager == null || !_shouldPresentOverlay) return;
         if (_modalShowing) {
           _pendingModal = message;
           return;
@@ -201,7 +212,7 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
         await _showModal(manager, message);
         break;
       case InAppRenderType.banner:
-        if (!_shouldPresentOverlay) return;
+        if (manager == null || !_shouldPresentOverlay) return;
         await _showBanner(manager, message);
         break;
       case InAppRenderType.inline:

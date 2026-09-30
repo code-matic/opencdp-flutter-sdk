@@ -188,6 +188,27 @@ class OpenCDPSDKImplementation {
     return true;
   }
 
+  /// Validate push token (FCM or APN).
+  ///
+  /// Null means the caller omitted the token. An empty or whitespace-only
+  /// value was provided and is a validation error: [CDPValidationException]
+  /// when [OpenCDPConfig.throwErrorsBack] is set, otherwise the call aborts.
+  bool _validatePushToken(String? token, String tokenType) {
+    if (token == null) return true;
+
+    if (token.trim().isEmpty) {
+      final errorMessage = '$tokenType cannot be empty if provided';
+      if (config.throwErrorsBack) {
+        throw CDPValidationException(errorMessage, tokenType);
+      }
+      if (config.debug) {
+        debugPrint('[CDP] $errorMessage');
+      }
+      return false;
+    }
+    return true;
+  }
+
   /// Standard error handling for SDK public methods
   void _handleError(String operation, dynamic error) {
     if (config.throwErrorsBack &&
@@ -523,8 +544,14 @@ class OpenCDPSDKImplementation {
         return;
       }
 
-      // Trim first so whitespace-only tokens are treated as absent (skip),
-      // not as validation failures that abort before the skip path.
+      if (!_validatePushToken(fcmToken, 'fcmToken')) {
+        return;
+      }
+      if (!_validatePushToken(apnToken, 'apnToken')) {
+        return;
+      }
+
+      // Null tokens are omitted. Empty values already failed validation above.
       final trimmedFcm = fcmToken?.trim();
       final trimmedApn = apnToken?.trim();
       final resolvedFcm =
@@ -534,7 +561,7 @@ class OpenCDPSDKImplementation {
       if (resolvedFcm == null && resolvedApn == null) {
         if (config.debug) {
           debugPrint(
-            '[CDP] registerDevice skipped: both fcmToken and apnToken are null/empty',
+            '[CDP] registerDevice skipped: both fcmToken and apnToken are null',
           );
         }
         return;
