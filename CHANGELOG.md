@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.3.3] - 2026-09-30
+
+### Fixed
+
+* **`registerDevice`** — an empty or whitespace-only `fcmToken` / `apnToken` is a validation error again (`CDPValidationException` when `throwErrorsBack` is true). Null still means the token was omitted.
+* **In-app banners** — a newer banner dismisses the previous one after the navigator is ready, so two deliveries cannot leave overlapping banners or let the first timer remove the second.
+* **`OpenCDPInAppHost.navigatorKey`** — when a key is set, presentation waits for that navigator instead of using the host context above it.
+
 ## [3.3.1] - 2026-09-22
 
 ### Added
