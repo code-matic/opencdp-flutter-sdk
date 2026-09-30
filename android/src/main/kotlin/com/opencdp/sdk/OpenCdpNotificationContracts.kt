@@ -12,8 +12,8 @@ internal object OpenCdpNotificationContracts {
 
     /** Last-resort fallbacks when SDK prefs were never written. */
     val DEFAULT_FALLBACK_URLS = listOf(
-        "https://api.opencdp.com/gateway/data-gateway",
-        "https://api.opencdp.xyz/gateway/data-gateway",
+        "https://api.open-cdp.com/gateway/data-gateway",
+        "https://api.open-cdp.xyz/gateway/data-gateway",
     )
 
     val DEFAULT_GATEWAY_HOSTS: List<String> =

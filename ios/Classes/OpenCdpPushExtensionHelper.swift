@@ -10,8 +10,8 @@ public class OpenCdpPushExtensionHelper {
 
     private static let defaultGatewayHosts = [
         "https://api.opencdp.io/gateway/data-gateway",
-        "https://api.opencdp.com/gateway/data-gateway",
-        "https://api.opencdp.xyz/gateway/data-gateway",
+        "https://api.open-cdp.com/gateway/data-gateway",
+        "https://api.open-cdp.xyz/gateway/data-gateway",
     ]
 
     public static func didReceiveNotificationExtensionRequest(
@@ -69,8 +69,8 @@ public class OpenCdpPushExtensionHelper {
         }
         if let single = readBaseUrlFromSharedStorage(appGroup: appGroup), !single.isEmpty {
             let fallbacks = [
-                "https://api.opencdp.com/gateway/data-gateway",
-                "https://api.opencdp.xyz/gateway/data-gateway",
+                "https://api.open-cdp.com/gateway/data-gateway",
+                "https://api.open-cdp.xyz/gateway/data-gateway",
             ]
             return dedupeHosts([single] + fallbacks)
         }

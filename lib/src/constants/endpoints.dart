@@ -6,10 +6,10 @@ class CDPEndpoints {
 
   /// Backup gateway hosts used when the primary returns non-2xx or is unreachable.
   static const String backupBaseUrlCom =
-      'https://api.opencdp.com/gateway/data-gateway';
+      'https://api.open-cdp.com/gateway/data-gateway';
 
   static const String backupBaseUrlXyz =
-      'https://api.opencdp.xyz/gateway/data-gateway';
+      'https://api.open-cdp.xyz/gateway/data-gateway';
 
   static const String version = '/v1';
 

@@ -188,9 +188,13 @@ class OpenCDPSDKImplementation {
     return true;
   }
 
-  /// Validate push token (FCM or APN)
+  /// Validate push token (FCM or APN).
+  ///
+  /// Null means the caller omitted the token. An empty or whitespace-only
+  /// value was provided and is a validation error: [CDPValidationException]
+  /// when [OpenCDPConfig.throwErrorsBack] is set, otherwise the call aborts.
   bool _validatePushToken(String? token, String tokenType) {
-    if (token == null) return true; // Optional, so null is valid
+    if (token == null) return true;
 
     if (token.trim().isEmpty) {
       final errorMessage = '$tokenType cannot be empty if provided';
@@ -539,6 +543,7 @@ class OpenCDPSDKImplementation {
       if (!_ensureInitialized()) {
         return;
       }
+
       if (!_validatePushToken(fcmToken, 'fcmToken')) {
         return;
       }
@@ -546,26 +551,27 @@ class OpenCDPSDKImplementation {
         return;
       }
 
-      final trimmedFcmInput = fcmToken?.trim();
-      final trimmedApnInput = apnToken?.trim();
-      final hasFcm =
-          trimmedFcmInput != null && trimmedFcmInput.isNotEmpty;
-      final hasApn =
-          trimmedApnInput != null && trimmedApnInput.isNotEmpty;
-      if (!hasFcm && !hasApn) {
+      // Null tokens are omitted. Empty values already failed validation above.
+      final trimmedFcm = fcmToken?.trim();
+      final trimmedApn = apnToken?.trim();
+      final resolvedFcm =
+          (trimmedFcm != null && trimmedFcm.isNotEmpty) ? trimmedFcm : null;
+      final resolvedApn =
+          (trimmedApn != null && trimmedApn.isNotEmpty) ? trimmedApn : null;
+      if (resolvedFcm == null && resolvedApn == null) {
         if (config.debug) {
           debugPrint(
-            '[CDP] registerDevice skipped: both fcmToken and apnToken are null/empty',
+            '[CDP] registerDevice skipped: both fcmToken and apnToken are null',
           );
         }
         return;
       }
 
-      if (hasFcm) {
-        await prefs.setString('fcm_token', trimmedFcmInput);
+      if (resolvedFcm != null) {
+        await prefs.setString('fcm_token', resolvedFcm);
       }
-      if (hasApn) {
-        await prefs.setString('apn_token', trimmedApnInput);
+      if (resolvedApn != null) {
+        await prefs.setString('apn_token', resolvedApn);
       }
       // Get device attributes
       final deviceAttributes = <String, dynamic>{};
@@ -636,11 +642,11 @@ class OpenCDPSDKImplementation {
           'identifier': _currentIdentifier,
           'deviceId': deviceId,
           'platform': platform,
-          'fcmToken': hasFcm ? trimmedFcmInput : 'noAPNStoken',
+          'fcmToken': resolvedFcm ?? 'noAPNStoken',
           if (name != null) 'name': name,
           if (osVersion != null) 'osVersion': osVersion,
           if (model != null) 'model': model,
-          if (hasApn) 'apnToken': trimmedApnInput,
+          if (resolvedApn != null) 'apnToken': resolvedApn,
           if (appVersion != null) 'appVersion': appVersion,
           if (deviceAttributes.isNotEmpty) 'attributes': deviceAttributes,
         },
@@ -649,8 +655,8 @@ class OpenCDPSDKImplementation {
 
       if (config.sendToCustomerIo) {
         try {
-          final token = trimmedFcmInput ?? trimmedApnInput;
-          if (token != null && token.isNotEmpty) {
+          final token = resolvedFcm ?? resolvedApn;
+          if (token != null) {
             cio.CustomerIO.instance.registerDeviceToken(deviceToken: token);
           }
         } catch (e) {

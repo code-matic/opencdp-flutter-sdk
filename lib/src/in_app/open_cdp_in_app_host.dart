@@ -28,25 +28,43 @@ typedef OpenCDPInAppBannerBuilder = Widget Function(
 /// (keep [OpenCDPConfig.autoTrackScreens] + navigator observers, or call
 /// [CDPInAppManager.setCurrentScreen] yourself).
 ///
-/// Wrap your [MaterialApp] / [CupertinoApp] `builder` child:
+/// ## Placement (routing-agnostic)
+///
+/// Prefer wrapping [MaterialApp.builder] / [CupertinoApp.builder] **and**
+/// passing the same [navigatorKey] attached to that app (or GoRouter):
 ///
 /// ```dart
-/// builder: (context, child) => OpenCDPInAppHost(
-///   child: child!,
-///   modalBuilder: (context, message) => MyModal(message: message),
-/// ),
-/// // Then place slots in screens:
-/// // OpenCDPInAppInlineSlot(slotId: 'home_above_balance'),
+/// final navKey = GlobalKey<NavigatorState>();
+///
+/// MaterialApp(
+///   navigatorKey: navKey,
+///   builder: (context, child) => OpenCDPInAppHost(
+///     navigatorKey: navKey,
+///     child: child!,
+///     modalBuilder: (context, message) => MyModal(message: message),
+///   ),
+/// );
 /// ```
+///
+/// With [navigatorKey], modal / banner present via that navigator even when
+/// this host sits *above* the navigator (the usual `builder` case). Without
+/// a key, mount the host **under** a [Navigator] instead (e.g. as `home` or
+/// inside a GoRouter shell).
 ///
 /// Prefer enabling [OpenCDPConfig.enableInAppAutoPresent] together with
 /// [OpenCDPConfig.enableInAppMessages]. When auto-present is false, modal /
 /// banner are skipped unless [forcePresent] is true; **slots still receive**
 /// inline / inbox messages whenever this host is mounted.
 class OpenCDPInAppHost extends StatefulWidget {
+  /// When set, the host listens here instead of [OpenCDPSDK.instance.inApp].
+  /// Widget tests deliver messages without initializing the SDK.
+  @visibleForTesting
+  static Stream<InAppMessage>? debugMessageStream;
+
   const OpenCDPInAppHost({
     super.key,
     required this.child,
+    this.navigatorKey,
     this.onInlineMessage,
     this.onInboxMessage,
     this.modalBuilder,
@@ -56,10 +74,23 @@ class OpenCDPInAppHost extends StatefulWidget {
 
   final Widget child;
 
+  /// Same [GlobalKey] passed to [MaterialApp.navigatorKey],
+  /// [CupertinoApp.navigatorKey], or [GoRouter.navigatorKey].
+  ///
+  /// When set, modal / banner use this navigator for [showDialog] / [Overlay]
+  /// so the host may live in `MaterialApp.builder` (above the navigator).
+  final GlobalKey<NavigatorState>? navigatorKey;
+
   /// Called for [InAppRenderType.inline] (in addition to slot registry).
+  ///
+  /// Also receives [InAppRenderType.inboxCard] when [onInboxMessage] is null
+  /// (backward-compatible single-callback hosts). Prefer [onInboxMessage] when
+  /// you need separate handling.
   final void Function(InAppMessage message)? onInlineMessage;
 
   /// Called for [InAppRenderType.inboxCard] (in addition to slot registry).
+  ///
+  /// When null, inbox deliveries fall back to [onInlineMessage] if set.
   final void Function(InAppMessage message)? onInboxMessage;
 
   /// Custom modal UI. If null, the SDK default [OpenCDPInAppModalDialog] is used.
@@ -96,6 +127,26 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     }
   }
 
+  /// Context that can resolve a [Navigator] / [Overlay] for presentation.
+  ///
+  /// When [OpenCDPInAppHost.navigatorKey] is set, only that navigator's context
+  /// is used. Falling back to the host context would succeed immediately in
+  /// `MaterialApp.builder` (above the navigator) and skip the wait for the key.
+  BuildContext? _presentContext() {
+    final key = widget.navigatorKey;
+    if (key != null) return key.currentContext;
+    if (!mounted) return null;
+    return context;
+  }
+
+  OverlayState? _presentOverlay() {
+    final navState = widget.navigatorKey?.currentState;
+    if (navState?.overlay != null) return navState!.overlay;
+    final ctx = _presentContext();
+    if (ctx == null) return null;
+    return Overlay.maybeOf(ctx, rootOverlay: true);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -105,23 +156,28 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
 
   void _wireRegistryTracking() {
     _registry.trackImpression = (message) async {
-      await OpenCDPSDK.instance.inApp?.trackImpression(message);
+      final manager = OpenCDPSDK.instance.inApp;
+      if (manager == null) return;
+      await manager.trackImpression(message);
     };
     _registry.trackClick = (message, actionId) async {
-      await OpenCDPSDK.instance.inApp?.trackClick(
-        message: message,
-        actionId: actionId,
-      );
+      final manager = OpenCDPSDK.instance.inApp;
+      if (manager == null) return;
+      await manager.trackClick(message: message, actionId: actionId);
     };
     _registry.trackDismiss = (message, reason) async {
-      await OpenCDPSDK.instance.inApp?.trackDismiss(
-        message: message,
-        reason: reason,
-      );
+      final manager = OpenCDPSDK.instance.inApp;
+      if (manager == null) return;
+      await manager.trackDismiss(message: message, reason: reason);
     };
   }
 
   void _attach() {
+    final debugStream = OpenCDPInAppHost.debugMessageStream;
+    if (debugStream != null) {
+      _subscription = debugStream.listen(_handleMessage);
+      return;
+    }
     final manager = OpenCDPSDK.instance.inApp;
     if (manager == null) {
       _debugLog(
@@ -142,12 +198,13 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
 
   Future<void> _handleMessage(InAppMessage message) async {
     if (!mounted) return;
-    final manager = OpenCDPSDK.instance.inApp;
-    if (manager == null) return;
+    final manager = OpenCDPInAppHost.debugMessageStream == null
+        ? OpenCDPSDK.instance.inApp
+        : null;
 
     switch (message.renderType) {
       case InAppRenderType.modal:
-        if (!_shouldPresentOverlay) return;
+        if (manager == null || !_shouldPresentOverlay) return;
         if (_modalShowing) {
           _pendingModal = message;
           return;
@@ -155,7 +212,7 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
         await _showModal(manager, message);
         break;
       case InAppRenderType.banner:
-        if (!_shouldPresentOverlay) return;
+        if (manager == null || !_shouldPresentOverlay) return;
         await _showBanner(manager, message);
         break;
       case InAppRenderType.inline:
@@ -164,6 +221,8 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
         break;
       case InAppRenderType.inboxCard:
         _registry.addInbox(message);
+        // Prefer onInboxMessage; fall back to onInlineMessage for hosts that
+        // use a single callback for both layout-bound render types.
         (widget.onInboxMessage ?? widget.onInlineMessage)?.call(message);
         break;
       case InAppRenderType.unknown:
@@ -175,10 +234,33 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     }
   }
 
+  Future<BuildContext?> _waitForPresentContext() async {
+    var ctx = _presentContext();
+    if (ctx != null) return ctx;
+    // Navigator may not be ready on the same frame the host mounts.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return null;
+    ctx = _presentContext();
+    if (ctx == null) {
+      _debugLog(
+        '[CDP] OpenCDPInAppHost: no Navigator context for modal/banner — '
+        'pass navigatorKey (same key as MaterialApp/GoRouter) or mount '
+        'the host under a Navigator.',
+      );
+    }
+    return ctx;
+  }
+
   Future<void> _showModal(CDPInAppManager manager, InAppMessage message) async {
     _modalShowing = true;
+    final presentContext = await _waitForPresentContext();
+    if (presentContext == null || !mounted) {
+      _modalShowing = false;
+      return;
+    }
+
     final dialogFuture = showDialog<String?>(
-      context: context,
+      context: presentContext,
       useRootNavigator: true,
       builder: (dialogContext) {
         final custom = widget.modalBuilder;
@@ -211,9 +293,23 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     CDPInAppManager manager,
     InAppMessage message,
   ) async {
+    // Wait before dismissing. Two deliveries can pass this await together;
+    // dismissing first lets both resume and insert, and the earlier timer
+    // then removes the later banner.
+    await _waitForPresentContext();
+    if (!mounted) return;
+
+    final overlay = _presentOverlay();
+    if (overlay == null) {
+      _debugLog(
+        '[CDP] OpenCDPInAppHost: no Overlay for banner — '
+        'pass navigatorKey or mount the host under a Navigator.',
+      );
+      return;
+    }
+
     _dismissBanner();
 
-    final overlay = Overlay.of(context, rootOverlay: true);
     unawaited(manager.trackImpression(message));
 
     late final OverlayEntry entry;
@@ -235,7 +331,7 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     overlay.insert(entry);
 
     _bannerTimer = Timer(const Duration(seconds: 6), () {
-      if (!mounted) return;
+      if (!mounted || _bannerEntry != entry) return;
       unawaited(
         manager.trackDismiss(
           message: message,
