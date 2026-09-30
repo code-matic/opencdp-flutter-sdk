@@ -123,9 +123,13 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
   }
 
   /// Context that can resolve a [Navigator] / [Overlay] for presentation.
+  ///
+  /// When [OpenCDPInAppHost.navigatorKey] is set, only that navigator's context
+  /// is used. Falling back to the host context would succeed immediately in
+  /// `MaterialApp.builder` (above the navigator) and skip the wait for the key.
   BuildContext? _presentContext() {
-    final fromKey = widget.navigatorKey?.currentContext;
-    if (fromKey != null) return fromKey;
+    final key = widget.navigatorKey;
+    if (key != null) return key.currentContext;
     if (!mounted) return null;
     return context;
   }
@@ -278,9 +282,9 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     CDPInAppManager manager,
     InAppMessage message,
   ) async {
-    _dismissBanner();
-
-    // Ensure navigator/overlay is ready when host lives in MaterialApp.builder.
+    // Wait before dismissing. Two deliveries can pass this await together;
+    // dismissing first lets both resume and insert, and the earlier timer
+    // then removes the later banner.
     await _waitForPresentContext();
     if (!mounted) return;
 
@@ -292,6 +296,8 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
       );
       return;
     }
+
+    _dismissBanner();
 
     unawaited(manager.trackImpression(message));
 
@@ -314,7 +320,7 @@ class _OpenCDPInAppHostState extends State<OpenCDPInAppHost> {
     overlay.insert(entry);
 
     _bannerTimer = Timer(const Duration(seconds: 6), () {
-      if (!mounted) return;
+      if (!mounted || _bannerEntry != entry) return;
       unawaited(
         manager.trackDismiss(
           message: message,
