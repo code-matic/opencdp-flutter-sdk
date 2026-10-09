@@ -26,6 +26,12 @@ let package = Package(
                 .process("PrivacyInfo.xcprivacy")
             ]
         ),
-        .target(name: "OpenCdpPushExtension"),
+        // Linked on its own into extension targets, so it needs its own privacy manifest.
+        .target(
+            name: "OpenCdpPushExtension",
+            resources: [
+                .process("PrivacyInfo.xcprivacy")
+            ]
+        ),
     ]
 )

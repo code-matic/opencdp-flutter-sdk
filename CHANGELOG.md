@@ -4,12 +4,12 @@
 
 ### Added
 
-* **iOS Swift Package Manager support** — the plugin ships a `Package.swift`, so Flutter no longer warns that `open_cdp_flutter_sdk` lacks SwiftPM support. CocoaPods keeps working unchanged, including the `open_cdp_push_extension` pod for Notification Service Extensions. SwiftPM apps can link the `OpenCdpPushExtension` product to their extension target instead.
+* **iOS Swift Package Manager support** — the plugin ships a `Package.swift`, so Flutter no longer warns that `open_cdp_flutter_sdk` lacks SwiftPM support. CocoaPods keeps working unchanged, including the `open_cdp_push_extension` pod for Notification Service Extensions. Apps without CocoaPods can link the `OpenCdpPushExtension` product to their extension target instead (see README).
 
 ### Changed
 
 * iOS minimum deployment target raised from 11.0 to 13.0 (Flutter's own minimum).
-* The iOS privacy manifest (`PrivacyInfo.xcprivacy`) is now bundled with the plugin; previously it was not included in the pod.
+* iOS privacy manifests now ship with both the plugin and the `open_cdp_push_extension` pod / `OpenCdpPushExtension` product (previously none was bundled). They declare App Group `UserDefaults` access (reason `1C8F.1`).
 
 ## [3.3.3] - 2026-09-30
 

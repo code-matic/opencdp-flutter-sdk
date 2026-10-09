@@ -20,6 +20,7 @@ Pod::Spec.new do |s|
   # Only include the helper used by notification service extensions.
   # NOTE: Do NOT include OpenCdpSdkPlugin.swift here, and do NOT depend on Flutter.
   s.source_files     = 'open_cdp_flutter_sdk/Sources/OpenCdpPushExtension/**/*.swift'
+  s.resource_bundles = {'open_cdp_push_extension_privacy' => ['open_cdp_flutter_sdk/Sources/OpenCdpPushExtension/PrivacyInfo.xcprivacy']}
 end
 
 
