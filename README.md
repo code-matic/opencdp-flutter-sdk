@@ -84,7 +84,7 @@ Add the following to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  open_cdp_flutter_sdk: ^3.3.3
+  open_cdp_flutter_sdk: ^3.4.0
 ```
 
 ---
