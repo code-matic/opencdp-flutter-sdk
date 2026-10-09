@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+* **iOS Swift Package Manager support** — the plugin ships a `Package.swift`, so Flutter no longer warns that `open_cdp_flutter_sdk` lacks SwiftPM support. CocoaPods keeps working unchanged, including the `open_cdp_push_extension` pod for Notification Service Extensions. Apps without CocoaPods can link the `OpenCdpPushExtension` product to their extension target instead (see README).
+
+### Changed
+
+* iOS minimum deployment target raised from 11.0 to 13.0 (Flutter's own minimum).
+* iOS privacy manifests now ship with both the plugin and the `open_cdp_push_extension` pod / `OpenCdpPushExtension` product (previously none was bundled). They declare App Group `UserDefaults` access (reason `1C8F.1`).
+
+## [3.3.3] - 2026-09-30
+
+### Fixed
+
+* **`registerDevice`** — an empty or whitespace-only `fcmToken` / `apnToken` is a validation error again (`CDPValidationException` when `throwErrorsBack` is true). Null still means the token was omitted.
+* **In-app banners** — a newer banner dismisses the previous one after the navigator is ready, so two deliveries cannot leave overlapping banners or let the first timer remove the second.
+* **`OpenCDPInAppHost.navigatorKey`** — when a key is set, presentation waits for that navigator instead of using the host context above it.
+
 ## [3.3.1] - 2026-09-22
 
 ### Added

@@ -10,12 +10,13 @@ Pod::Spec.new do |s|
   s.author           = { 'Codematic Technology Services' => 'developers@codematic.io' }
   s.source           = { :path => '.' }
 
-  # Correctly specify source files and explicitly expose public headers
-  s.source_files = 'Classes/**/*.{h,m,swift}'
-  s.public_header_files = 'Classes/**/*.h'
+  # Sources live in the Swift Package Manager layout so CocoaPods and SwiftPM build the same files.
+  # The push extension helper stays in this pod for apps that still import it via open_cdp_flutter_sdk.
+  s.source_files = 'open_cdp_flutter_sdk/Sources/**/*.swift'
+  s.resource_bundles = {'open_cdp_flutter_sdk_privacy' => ['open_cdp_flutter_sdk/Sources/open_cdp_flutter_sdk/PrivacyInfo.xcprivacy']}
 
   s.dependency 'Flutter'
-  s.platform = :ios, '11.0'
+  s.platform = :ios, '13.0'
 
   # NOTE: The explicit 'module_name' has been removed. 
   # This allows CocoaPods to correctly infer the name from 's.name', avoiding casing conflicts.

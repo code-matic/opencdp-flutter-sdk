@@ -84,7 +84,7 @@ Add the following to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  open_cdp_flutter_sdk: ^3.3.0
+  open_cdp_flutter_sdk: ^3.3.3
 ```
 
 ---
@@ -779,6 +779,22 @@ end
 ```swift
 import OpenCdpPushExtension
 ```
+
+---
+
+###### With Swift Package Manager enabled
+
+The plugin supports Swift Package Manager. How you link the extension helper depends on whether your app still has a `Podfile`:
+
+- **Your app still has a `Podfile`** (for example, because another plugin such as `customer_io` still needs CocoaPods): keep the `NotificationService` target from the Podfile above. Flutter still creates `.symlinks/plugins/open_cdp_flutter_sdk` when SwiftPM is enabled, so the `open_cdp_push_extension` pod resolves as before.
+- **Your app no longer uses CocoaPods:** link the `OpenCdpPushExtension` Swift package product to the extension target in Xcode:
+  1. Run `flutter build ios` once so Flutter generates `ios/Flutter/ephemeral/Packages/.packages/`.
+  2. In Xcode, choose **File → Add Package Dependencies… → Add Local…** and select `ios/Flutter/ephemeral/Packages/.packages/open_cdp_flutter_sdk-<version>`.
+  3. Add the **`OpenCdpPushExtension`** product to the **NotificationService** target only. Do not add `open-cdp-flutter-sdk` to the extension: it depends on Flutter, which cannot be linked into app extensions.
+
+  The folder name includes the plugin version, so re-add the package after upgrading the SDK.
+
+Either way, `NotificationService.swift` uses `import OpenCdpPushExtension`.
 
 ---
 

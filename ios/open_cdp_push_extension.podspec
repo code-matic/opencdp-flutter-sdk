@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.author           = { 'Codematic Technology Services' => 'developers@codematic.io' }
   s.source           = { :path => '.' }
 
-  s.platform         = :ios, '11.0'
+  s.platform         = :ios, '13.0'
   s.swift_version    = '5.0'
 
   # Expose a nice Swift-style module name so clients can:
@@ -19,7 +19,8 @@ Pod::Spec.new do |s|
 
   # Only include the helper used by notification service extensions.
   # NOTE: Do NOT include OpenCdpSdkPlugin.swift here, and do NOT depend on Flutter.
-  s.source_files     = 'Classes/OpenCdpPushExtensionHelper.swift'
+  s.source_files     = 'open_cdp_flutter_sdk/Sources/OpenCdpPushExtension/**/*.swift'
+  s.resource_bundles = {'open_cdp_push_extension_privacy' => ['open_cdp_flutter_sdk/Sources/OpenCdpPushExtension/PrivacyInfo.xcprivacy']}
 end
 
 
